@@ -1,0 +1,164 @@
+2025-07-30 23:13:55,397 - __main__ - INFO - ==================================================
+2025-07-30 23:13:55,397 - __main__ - INFO - Iniciando AlmacénPro v2.0
+2025-07-30 23:13:55,398 - __main__ - INFO - ==================================================
+2025-07-30 23:13:55,453 - __main__ - INFO - Directorio verificado: f:\almacen\data
+2025-07-30 23:13:55,454 - __main__ - INFO - Directorio verificado: f:\almacen\backups
+2025-07-30 23:13:55,455 - __main__ - INFO - Directorio verificado: f:\almacen\logs
+2025-07-30 23:13:55,455 - __main__ - INFO - Directorio verificado: f:\almacen\temp
+2025-07-30 23:13:55,456 - __main__ - INFO - Directorio verificado: f:\almacen\exports
+2025-07-30 23:13:56,607 - config.settings - INFO - Configuraciones cargadas desde config.json
+2025-07-30 23:13:56,608 - database.manager - INFO - Usando SQLite: f:\almacen\data\almacen_pro.db
+2025-07-30 23:13:56,612 - database.manager - INFO - Tabla roles creada/verificada
+2025-07-30 23:13:56,612 - database.manager - INFO - Tabla usuarios creada/verificada
+2025-07-30 23:13:56,613 - database.manager - INFO - Tabla categorias creada/verificada
+2025-07-30 23:13:56,613 - database.manager - INFO - Tabla productos creada/verificada
+2025-07-30 23:13:56,614 - database.manager - INFO - Tabla proveedores creada/verificada
+2025-07-30 23:13:56,614 - database.manager - INFO - Tabla clientes creada/verificada
+2025-07-30 23:13:56,615 - database.manager - INFO - Tabla ventas creada/verificada
+2025-07-30 23:13:56,615 - database.manager - INFO - Tabla detalle_ventas creada/verificada
+2025-07-30 23:13:56,616 - database.manager - INFO - Tabla compras creada/verificada
+2025-07-30 23:13:56,616 - database.manager - INFO - Tabla detalle_compras creada/verificada
+2025-07-30 23:13:56,617 - database.manager - INFO - Tabla movimientos_stock creada/verificada
+2025-07-30 23:13:56,617 - database.manager - INFO - Tabla cuenta_corriente creada/verificada
+2025-07-30 23:13:56,618 - database.manager - INFO - Tabla cajas creada/verificada
+2025-07-30 23:13:56,618 - database.manager - INFO - Tabla sesiones_caja creada/verificada
+2025-07-30 23:13:56,619 - database.manager - INFO - Tabla movimientos_caja creada/verificada
+2025-07-30 23:13:56,619 - database.manager - INFO - Tabla configuraciones creada/verificada
+2025-07-30 23:13:56,620 - database.manager - INFO - Tabla sync_log creada/verificada
+2025-07-30 23:13:56,620 - database.manager - INFO - Tabla notificaciones creada/verificada
+2025-07-30 23:13:56,620 - database.manager - INFO - Tabla auditoria creada/verificada
+2025-07-30 23:13:56,622 - database.manager - INFO - Datos por defecto insertados correctamente
+2025-07-30 23:13:56,626 - database.manager - INFO - Base de datos configurada correctamente
+2025-07-30 23:13:56,626 - managers.user_manager - INFO - UserManager inicializado
+2025-07-30 23:13:56,626 - managers.product_manager - INFO - ProductManager inicializado
+2025-07-30 23:13:56,627 - managers.sales_manager - INFO - SalesManager inicializado
+2025-07-30 23:13:56,628 - managers.purchase_manager - INFO - PurchaseManager inicializado
+2025-07-30 23:13:56,628 - managers.provider_manager - INFO - ProviderManager inicializado
+2025-07-30 23:13:56,628 - managers.report_manager - INFO - ReportManager inicializado
+2025-07-30 23:13:56,629 - utils.backup_manager - INFO - BackupManager inicializado - Ruta: f:\almacen\backups
+2025-07-30 23:13:56,630 - ui.main_window - INFO - Componentes del sistema inicializados
+2025-07-30 23:13:56,650 - ui.main_window - ERROR - Error en login: 'LoginDialog' object has no attribute 'password_input'
+2025-07-30 23:14:03,885 - database.manager - INFO - Conexión a base de datos cerrada
+2025-07-30 23:39:11,793 - __main__ - INFO - ==================================================
+2025-07-30 23:39:11,793 - __main__ - INFO - Iniciando AlmacénPro v2.0
+2025-07-30 23:39:11,794 - __main__ - INFO - ==================================================
+2025-07-30 23:39:11,861 - __main__ - INFO - Directorio verificado: f:\almacen\data
+2025-07-30 23:39:11,862 - __main__ - INFO - Directorio verificado: f:\almacen\backups
+2025-07-30 23:39:11,863 - __main__ - INFO - Directorio verificado: f:\almacen\logs
+2025-07-30 23:39:11,864 - __main__ - INFO - Directorio verificado: f:\almacen\temp
+2025-07-30 23:39:11,864 - __main__ - INFO - Directorio verificado: f:\almacen\exports
+2025-07-30 23:39:12,053 - config.settings - INFO - Configuraciones cargadas desde config.json
+2025-07-30 23:39:12,053 - database.manager - INFO - Usando SQLite: f:\almacen\data\almacen_pro.db
+2025-07-30 23:39:12,053 - database.manager - INFO - Tabla roles creada/verificada
+2025-07-30 23:39:12,053 - database.manager - INFO - Tabla usuarios creada/verificada
+2025-07-30 23:39:12,053 - database.manager - INFO - Tabla categorias creada/verificada
+2025-07-30 23:39:12,065 - database.manager - INFO - Tabla productos creada/verificada
+2025-07-30 23:39:12,065 - database.manager - INFO - Tabla proveedores creada/verificada
+2025-07-30 23:39:12,067 - database.manager - INFO - Tabla clientes creada/verificada
+2025-07-30 23:39:12,068 - database.manager - INFO - Tabla ventas creada/verificada
+2025-07-30 23:39:12,070 - database.manager - INFO - Tabla detalle_ventas creada/verificada
+2025-07-30 23:39:12,072 - database.manager - INFO - Tabla compras creada/verificada
+2025-07-30 23:39:12,073 - database.manager - INFO - Tabla detalle_compras creada/verificada
+2025-07-30 23:39:12,073 - database.manager - INFO - Tabla movimientos_stock creada/verificada
+2025-07-30 23:39:12,074 - database.manager - INFO - Tabla cuenta_corriente creada/verificada
+2025-07-30 23:39:12,074 - database.manager - INFO - Tabla cajas creada/verificada
+2025-07-30 23:39:12,075 - database.manager - INFO - Tabla sesiones_caja creada/verificada
+2025-07-30 23:39:12,075 - database.manager - INFO - Tabla movimientos_caja creada/verificada
+2025-07-30 23:39:12,076 - database.manager - INFO - Tabla configuraciones creada/verificada
+2025-07-30 23:39:12,080 - database.manager - INFO - Tabla sync_log creada/verificada
+2025-07-30 23:39:12,080 - database.manager - INFO - Tabla notificaciones creada/verificada
+2025-07-30 23:39:12,081 - database.manager - INFO - Tabla auditoria creada/verificada
+2025-07-30 23:39:12,087 - database.manager - INFO - Datos por defecto insertados correctamente
+2025-07-30 23:39:12,091 - database.manager - INFO - Base de datos configurada correctamente
+2025-07-30 23:39:12,091 - managers.user_manager - INFO - UserManager inicializado
+2025-07-30 23:39:12,092 - managers.product_manager - INFO - ProductManager inicializado
+2025-07-30 23:39:12,092 - managers.sales_manager - INFO - SalesManager inicializado
+2025-07-30 23:39:12,094 - managers.purchase_manager - INFO - PurchaseManager inicializado
+2025-07-30 23:39:12,095 - managers.provider_manager - INFO - ProviderManager inicializado
+2025-07-30 23:39:12,096 - managers.report_manager - INFO - ReportManager inicializado
+2025-07-30 23:39:12,097 - utils.backup_manager - INFO - BackupManager inicializado - Ruta: f:\almacen\backups
+2025-07-30 23:39:12,098 - ui.main_window - INFO - Componentes del sistema inicializados
+2025-07-30 23:39:12,120 - ui.main_window - ERROR - Error en login: 'LoginDialog' object has no attribute 'password_input'
+2025-07-30 23:39:14,369 - database.manager - INFO - Conexión a base de datos cerrada
+2025-07-30 23:39:18,805 - __main__ - INFO - ==================================================
+2025-07-30 23:39:18,805 - __main__ - INFO - Iniciando AlmacénPro v2.0
+2025-07-30 23:39:18,805 - __main__ - INFO - ==================================================
+2025-07-30 23:39:18,849 - __main__ - INFO - Directorio verificado: f:\almacen\data
+2025-07-30 23:39:18,856 - __main__ - INFO - Directorio verificado: f:\almacen\backups
+2025-07-30 23:39:18,856 - __main__ - INFO - Directorio verificado: f:\almacen\logs
+2025-07-30 23:39:18,862 - __main__ - INFO - Directorio verificado: f:\almacen\temp
+2025-07-30 23:39:18,863 - __main__ - INFO - Directorio verificado: f:\almacen\exports
+2025-07-30 23:39:19,005 - config.settings - INFO - Configuraciones cargadas desde config.json
+2025-07-30 23:39:19,005 - database.manager - INFO - Usando SQLite: f:\almacen\data\almacen_pro.db
+2025-07-30 23:39:19,005 - database.manager - INFO - Tabla roles creada/verificada
+2025-07-30 23:39:19,005 - database.manager - INFO - Tabla usuarios creada/verificada
+2025-07-30 23:39:19,005 - database.manager - INFO - Tabla categorias creada/verificada
+2025-07-30 23:39:19,005 - database.manager - INFO - Tabla productos creada/verificada
+2025-07-30 23:39:19,005 - database.manager - INFO - Tabla proveedores creada/verificada
+2025-07-30 23:39:19,013 - database.manager - INFO - Tabla clientes creada/verificada
+2025-07-30 23:39:19,013 - database.manager - INFO - Tabla ventas creada/verificada
+2025-07-30 23:39:19,015 - database.manager - INFO - Tabla detalle_ventas creada/verificada
+2025-07-30 23:39:19,015 - database.manager - INFO - Tabla compras creada/verificada
+2025-07-30 23:39:19,016 - database.manager - INFO - Tabla detalle_compras creada/verificada
+2025-07-30 23:39:19,016 - database.manager - INFO - Tabla movimientos_stock creada/verificada
+2025-07-30 23:39:19,017 - database.manager - INFO - Tabla cuenta_corriente creada/verificada
+2025-07-30 23:39:19,017 - database.manager - INFO - Tabla cajas creada/verificada
+2025-07-30 23:39:19,018 - database.manager - INFO - Tabla sesiones_caja creada/verificada
+2025-07-30 23:39:19,019 - database.manager - INFO - Tabla movimientos_caja creada/verificada
+2025-07-30 23:39:19,019 - database.manager - INFO - Tabla configuraciones creada/verificada
+2025-07-30 23:39:19,020 - database.manager - INFO - Tabla sync_log creada/verificada
+2025-07-30 23:39:19,020 - database.manager - INFO - Tabla notificaciones creada/verificada
+2025-07-30 23:39:19,020 - database.manager - INFO - Tabla auditoria creada/verificada
+2025-07-30 23:39:19,022 - database.manager - INFO - Datos por defecto insertados correctamente
+2025-07-30 23:39:19,025 - database.manager - INFO - Base de datos configurada correctamente
+2025-07-30 23:39:19,025 - managers.user_manager - INFO - UserManager inicializado
+2025-07-30 23:39:19,025 - managers.product_manager - INFO - ProductManager inicializado
+2025-07-30 23:39:19,028 - managers.sales_manager - INFO - SalesManager inicializado
+2025-07-30 23:39:19,029 - managers.purchase_manager - INFO - PurchaseManager inicializado
+2025-07-30 23:39:19,029 - managers.provider_manager - INFO - ProviderManager inicializado
+2025-07-30 23:39:19,030 - managers.report_manager - INFO - ReportManager inicializado
+2025-07-30 23:39:19,030 - utils.backup_manager - INFO - BackupManager inicializado - Ruta: f:\almacen\backups
+2025-07-30 23:39:19,031 - ui.main_window - INFO - Componentes del sistema inicializados
+2025-07-30 23:39:19,032 - ui.main_window - ERROR - Error en login: 'LoginDialog' object has no attribute 'password_input'
+2025-07-30 23:39:21,071 - database.manager - INFO - Conexión a base de datos cerrada
+2025-07-30 23:39:48,547 - __main__ - INFO - ==================================================
+2025-07-30 23:39:48,547 - __main__ - INFO - Iniciando AlmacénPro v2.0
+2025-07-30 23:39:48,547 - __main__ - INFO - ==================================================
+2025-07-30 23:39:48,593 - __main__ - INFO - Directorio verificado: f:\almacen\data
+2025-07-30 23:39:48,593 - __main__ - INFO - Directorio verificado: f:\almacen\backups
+2025-07-30 23:39:48,593 - __main__ - INFO - Directorio verificado: f:\almacen\logs
+2025-07-30 23:39:48,593 - __main__ - INFO - Directorio verificado: f:\almacen\temp
+2025-07-30 23:39:48,593 - __main__ - INFO - Directorio verificado: f:\almacen\exports
+2025-07-30 23:39:48,690 - config.settings - INFO - Configuraciones cargadas desde config.json
+2025-07-30 23:39:48,690 - database.manager - INFO - Usando SQLite: f:\almacen\data\almacen_pro.db
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla roles creada/verificada
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla usuarios creada/verificada
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla categorias creada/verificada
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla productos creada/verificada
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla proveedores creada/verificada
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla clientes creada/verificada
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla ventas creada/verificada
+2025-07-30 23:39:48,690 - database.manager - INFO - Tabla detalle_ventas creada/verificada
+2025-07-30 23:39:48,699 - database.manager - INFO - Tabla compras creada/verificada
+2025-07-30 23:39:48,699 - database.manager - INFO - Tabla detalle_compras creada/verificada
+2025-07-30 23:39:48,699 - database.manager - INFO - Tabla movimientos_stock creada/verificada
+2025-07-30 23:39:48,700 - database.manager - INFO - Tabla cuenta_corriente creada/verificada
+2025-07-30 23:39:48,700 - database.manager - INFO - Tabla cajas creada/verificada
+2025-07-30 23:39:48,701 - database.manager - INFO - Tabla sesiones_caja creada/verificada
+2025-07-30 23:39:48,702 - database.manager - INFO - Tabla movimientos_caja creada/verificada
+2025-07-30 23:39:48,702 - database.manager - INFO - Tabla configuraciones creada/verificada
+2025-07-30 23:39:48,703 - database.manager - INFO - Tabla sync_log creada/verificada
+2025-07-30 23:39:48,703 - database.manager - INFO - Tabla notificaciones creada/verificada
+2025-07-30 23:39:48,704 - database.manager - INFO - Tabla auditoria creada/verificada
+2025-07-30 23:39:48,705 - database.manager - INFO - Datos por defecto insertados correctamente
+2025-07-30 23:39:48,708 - database.manager - INFO - Base de datos configurada correctamente
+2025-07-30 23:39:48,708 - managers.user_manager - INFO - UserManager inicializado
+2025-07-30 23:39:48,708 - managers.product_manager - INFO - ProductManager inicializado
+2025-07-30 23:39:48,708 - managers.sales_manager - INFO - SalesManager inicializado
+2025-07-30 23:39:48,708 - managers.purchase_manager - INFO - PurchaseManager inicializado
+2025-07-30 23:39:48,712 - managers.provider_manager - INFO - ProviderManager inicializado
+2025-07-30 23:39:48,712 - managers.report_manager - INFO - ReportManager inicializado
+2025-07-30 23:39:48,713 - utils.backup_manager - INFO - BackupManager inicializado - Ruta: f:\almacen\backups
+2025-07-30 23:39:48,713 - ui.main_window - INFO - Componentes del sistema inicializados
+2025-07-30 23:39:48,717 - ui.main_window - ERROR - Error en login: 'LoginDialog' object has no attribute 'password_input'
+2025-07-30 23:39:51,394 - database.manager - INFO - Conexión a base de datos cerrada

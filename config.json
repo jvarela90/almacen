@@ -1,0 +1,101 @@
+{
+    "database": {
+        "type": "sqlite",
+        "sqlite_path": "data/almacen_pro.db",
+        "postgresql": {
+            "host": "localhost",
+            "port": 5432,
+            "database": "almacen_pro",
+            "username": "",
+            "password": ""
+        }
+    },
+    "backup": {
+        "enabled": true,
+        "auto_backup": true,
+        "backup_interval_hours": 24,
+        "backup_path": "backups",
+        "max_backups": 30,
+        "compress_backups": true,
+        "cloud_backup": {
+            "enabled": false,
+            "provider": "google_drive",
+            "credentials_file": "",
+            "remote_folder": "AlmacenPro_Backups"
+        }
+    },
+    "company": {
+        "name": "Mi Almacén",
+        "address": "",
+        "phone": "",
+        "email": "",
+        "cuit": "",
+        "logo_path": ""
+    },
+    "tickets": {
+        "printer_name": "",
+        "paper_width": 80,
+        "auto_print": false,
+        "copy_count": 1,
+        "footer_message": "¡Gracias por su compra!",
+        "include_logo": false
+    },
+    "ui": {
+        "theme": "light",
+        "language": "es",
+        "font_size": 9,
+        "window_maximized": true,
+        "last_window_size": [
+            1200,
+            800
+        ],
+        "last_window_position": [
+            100,
+            100
+        ]
+    },
+    "notifications": {
+        "enabled": true,
+        "low_stock_alerts": true,
+        "daily_sales_summary": true,
+        "backup_notifications": true,
+        "system_notifications": true
+    },
+    "sync": {
+        "enabled": false,
+        "server_url": "",
+        "api_key": "",
+        "sync_interval_minutes": 30,
+        "offline_mode": true
+    },
+    "hardware": {
+        "barcode_scanner": {
+            "enabled": true,
+            "port": "auto",
+            "prefix": "",
+            "suffix": ""
+        },
+        "cash_drawer": {
+            "enabled": false,
+            "port": "COM1",
+            "open_command": ""
+        },
+        "scale": {
+            "enabled": false,
+            "port": "COM2",
+            "brand": "toledo",
+            "model": ""
+        }
+    },
+    "security": {
+        "session_timeout_minutes": 480,
+        "password_min_length": 6,
+        "lock_after_attempts": 5,
+        "audit_log": true
+    },
+    "reports": {
+        "default_export_format": "pdf",
+        "include_charts": true,
+        "auto_save_path": "exports"
+    }
+}
