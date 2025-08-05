@@ -1,181 +1,208 @@
 """
 Gestor de Ventas para AlmacénPro
-Maneja ventas, tickets, facturación y cuenta corriente
+Sistema completo de punto de venta (POS) con facturación y gestión de clientes
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Any
-from decimal import Decimal
 from datetime import datetime, date
+from decimal import Decimal
+from typing import Dict, List, Optional, Tuple, Any
+import uuid
 
 logger = logging.getLogger(__name__)
 
 class SalesManager:
-    """Gestor de ventas y facturación"""
+    """Gestor principal para ventas y facturación"""
     
     def __init__(self, db_manager, product_manager):
         self.db = db_manager
         self.product_manager = product_manager
-        logger.info("SalesManager inicializado")
+        self.logger = logging.getLogger(__name__)
+        
+        # Estados válidos de venta
+        self.VALID_STATUSES = ['ACTIVA', 'COMPLETADA', 'CANCELADA', 'DEVUELTA']
+        
+        # Métodos de pago válidos
+        self.PAYMENT_METHODS = [
+            'EFECTIVO', 'TARJETA_DEBITO', 'TARJETA_CREDITO', 
+            'TRANSFERENCIA', 'CHEQUE', 'CUENTA_CORRIENTE'
+        ]
     
-    def create_sale(self, sale_data: Dict) -> Tuple[bool, str, int]:
+    def create_sale(self, sale_data: Dict, items: List[Dict], 
+                   payments: List[Dict], user_id: int) -> Tuple[bool, str, int]:
         """Crear nueva venta"""
         try:
             # Validaciones básicas
-            if not sale_data.get('items') or len(sale_data['items']) == 0:
+            if not items:
                 return False, "La venta debe tener al menos un producto", 0
             
-            if not sale_data.get('vendedor_id'):
-                return False, "Debe especificar el vendedor", 0
+            if not payments:
+                return False, "La venta debe tener al menos un método de pago", 0
             
-            # Validar stock de todos los productos antes de procesar
-            for item in sale_data['items']:
+            # Validar stock de productos
+            stock_errors = []
+            for item in items:
                 product = self.product_manager.get_product_by_id(item['producto_id'])
                 if not product:
-                    return False, f"Producto ID {item['producto_id']} no encontrado", 0
+                    stock_errors.append(f"Producto ID {item['producto_id']} no encontrado")
+                    continue
                 
                 if not product.get('permite_venta_sin_stock', False):
                     if product['stock_actual'] < item['cantidad']:
-                        return False, f"Stock insuficiente para {product['nombre']}. Stock: {product['stock_actual']}", 0
+                        stock_errors.append(f"{product['nombre']}: stock insuficiente ({product['stock_actual']} disponible)")
             
-            # Calcular totales
-            subtotal = sum(
-                Decimal(str(item['cantidad'])) * Decimal(str(item['precio_unitario']))
-                for item in sale_data['items']
-            )
+            if stock_errors:
+                return False, "; ".join(stock_errors), 0
             
-            descuento_total = Decimal(str(sale_data.get('descuento', 0)))
-            recargo_total = Decimal(str(sale_data.get('recargo', 0)))
+            # Iniciar transacción
+            self.db.begin_transaction()
             
-            # Calcular impuestos (IVA)
-            base_imponible = subtotal - descuento_total + recargo_total
-            impuestos = base_imponible * Decimal('0.21')  # IVA 21% por defecto
-            
-            total = base_imponible + impuestos
-            
-            # Generar número de ticket único
-            numero_ticket = self.generate_ticket_number(sale_data.get('caja_id', 1))
-            
-            # Crear venta principal
-            sale_id = self.db.execute_insert("""
-                INSERT INTO ventas (
-                    numero_ticket, numero_factura, cliente_id, vendedor_id, caja_id,
-                    tipo_venta, tipo_comprobante, subtotal, descuento, recargo,
-                    impuestos, total, metodo_pago, estado, fecha_vencimiento,
-                    observaciones
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                numero_ticket,
-                sale_data.get('numero_factura'),
-                sale_data.get('cliente_id'),
-                sale_data['vendedor_id'],
-                sale_data.get('caja_id', 1),
-                sale_data.get('tipo_venta', 'CONTADO'),
-                sale_data.get('tipo_comprobante', 'TICKET'),
-                float(subtotal),
-                float(descuento_total),
-                float(recargo_total),
-                float(impuestos),
-                float(total),
-                sale_data.get('metodo_pago', 'EFECTIVO'),
-                'COMPLETADA',
-                sale_data.get('fecha_vencimiento'),
-                sale_data.get('observaciones')
-            ))
-            
-            # Crear detalles de venta y actualizar stock
-            for item in sale_data['items']:
-                # Calcular subtotal del item con descuentos
-                item_subtotal = (
-                    Decimal(str(item['cantidad'])) * 
-                    Decimal(str(item['precio_unitario']))
-                )
+            try:
+                # Calcular totales
+                subtotal = sum(item['cantidad'] * item['precio_unitario'] for item in items)
+                descuento_total = sale_data.get('descuento_importe', 0)
+                impuestos_total = sum(item.get('impuesto_importe', 0) for item in items)
+                total = subtotal - descuento_total + impuestos_total
                 
-                item_discount = item_subtotal * (Decimal(str(item.get('descuento_porcentaje', 0))) / 100)
-                item_final = item_subtotal - item_discount
+                # Validar que los pagos cubran el total
+                total_pagos = sum(payment['importe'] for payment in payments)
+                if abs(total_pagos - total) > 0.01:  # Tolerancia para redondeo
+                    raise Exception(f"Los pagos ({total_pagos}) no coinciden con el total ({total})")
                 
-                # Calcular IVA del item
-                iva_porcentaje = Decimal(str(item.get('iva_porcentaje', 21)))
-                iva_importe = item_final * (iva_porcentaje / 100)
-                
-                # Insertar detalle
-                self.db.execute_insert("""
-                    INSERT INTO detalle_ventas (
-                        venta_id, producto_id, cantidad, precio_unitario,
-                        descuento_porcentaje, descuento_importe, subtotal,
-                        iva_porcentaje, iva_importe
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                # Crear venta
+                sale_id = self.db.execute_insert("""
+                    INSERT INTO ventas (
+                        numero_factura, tipo_comprobante, cliente_id, usuario_id,
+                        fecha_venta, subtotal, descuento_porcentaje, descuento_importe,
+                        impuestos_importe, total, estado, observaciones, caja_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    sale_id,
-                    item['producto_id'],
-                    item['cantidad'],
-                    item['precio_unitario'],
-                    item.get('descuento_porcentaje', 0),
-                    float(item_discount),
-                    float(item_final),
-                    float(iva_porcentaje),
-                    float(iva_importe)
+                    self.generate_invoice_number(),
+                    sale_data.get('tipo_comprobante', 'TICKET'),
+                    sale_data.get('cliente_id'),
+                    user_id,
+                    sale_data.get('fecha_venta', datetime.now()),
+                    subtotal,
+                    sale_data.get('descuento_porcentaje', 0),
+                    descuento_total,
+                    impuestos_total,
+                    total,
+                    'ACTIVA',
+                    sale_data.get('observaciones'),
+                    sale_data.get('caja_id')
                 ))
                 
-                # Actualizar stock
-                success, message = self.product_manager.update_stock(
-                    product_id=item['producto_id'],
-                    new_quantity=item['cantidad'],
-                    movement_type='SALIDA',
-                    reason='VENTA',
-                    user_id=sale_data['vendedor_id'],
-                    unit_price=item['precio_unitario'],
-                    reference_id=sale_id,
-                    reference_type='VENTA',
-                    notes=f"Venta {numero_ticket}"
-                )
+                if not sale_id:
+                    raise Exception("Error creando venta")
                 
-                if not success:
-                    # Si hay error en stock, revertir transacción
-                    self.db.connection.rollback()
-                    return False, f"Error actualizando stock: {message}", 0
-            
-            # Si es cuenta corriente, registrar movimiento
-            if sale_data.get('tipo_venta') == 'CUENTA_CORRIENTE' and sale_data.get('cliente_id'):
-                success, message = self.register_account_movement(
-                    cliente_id=sale_data['cliente_id'],
-                    movement_type='DEBE',
-                    concept=f'Venta {numero_ticket}',
-                    amount=float(total),
-                    sale_id=sale_id,
-                    user_id=sale_data['vendedor_id']
-                )
+                # Insertar detalles de la venta
+                for item in items:
+                    product = self.product_manager.get_product_by_id(item['producto_id'])
+                    
+                    # Calcular impuesto del item
+                    item_subtotal = item['cantidad'] * item['precio_unitario']
+                    item_descuento = item.get('descuento_importe', 0)
+                    item_impuesto = item.get('impuesto_importe', 0)
+                    item_total = item_subtotal - item_descuento + item_impuesto
+                    
+                    detail_id = self.db.execute_insert("""
+                        INSERT INTO detalle_ventas (
+                            venta_id, producto_id, cantidad, precio_unitario,
+                            descuento_porcentaje, descuento_importe, subtotal,
+                            impuesto_porcentaje, impuesto_importe, total,
+                            costo_unitario, lote, fecha_vencimiento
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        sale_id,
+                        item['producto_id'],
+                        item['cantidad'],
+                        item['precio_unitario'],
+                        item.get('descuento_porcentaje', 0),
+                        item_descuento,
+                        item_subtotal,
+                        item.get('impuesto_porcentaje', product.get('iva_porcentaje', 21)),
+                        item_impuesto,
+                        item_total,
+                        product.get('precio_compra', 0),
+                        item.get('lote'),
+                        item.get('fecha_vencimiento')
+                    ))
+                    
+                    if not detail_id:
+                        raise Exception(f"Error insertando detalle para producto {item['producto_id']}")
+                    
+                    # Actualizar stock
+                    success, message = self.product_manager.update_stock(
+                        product_id=item['producto_id'],
+                        new_quantity=item['cantidad'],
+                        movement_type='SALIDA',
+                        reason='VENTA',
+                        user_id=user_id,
+                        unit_price=item['precio_unitario'],
+                        reference_id=sale_id,
+                        reference_type='VENTA',
+                        notes=f"Venta #{sale_id}"
+                    )
+                    
+                    if not success:
+                        raise Exception(f"Error actualizando stock: {message}")
                 
-                if not success:
-                    logger.warning(f"Error registrando cuenta corriente: {message}")
-            
-            # Registrar movimiento de caja si hay sesión activa
-            self.register_cash_movement(
-                sale_id=sale_id,
-                amount=float(total),
-                payment_method=sale_data.get('metodo_pago', 'EFECTIVO'),
-                user_id=sale_data['vendedor_id']
-            )
-            
-            logger.info(f"Venta creada: {numero_ticket} por ${total}")
-            return True, f"Venta {numero_ticket} creada exitosamente", sale_id
-            
+                # Insertar pagos
+                for payment in payments:
+                    payment_id = self.db.execute_insert("""
+                        INSERT INTO pagos_venta (
+                            venta_id, metodo_pago, importe, referencia,
+                            fecha_pago, observaciones
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                    """, (
+                        sale_id,
+                        payment['metodo_pago'],
+                        payment['importe'],
+                        payment.get('referencia'),
+                        payment.get('fecha_pago', datetime.now()),
+                        payment.get('observaciones')
+                    ))
+                    
+                    if not payment_id:
+                        raise Exception(f"Error registrando pago {payment['metodo_pago']}")
+                
+                # Actualizar cuenta corriente si es cliente con crédito
+                if sale_data.get('cliente_id') and any(p['metodo_pago'] == 'CUENTA_CORRIENTE' for p in payments):
+                    credit_amount = sum(p['importe'] for p in payments if p['metodo_pago'] == 'CUENTA_CORRIENTE')
+                    if credit_amount > 0:
+                        self.update_customer_account(sale_data['cliente_id'], credit_amount, 'DEBE', sale_id, user_id)
+                
+                # Completar venta
+                self.db.execute_update("""
+                    UPDATE ventas SET estado = 'COMPLETADA', completada_en = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                """, (sale_id,))
+                
+                # Confirmar transacción
+                self.db.commit_transaction()
+                
+                self.logger.info(f"Venta creada exitosamente: ID {sale_id}, Total: ${total}")
+                return True, f"Venta #{sale_id} completada exitosamente", sale_id
+                
+            except Exception as e:
+                self.db.rollback_transaction()
+                raise e
+                
         except Exception as e:
-            logger.error(f"Error creando venta: {e}")
+            self.logger.error(f"Error creando venta: {e}")
             return False, f"Error creando venta: {str(e)}", 0
     
     def get_sale_by_id(self, sale_id: int) -> Optional[Dict]:
-        """Obtener venta por ID con detalles"""
+        """Obtener venta por ID"""
         try:
-            # Obtener venta principal
+            # Obtener información principal
             sale = self.db.execute_single("""
-                SELECT v.*, 
-                       c.nombre as cliente_nombre, c.apellido as cliente_apellido,
-                       u.nombre_completo as vendedor_nombre,
+                SELECT v.*, c.nombre as cliente_nombre, c.email as cliente_email,
+                       c.telefono as cliente_telefono, u.nombre_completo as usuario_nombre,
                        cj.nombre as caja_nombre
                 FROM ventas v
                 LEFT JOIN clientes c ON v.cliente_id = c.id
-                LEFT JOIN usuarios u ON v.vendedor_id = u.id
+                LEFT JOIN usuarios u ON v.usuario_id = u.id
                 LEFT JOIN cajas cj ON v.caja_id = cj.id
                 WHERE v.id = ?
             """, (sale_id,))
@@ -183,442 +210,479 @@ class SalesManager:
             if not sale:
                 return None
             
-            # Obtener detalles
-            details = self.db.execute_query("""
-                SELECT dv.*, p.nombre as producto_nombre, p.codigo_barras
+            # Obtener detalles de la venta
+            items = self.db.execute_query("""
+                SELECT dv.*, p.nombre as producto_nombre, p.codigo_barras,
+                       p.unidad_medida, c.nombre as categoria_nombre
                 FROM detalle_ventas dv
-                JOIN productos p ON dv.producto_id = p.id
+                LEFT JOIN productos p ON dv.producto_id = p.id
+                LEFT JOIN categorias c ON p.categoria_id = c.id
                 WHERE dv.venta_id = ?
-                ORDER BY dv.id
+                ORDER BY p.nombre
             """, (sale_id,))
             
-            sale_dict = dict(sale)
-            sale_dict['items'] = details
+            # Obtener pagos
+            payments = self.db.execute_query("""
+                SELECT * FROM pagos_venta 
+                WHERE venta_id = ?
+                ORDER BY fecha_pago
+            """, (sale_id,))
             
-            return sale_dict
+            sale = dict(sale)
+            sale['items'] = [dict(item) for item in items]
+            sale['payments'] = [dict(payment) for payment in payments]
+            
+            return sale
             
         except Exception as e:
-            logger.error(f"Error obteniendo venta: {e}")
+            self.logger.error(f"Error obteniendo venta: {e}")
             return None
     
-    def get_sales_by_date_range(self, start_date: str, end_date: str, 
-                               vendedor_id: int = None, cliente_id: int = None) -> List[Dict]:
-        """Obtener ventas por rango de fechas"""
+    def get_sales(self, status: str = None, customer_id: int = None,
+                 user_id: int = None, date_from: date = None, date_to: date = None,
+                 limit: int = 100) -> List[Dict]:
+        """Obtener lista de ventas con filtros"""
         try:
             query = """
-                SELECT v.*, 
-                       c.nombre as cliente_nombre, c.apellido as cliente_apellido,
-                       u.nombre_completo as vendedor_nombre
+                SELECT v.*, c.nombre as cliente_nombre, u.nombre_completo as usuario_nombre,
+                       COUNT(dv.id) as total_items,
+                       SUM(dv.cantidad) as total_productos
                 FROM ventas v
                 LEFT JOIN clientes c ON v.cliente_id = c.id
-                LEFT JOIN usuarios u ON v.vendedor_id = u.id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
+                LEFT JOIN usuarios u ON v.usuario_id = u.id
+                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
+                WHERE 1=1
             """
+            params = []
             
-            params = [start_date, end_date]
+            if status:
+                query += " AND v.estado = ?"
+                params.append(status)
             
-            if vendedor_id:
-                query += " AND v.vendedor_id = ?"
-                params.append(vendedor_id)
-            
-            if cliente_id:
+            if customer_id:
                 query += " AND v.cliente_id = ?"
-                params.append(cliente_id)
+                params.append(customer_id)
             
-            query += " ORDER BY v.fecha_venta DESC"
+            if user_id:
+                query += " AND v.usuario_id = ?"
+                params.append(user_id)
             
-            return self.db.execute_query(query, tuple(params))
+            if date_from:
+                query += " AND DATE(v.fecha_venta) >= ?"
+                params.append(date_from)
+            
+            if date_to:
+                query += " AND DATE(v.fecha_venta) <= ?"
+                params.append(date_to)
+            
+            query += """
+                GROUP BY v.id
+                ORDER BY v.fecha_venta DESC
+                LIMIT ?
+            """
+            params.append(limit)
+            
+            return self.db.execute_query(query, params)
             
         except Exception as e:
-            logger.error(f"Error obteniendo ventas por fecha: {e}")
+            self.logger.error(f"Error obteniendo ventas: {e}")
             return []
     
-    def get_daily_sales_summary(self, target_date: str = None) -> Dict:
-        """Obtener resumen de ventas del día"""
+    def cancel_sale(self, sale_id: int, user_id: int, reason: str = None) -> Tuple[bool, str]:
+        """Cancelar venta y restaurar stock"""
         try:
-            if not target_date:
-                target_date = date.today().isoformat()
+            # Verificar que la venta existe
+            sale = self.get_sale_by_id(sale_id)
+            if not sale:
+                return False, "Venta no encontrada"
             
-            summary = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as total_ventas,
-                    SUM(total) as total_facturado,
-                    AVG(total) as ticket_promedio,
-                    SUM(descuento) as total_descuentos,
-                    MIN(total) as venta_minima,
-                    MAX(total) as venta_maxima
-                FROM ventas 
-                WHERE DATE(fecha_venta) = ? AND estado = 'COMPLETADA'
-            """, (target_date,))
+            if sale['estado'] == 'CANCELADA':
+                return False, "La venta ya está cancelada"
             
-            # Ventas por método de pago
-            payment_methods = self.db.execute_query("""
-                SELECT 
-                    metodo_pago,
-                    COUNT(*) as cantidad,
-                    SUM(total) as total
-                FROM ventas 
-                WHERE DATE(fecha_venta) = ? AND estado = 'COMPLETADA'
-                GROUP BY metodo_pago
-                ORDER BY total DESC
-            """, (target_date,))
+            if sale['estado'] == 'DEVUELTA':
+                return False, "No se puede cancelar una venta devuelta"
             
-            # Productos más vendidos del día
-            top_products = self.db.execute_query("""
-                SELECT 
-                    p.nombre,
-                    SUM(dv.cantidad) as cantidad_vendida,
-                    SUM(dv.subtotal) as total_vendido
-                FROM detalle_ventas dv
-                JOIN productos p ON dv.producto_id = p.id
-                JOIN ventas v ON dv.venta_id = v.id
-                WHERE DATE(v.fecha_venta) = ? AND v.estado = 'COMPLETADA'
-                GROUP BY p.id, p.nombre
-                ORDER BY cantidad_vendida DESC
-                LIMIT 10
-            """, (target_date,))
+            # Iniciar transacción
+            self.db.begin_transaction()
             
-            return {
-                'fecha': target_date,
-                'resumen': dict(summary) if summary else {},
-                'por_metodo_pago': payment_methods,
-                'productos_mas_vendidos': top_products
-            }
-            
+            try:
+                # Restaurar stock de todos los productos
+                for item in sale['items']:
+                    success, message = self.product_manager.update_stock(
+                        product_id=item['producto_id'],
+                        new_quantity=item['cantidad'],
+                        movement_type='ENTRADA',
+                        reason='CANCELACION_VENTA',
+                        user_id=user_id,
+                        unit_price=item['precio_unitario'],
+                        reference_id=sale_id,
+                        reference_type='CANCELACION',
+                        notes=f"Cancelación de venta #{sale_id}: {reason or 'Sin motivo especificado'}"
+                    )
+                    
+                    if not success:
+                        raise Exception(f"Error restaurando stock: {message}")
+                
+                # Actualizar estado de la venta
+                notes = f"Cancelada por usuario {user_id}"
+                if reason:
+                    notes += f". Motivo: {reason}"
+                
+                self.db.execute_update("""
+                    UPDATE ventas 
+                    SET estado = 'CANCELADA', cancelada_en = CURRENT_TIMESTAMP,
+                        observaciones = COALESCE(observaciones || '\n', '') || ?
+                    WHERE id = ?
+                """, (notes, sale_id))
+                
+                # Reversar cuenta corriente si fue a crédito
+                if sale['cliente_id']:
+                    credit_payments = [p for p in sale['payments'] if p['metodo_pago'] == 'CUENTA_CORRIENTE']
+                    for payment in credit_payments:
+                        self.update_customer_account(
+                            sale['cliente_id'], payment['importe'], 'HABER', 
+                            sale_id, user_id, f"Cancelación de venta #{sale_id}"
+                        )
+                
+                # Confirmar transacción
+                self.db.commit_transaction()
+                
+                self.logger.info(f"Venta cancelada: ID {sale_id}")
+                return True, "Venta cancelada exitosamente"
+                
+            except Exception as e:
+                self.db.rollback_transaction()
+                raise e
+                
         except Exception as e:
-            logger.error(f"Error obteniendo resumen diario: {e}")
-            return {}
+            self.logger.error(f"Error cancelando venta: {e}")
+            return False, f"Error cancelando venta: {str(e)}"
     
-    def cancel_sale(self, sale_id: int, user_id: int, reason: str) -> Tuple[bool, str]:
-        """Cancelar venta y revertir stock"""
+    def process_return(self, sale_id: int, returned_items: List[Dict], 
+                      user_id: int, reason: str = None) -> Tuple[bool, str]:
+        """Procesar devolución parcial o total"""
         try:
-            # Obtener venta con detalles
+            # Verificar que la venta existe
             sale = self.get_sale_by_id(sale_id)
             if not sale:
                 return False, "Venta no encontrada"
             
             if sale['estado'] != 'COMPLETADA':
-                return False, "Solo se pueden cancelar ventas completadas"
+                return False, "Solo se pueden devolver ventas completadas"
             
-            # Revertir stock de todos los productos
-            for item in sale['items']:
-                success, message = self.product_manager.update_stock(
-                    product_id=item['producto_id'],
-                    new_quantity=item['cantidad'],
-                    movement_type='ENTRADA',
-                    reason='CANCELACION_VENTA',
-                    user_id=user_id,
-                    unit_price=item['precio_unitario'],
-                    reference_id=sale_id,
-                    reference_type='CANCELACION',
-                    notes=f"Cancelación venta {sale['numero_ticket']}: {reason}"
-                )
+            # Validar items a devolver
+            if not returned_items:
+                return False, "Debe especificar los productos a devolver"
+            
+            # Iniciar transacción
+            self.db.begin_transaction()
+            
+            try:
+                total_devuelto = 0
                 
-                if not success:
-                    return False, f"Error revirtiendo stock: {message}"
+                for returned_item in returned_items:
+                    producto_id = returned_item['producto_id']
+                    cantidad_devuelta = returned_item['cantidad_devuelta']
+                    
+                    # Buscar el item original en la venta
+                    original_item = None
+                    for item in sale['items']:
+                        if item['producto_id'] == producto_id:
+                            original_item = item
+                            break
+                    
+                    if not original_item:
+                        raise Exception(f"Producto ID {producto_id} no está en la venta original")
+                    
+                    if cantidad_devuelta > original_item['cantidad']:
+                        raise Exception(f"No se puede devolver más cantidad de la vendida")
+                    
+                    # Crear registro de devolución
+                    return_id = self.db.execute_insert("""
+                        INSERT INTO devoluciones (
+                            venta_id, producto_id, cantidad_devuelta, precio_unitario,
+                            motivo, usuario_id, fecha_devolucion
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        sale_id, producto_id, cantidad_devuelta,
+                        original_item['precio_unitario'], reason, user_id, datetime.now()
+                    ))
+                    
+                    if not return_id:
+                        raise Exception(f"Error registrando devolución para producto {producto_id}")
+                    
+                    # Restaurar stock
+                    success, message = self.product_manager.update_stock(
+                        product_id=producto_id,
+                        new_quantity=cantidad_devuelta,
+                        movement_type='ENTRADA',
+                        reason='DEVOLUCION',
+                        user_id=user_id,
+                        unit_price=original_item['precio_unitario'],
+                        reference_id=sale_id,
+                        reference_type='DEVOLUCION',
+                        notes=f"Devolución de venta #{sale_id}: {reason or 'Sin motivo'}"
+                    )
+                    
+                    if not success:
+                        raise Exception(f"Error restaurando stock: {message}")
+                    
+                    total_devuelto += cantidad_devuelta * original_item['precio_unitario']
+                
+                # Actualizar estado de la venta
+                notes = f"Devolución procesada por usuario {user_id}. Monto: ${total_devuelto}"
+                if reason:
+                    notes += f". Motivo: {reason}"
+                
+                # Verificar si es devolución total
+                total_original = sum(item['cantidad'] for item in sale['items'])
+                total_devuelto_cantidad = sum(item['cantidad_devuelta'] for item in returned_items)
+                
+                if total_devuelto_cantidad >= total_original:
+                    new_status = 'DEVUELTA'
+                else:
+                    new_status = 'COMPLETADA'  # Mantener como completada para devoluciones parciales
+                
+                self.db.execute_update("""
+                    UPDATE ventas 
+                    SET estado = ?, devolucion_en = CURRENT_TIMESTAMP,
+                        observaciones = COALESCE(observaciones || '\n', '') || ?
+                    WHERE id = ?
+                """, (new_status, notes, sale_id))
+                
+                # Confirmar transacción
+                self.db.commit_transaction()
+                
+                self.logger.info(f"Devolución procesada: Venta {sale_id}, Monto: ${total_devuelto}")
+                return True, f"Devolución procesada. Monto devuelto: ${total_devuelto}"
+                
+            except Exception as e:
+                self.db.rollback_transaction()
+                raise e
+                
+        except Exception as e:
+            self.logger.error(f"Error procesando devolución: {e}")
+            return False, f"Error procesando devolución: {str(e)}"
+    
+    def get_sales_statistics(self, date_from: date = None, date_to: date = None,
+                           user_id: int = None) -> Dict:
+        """Obtener estadísticas de ventas"""
+        try:
+            query = """
+                SELECT 
+                    COUNT(*) as total_ventas,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN 1 ELSE 0 END) as ventas_completadas,
+                    SUM(CASE WHEN estado = 'CANCELADA' THEN 1 ELSE 0 END) as ventas_canceladas,
+                    SUM(CASE WHEN estado = 'DEVUELTA' THEN 1 ELSE 0 END) as ventas_devueltas,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN total ELSE 0 END) as monto_total,
+                    AVG(CASE WHEN estado = 'COMPLETADA' THEN total ELSE NULL END) as monto_promedio,
+                    COUNT(DISTINCT cliente_id) as clientes_unicos,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN total - subtotal ELSE 0 END) as impuestos_total
+                FROM ventas
+                WHERE 1=1
+            """
+            params = []
             
-            # Actualizar estado de la venta
-            self.db.execute_update("""
-                UPDATE ventas 
-                SET estado = 'CANCELADA', observaciones = ? 
-                WHERE id = ?
-            """, (f"CANCELADA: {reason}", sale_id))
+            if date_from:
+                query += " AND DATE(fecha_venta) >= ?"
+                params.append(date_from)
             
-            # Si era cuenta corriente, revertir movimiento
-            if sale['tipo_venta'] == 'CUENTA_CORRIENTE' and sale['cliente_id']:
-                self.register_account_movement(
-                    cliente_id=sale['cliente_id'],
-                    movement_type='HABER',
-                    concept=f'Cancelación venta {sale["numero_ticket"]}',
-                    amount=sale['total'],
-                    sale_id=sale_id,
-                    user_id=user_id
-                )
+            if date_to:
+                query += " AND DATE(fecha_venta) <= ?"
+                params.append(date_to)
             
-            logger.info(f"Venta cancelada: {sale['numero_ticket']}")
-            return True, f"Venta {sale['numero_ticket']} cancelada exitosamente"
+            if user_id:
+                query += " AND usuario_id = ?"
+                params.append(user_id)
+            
+            result = self.db.execute_single(query, params)
+            
+            if result:
+                return {
+                    'total_ventas': result['total_ventas'] or 0,
+                    'ventas_completadas': result['ventas_completadas'] or 0,
+                    'ventas_canceladas': result['ventas_canceladas'] or 0,
+                    'ventas_devueltas': result['ventas_devueltas'] or 0,
+                    'monto_total': float(result['monto_total'] or 0),
+                    'monto_promedio': float(result['monto_promedio'] or 0),
+                    'clientes_unicos': result['clientes_unicos'] or 0,
+                    'impuestos_total': float(result['impuestos_total'] or 0)
+                }
+            else:
+                return self._empty_statistics()
+                
+        except Exception as e:
+            self.logger.error(f"Error obteniendo estadísticas de ventas: {e}")
+            return self._empty_statistics()
+    
+    def get_top_products(self, limit: int = 10, date_from: date = None, 
+                        date_to: date = None) -> List[Dict]:
+        """Obtener productos más vendidos"""
+        try:
+            query = """
+                SELECT p.id, p.nombre, p.codigo_barras, c.nombre as categoria_nombre,
+                       SUM(dv.cantidad) as cantidad_vendida,
+                       SUM(dv.total) as monto_total,
+                       COUNT(DISTINCT v.id) as veces_vendido,
+                       AVG(dv.precio_unitario) as precio_promedio
+                FROM productos p
+                INNER JOIN detalle_ventas dv ON p.id = dv.producto_id
+                INNER JOIN ventas v ON dv.venta_id = v.id
+                LEFT JOIN categorias c ON p.categoria_id = c.id
+                WHERE v.estado = 'COMPLETADA'
+            """
+            params = []
+            
+            if date_from:
+                query += " AND DATE(v.fecha_venta) >= ?"
+                params.append(date_from)
+            
+            if date_to:
+                query += " AND DATE(v.fecha_venta) <= ?"
+                params.append(date_to)
+            
+            query += """
+                GROUP BY p.id, p.nombre, p.codigo_barras, c.nombre
+                ORDER BY cantidad_vendida DESC
+                LIMIT ?
+            """
+            params.append(limit)
+            
+            return self.db.execute_query(query, params)
             
         except Exception as e:
-            logger.error(f"Error cancelando venta: {e}")
-            return False, f"Error cancelando venta: {str(e)}"
+            self.logger.error(f"Error obteniendo productos más vendidos: {e}")
+            return []
     
-    def register_account_movement(self, cliente_id: int, movement_type: str,
-                                concept: str, amount: float, sale_id: int = None,
-                                user_id: int = None, due_date: str = None) -> Tuple[bool, str]:
-        """Registrar movimiento en cuenta corriente"""
+    def generate_invoice_number(self) -> str:
+        """Generar número de factura único"""
         try:
-            # Obtener saldo actual del cliente
-            client_data = self.db.execute_single("""
-                SELECT saldo_cuenta_corriente FROM clientes WHERE id = ?
-            """, (cliente_id,))
+            # Obtener el siguiente número secuencial para hoy
+            today = datetime.now().strftime('%Y%m%d')
             
-            if not client_data:
-                return False, "Cliente no encontrado"
+            result = self.db.execute_single("""
+                SELECT COALESCE(MAX(CAST(SUBSTR(numero_factura, -6) AS INTEGER)), 0) + 1 as next_num
+                FROM ventas 
+                WHERE numero_factura LIKE ?
+            """, (f"{today}%",))
             
-            previous_balance = float(client_data['saldo_cuenta_corriente'] or 0)
+            if result and result['next_num']:
+                next_num = result['next_num']
+            else:
+                next_num = 1
             
-            # Calcular nuevo saldo
+            return f"{today}{next_num:06d}"
+            
+        except Exception as e:
+            self.logger.error(f"Error generando número de factura: {e}")
+            return f"{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    
+    def update_customer_account(self, customer_id: int, amount: float, 
+                               movement_type: str, sale_id: int, user_id: int,
+                               notes: str = None):
+        """Actualizar cuenta corriente del cliente"""
+        try:
+            # Obtener saldo actual
+            current_balance = self.db.execute_single("""
+                SELECT COALESCE(SUM(CASE 
+                    WHEN tipo_movimiento = 'DEBE' THEN importe 
+                    ELSE -importe 
+                END), 0) as saldo
+                FROM cuenta_corriente 
+                WHERE cliente_id = ?
+            """, (customer_id,))
+            
+            previous_balance = float(current_balance['saldo']) if current_balance else 0.0
+            
             if movement_type == 'DEBE':
                 new_balance = previous_balance + amount
             else:  # HABER
                 new_balance = previous_balance - amount
             
-            # Registrar movimiento
+            # Insertar movimiento
             self.db.execute_insert("""
                 INSERT INTO cuenta_corriente (
                     cliente_id, tipo_movimiento, concepto, importe,
-                    saldo_anterior, saldo_nuevo, venta_id, fecha_vencimiento,
-                    usuario_id
+                    saldo_anterior, saldo_nuevo, venta_id, usuario_id,
+                    observaciones
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                cliente_id, movement_type, concept, amount,
-                previous_balance, new_balance, sale_id, due_date, user_id
-            ))
-            
-            # Actualizar saldo del cliente
-            self.db.execute_update("""
-                UPDATE clientes SET saldo_cuenta_corriente = ? WHERE id = ?
-            """, (new_balance, cliente_id))
-            
-            logger.info(f"Movimiento cuenta corriente: Cliente {cliente_id}, {movement_type} ${amount}")
-            return True, "Movimiento registrado exitosamente"
-            
-        except Exception as e:
-            logger.error(f"Error registrando cuenta corriente: {e}")
-            return False, f"Error registrando cuenta corriente: {str(e)}"
-    
-    def register_cash_movement(self, sale_id: int, amount: float, 
-                             payment_method: str, user_id: int):
-        """Registrar movimiento de caja"""
-        try:
-            # Obtener sesión de caja activa del usuario
-            active_session = self.db.execute_single("""
-                SELECT id, monto_apertura + COALESCE(
-                    (SELECT SUM(importe) FROM movimientos_caja WHERE sesion_caja_id = sesiones_caja.id), 0
-                ) as saldo_actual
-                FROM sesiones_caja 
-                WHERE usuario_id = ? AND estado = 'ABIERTA'
-                ORDER BY fecha_apertura DESC
-                LIMIT 1
-            """, (user_id,))
-            
-            if not active_session:
-                logger.warning(f"No hay sesión de caja activa para usuario {user_id}")
-                return
-            
-            previous_balance = float(active_session['saldo_actual'])
-            new_balance = previous_balance + amount
-            
-            # Registrar movimiento
-            self.db.execute_insert("""
-                INSERT INTO movimientos_caja (
-                    sesion_caja_id, tipo_movimiento, concepto, importe,
-                    saldo_anterior, saldo_nuevo, venta_id, metodo_pago, usuario_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                active_session['id'], 'VENTA', f'Venta ID {sale_id}', amount,
-                previous_balance, new_balance, sale_id, payment_method, user_id
+                customer_id, movement_type,
+                f"Venta #{sale_id}" if movement_type == 'DEBE' else f"Pago venta #{sale_id}",
+                amount, previous_balance, new_balance, sale_id, user_id, notes
             ))
             
         except Exception as e:
-            logger.error(f"Error registrando movimiento de caja: {e}")
+            self.logger.error(f"Error actualizando cuenta corriente: {e}")
+            raise e
     
-    def generate_ticket_number(self, caja_id: int = 1) -> str:
-        """Generar número de ticket único"""
+    def get_daily_summary(self, target_date: date = None, user_id: int = None) -> Dict:
+        """Obtener resumen diario de ventas"""
         try:
-            # Obtener último número del día para la caja
-            today = date.today().isoformat()
+            if not target_date:
+                target_date = date.today()
             
-            last_ticket = self.db.execute_single("""
-                SELECT numero_ticket FROM ventas 
-                WHERE caja_id = ? AND DATE(fecha_venta) = ?
-                ORDER BY id DESC LIMIT 1
-            """, (caja_id, today))
-            
-            if last_ticket and last_ticket['numero_ticket']:
-                # Extraer número secuencial
-                try:
-                    last_num = int(last_ticket['numero_ticket'].split('-')[-1])
-                    next_num = last_num + 1
-                except:
-                    next_num = 1
-            else:
-                next_num = 1
-            
-            # Formato: C01-YYYYMMDD-NNNNNN
-            return f"C{caja_id:02d}-{datetime.now().strftime('%Y%m%d')}-{next_num:06d}"
-            
-        except Exception as e:
-            logger.error(f"Error generando número de ticket: {e}")
-            # Fallback a timestamp
-            return f"T{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    
-    def get_account_balance(self, cliente_id: int) -> Dict:
-        """Obtener balance de cuenta corriente de cliente"""
-        try:
-            # Saldo actual
-            client_data = self.db.execute_single("""
-                SELECT nombre, apellido, saldo_cuenta_corriente, limite_credito
-                FROM clientes WHERE id = ?
-            """, (cliente_id,))
-            
-            if not client_data:
-                return {}
-            
-            # Últimos movimientos
-            movements = self.db.execute_query("""
-                SELECT * FROM cuenta_corriente 
-                WHERE cliente_id = ? 
-                ORDER BY fecha_movimiento DESC 
-                LIMIT 20
-            """, (cliente_id,))
-            
-            # Facturas vencidas
-            overdue_sales = self.db.execute_query("""
-                SELECT v.*, JULIANDAY('now') - JULIANDAY(v.fecha_vencimiento) as dias_vencido
-                FROM ventas v
-                WHERE v.cliente_id = ? 
-                AND v.tipo_venta = 'CUENTA_CORRIENTE'
-                AND v.estado = 'COMPLETADA'
-                AND v.fecha_vencimiento < DATE('now')
-                ORDER BY v.fecha_vencimiento
-            """, (cliente_id,))
-            
-            return {
-                'cliente': dict(client_data),
-                'saldo_actual': float(client_data['saldo_cuenta_corriente'] or 0),
-                'limite_credito': float(client_data['limite_credito'] or 0),
-                'credito_disponible': float(client_data['limite_credito'] or 0) - float(client_data['saldo_cuenta_corriente'] or 0),
-                'movimientos_recientes': movements,
-                'facturas_vencidas': overdue_sales,
-                'total_vencido': sum(float(sale['total']) for sale in overdue_sales)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error obteniendo balance de cuenta: {e}")
-            return {}
-    
-    def process_payment(self, cliente_id: int, amount: float, 
-                       payment_method: str, user_id: int, notes: str = None) -> Tuple[bool, str]:
-        """Procesar pago de cuenta corriente"""
-        try:
-            success, message = self.register_account_movement(
-                cliente_id=cliente_id,
-                movement_type='HABER',
-                concept=f'Pago - {payment_method}',
-                amount=amount,
-                user_id=user_id
-            )
-            
-            if success:
-                logger.info(f"Pago procesado: Cliente {cliente_id}, ${amount}")
-                return True, f"Pago de ${amount:.2f} procesado exitosamente"
-            else:
-                return False, message
-                
-        except Exception as e:
-            logger.error(f"Error procesando pago: {e}")
-            return False, f"Error procesando pago: {str(e)}"
-    
-    def get_sales_statistics(self, start_date: str, end_date: str) -> Dict:
-        """Obtener estadísticas de ventas"""
-        try:
-            # Estadísticas generales
-            general_stats = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as total_ventas,
-                    SUM(total) as total_facturado,
-                    AVG(total) as ticket_promedio,
-                    SUM(descuento) as total_descuentos,
-                    COUNT(DISTINCT cliente_id) as clientes_unicos,
-                    COUNT(DISTINCT vendedor_id) as vendedores_activos
-                FROM ventas 
-                WHERE DATE(fecha_venta) BETWEEN ? AND ? 
-                AND estado = 'COMPLETADA'
-            """, (start_date, end_date))
-            
-            # Ventas por día
-            daily_sales = self.db.execute_query("""
-                SELECT 
-                    DATE(fecha_venta) as fecha,
-                    COUNT(*) as cantidad_ventas,
-                    SUM(total) as total_dia
-                FROM ventas 
-                WHERE DATE(fecha_venta) BETWEEN ? AND ? 
-                AND estado = 'COMPLETADA'
-                GROUP BY DATE(fecha_venta)
-                ORDER BY fecha
-            """, (start_date, end_date))
-            
-            # Top vendedores
-            top_sellers = self.db.execute_query("""
-                SELECT 
-                    u.nombre_completo,
-                    COUNT(v.id) as cantidad_ventas,
-                    SUM(v.total) as total_vendido
-                FROM ventas v
-                JOIN usuarios u ON v.vendedor_id = u.id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ? 
-                AND v.estado = 'COMPLETADA'
-                GROUP BY v.vendedor_id, u.nombre_completo
-                ORDER BY total_vendido DESC
-                LIMIT 10
-            """, (start_date, end_date))
-            
-            # Métodos de pago
-            payment_methods = self.db.execute_query("""
-                SELECT 
-                    metodo_pago,
-                    COUNT(*) as cantidad,
-                    SUM(total) as total,
-                    AVG(total) as promedio
-                FROM ventas 
-                WHERE DATE(fecha_venta) BETWEEN ? AND ? 
-                AND estado = 'COMPLETADA'
-                GROUP BY metodo_pago
-                ORDER BY total DESC
-            """, (start_date, end_date))
-            
-            return {
-                'periodo': {'inicio': start_date, 'fin': end_date},
-                'resumen_general': dict(general_stats) if general_stats else {},
-                'ventas_diarias': daily_sales,
-                'top_vendedores': top_sellers,
-                'metodos_pago': payment_methods
-            }
-            
-        except Exception as e:
-            logger.error(f"Error obteniendo estadísticas de ventas: {e}")
-            return {}
-    
-    def get_pending_accounts(self, include_overdue_only: bool = False) -> List[Dict]:
-        """Obtener cuentas pendientes de pago"""
-        try:
             query = """
                 SELECT 
-                    c.id, c.nombre, c.apellido, c.saldo_cuenta_corriente,
-                    c.limite_credito, c.telefono,
-                    COUNT(v.id) as facturas_pendientes,
-                    MIN(v.fecha_vencimiento) as primer_vencimiento,
-                    SUM(CASE WHEN v.fecha_vencimiento < DATE('now') THEN v.total ELSE 0 END) as monto_vencido
-                FROM clientes c
-                LEFT JOIN ventas v ON c.id = v.cliente_id 
-                    AND v.tipo_venta = 'CUENTA_CORRIENTE' 
-                    AND v.estado = 'COMPLETADA'
-                WHERE c.saldo_cuenta_corriente > 0
+                    COUNT(*) as total_ventas,
+                    SUM(total) as monto_total,
+                    SUM(subtotal) as subtotal_total,
+                    SUM(impuestos_importe) as impuestos_total,
+                    SUM(descuento_importe) as descuentos_total,
+                    AVG(total) as ticket_promedio,
+                    MIN(total) as ticket_minimo,
+                    MAX(total) as ticket_maximo
+                FROM ventas
+                WHERE DATE(fecha_venta) = ? AND estado = 'COMPLETADA'
             """
+            params = [target_date]
             
-            if include_overdue_only:
-                query += " AND v.fecha_vencimiento < DATE('now')"
+            if user_id:
+                query += " AND usuario_id = ?"
+                params.append(user_id)
             
-            query += """
-                GROUP BY c.id, c.nombre, c.apellido, c.saldo_cuenta_corriente, 
-                         c.limite_credito, c.telefono
-                ORDER BY c.saldo_cuenta_corriente DESC
+            result = self.db.execute_single(query, params)
+            
+            # Obtener métodos de pago del día
+            payment_query = """
+                SELECT pv.metodo_pago, SUM(pv.importe) as total_metodo
+                FROM pagos_venta pv
+                INNER JOIN ventas v ON pv.venta_id = v.id
+                WHERE DATE(v.fecha_venta) = ? AND v.estado = 'COMPLETADA'
             """
+            if user_id:
+                payment_query += " AND v.usuario_id = ?"
             
-            return self.db.execute_query(query)
+            payment_query += " GROUP BY pv.metodo_pago ORDER BY total_metodo DESC"
+            
+            payments = self.db.execute_query(payment_query, params)
+            
+            return {
+                'fecha': target_date.isoformat(),
+                'total_ventas': result['total_ventas'] if result else 0,
+                'monto_total': float(result['monto_total'] or 0) if result else 0.0,
+                'subtotal_total': float(result['subtotal_total'] or 0) if result else 0.0,
+                'impuestos_total': float(result['impuestos_total'] or 0) if result else 0.0,
+                'descuentos_total': float(result['descuentos_total'] or 0) if result else 0.0,
+                'ticket_promedio': float(result['ticket_promedio'] or 0) if result else 0.0,
+                'ticket_minimo': float(result['ticket_minimo'] or 0) if result else 0.0,
+                'ticket_maximo': float(result['ticket_maximo'] or 0) if result else 0.0,
+                'metodos_pago': [dict(payment) for payment in payments] if payments else []
+            }
             
         except Exception as e:
-            logger.error(f"Error obteniendo cuentas pendientes: {e}")
-            return []
+            self.logger.error(f"Error obteniendo resumen diario: {e}")
+            return {'fecha': target_date.isoformat(), 'error': str(e)}
+    
+    def _empty_statistics(self) -> Dict:
+        """Retornar estadísticas vacías"""
+        return {
+            'total_ventas': 0,
+            'ventas_completadas': 0,
+            'ventas_canceladas': 0,
+            'ventas_devueltas': 0,
+            'monto_total': 0.0,
+            'monto_promedio': 0.0,
+            'clientes_unicos': 0,
+            'impuestos_total': 0.0
+        }

@@ -1,124 +1,116 @@
 """
 Gestor de Base de Datos para AlmacénPro
-Maneja todas las operaciones de base de datos con SQLite y PostgreSQL
+Sistema completo de gestión de base de datos con SQLite
+Incluye creación de tablas, índices, triggers y validaciones
 """
 
 import sqlite3
 import logging
+import os
 import threading
 from pathlib import Path
+from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
-from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
-    """Gestor principal de base de datos con soporte SQLite y PostgreSQL"""
+    """Gestor principal de base de datos con soporte completo SQLite"""
     
-    def __init__(self, settings):
-        self.settings = settings
-        self.db_type = settings.get('database.type', 'sqlite')
+    def __init__(self, db_path: str = "almacen_pro.db"):
+        self.db_path = Path(db_path)
         self.connection = None
-        self._lock = threading.RLock()
+        self.cursor = None
+        self.thread_lock = threading.Lock()
         
-        if self.db_type == 'sqlite':
-            self.db_path = settings.get_database_path()
-            logger.info(f"Usando SQLite: {self.db_path}")
-        else:
-            # Para futuro soporte de PostgreSQL
-            logger.info("PostgreSQL no implementado aún, usando SQLite")
-            self.db_type = 'sqlite'
-            self.db_path = settings.get_database_path()
+        # Configuraciones de conexión
+        self.connection_config = {
+            'check_same_thread': False,
+            'timeout': 30.0,
+            'isolation_level': None  # Autocommit mode
+        }
         
+        self.logger = logging.getLogger(__name__)
+        
+        # Inicializar base de datos
         self.setup_database()
     
     def setup_database(self):
-        """Configurar y crear todas las tablas necesarias"""
+        """Configurar y crear base de datos completa"""
         try:
-            # Crear directorio de base de datos si no existe
-            db_dir = Path(self.db_path).parent
-            db_dir.mkdir(parents=True, exist_ok=True)
+            # Crear directorio si no existe
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Establecer conexión
-            self.connection = sqlite3.connect(
-                self.db_path, 
-                check_same_thread=False,
-                timeout=30.0
-            )
-            self.connection.row_factory = sqlite3.Row
+            # Conectar a la base de datos
+            self.connect()
             
-            # Configurar SQLite para mejor rendimiento
-            cursor = self.connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.execute("PRAGMA cache_size=10000")
-            cursor.execute("PRAGMA temp_store=MEMORY")
+            # Configurar SQLite
+            self._configure_sqlite()
             
             # Crear todas las tablas
-            self.create_tables()
-            self.create_indexes()
-            self.insert_default_data()
+            self._create_all_tables()
             
-            logger.info("Base de datos configurada correctamente")
+            # Crear índices
+            self._create_indexes()
+            
+            # Crear triggers
+            self._create_triggers()
+            
+            # Insertar datos por defecto
+            self._insert_default_data()
+            
+            # Optimizar base de datos
+            self._optimize_database()
+            
+            self.logger.info("Base de datos configurada exitosamente")
             
         except Exception as e:
-            logger.error(f"Error configurando base de datos: {e}")
-            raise
+            self.logger.error(f"Error configurando base de datos: {e}")
+            raise e
     
-    @contextmanager
-    def get_cursor(self):
-        """Context manager para obtener cursor con manejo automático de transacciones"""
-        with self._lock:
-            cursor = self.connection.cursor()
-            try:
-                yield cursor
-                self.connection.commit()
-            except Exception as e:
-                self.connection.rollback()
-                logger.error(f"Error en transacción de base de datos: {e}")
-                raise
-            finally:
-                cursor.close()
+    def connect(self):
+        """Establecer conexión con la base de datos"""
+        try:
+            self.connection = sqlite3.connect(str(self.db_path), **self.connection_config)
+            self.connection.row_factory = sqlite3.Row  # Acceso por nombre de columna
+            self.cursor = self.connection.cursor()
+            
+        except Exception as e:
+            self.logger.error(f"Error conectando a base de datos: {e}")
+            raise e
     
-    def execute_query(self, query: str, params: tuple = None) -> List[Dict]:
-        """Ejecutar consulta SELECT y retornar resultados"""
-        with self.get_cursor() as cursor:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            return [dict(row) for row in cursor.fetchall()]
+    def close_connection(self):
+        """Cerrar conexión de base de datos"""
+        try:
+            if self.cursor:
+                self.cursor.close()
+            if self.connection:
+                self.connection.close()
+                
+            self.logger.info("Conexión de base de datos cerrada")
+            
+        except Exception as e:
+            self.logger.error(f"Error cerrando conexión: {e}")
     
-    def execute_single(self, query: str, params: tuple = None) -> Optional[Dict]:
-        """Ejecutar consulta SELECT y retornar un solo resultado"""
-        with self.get_cursor() as cursor:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            result = cursor.fetchone()
-            return dict(result) if result else None
+    def _configure_sqlite(self):
+        """Configurar SQLite para rendimiento y integridad optimizados"""
+        configurations = [
+            "PRAGMA foreign_keys = ON",
+            "PRAGMA journal_mode = WAL",
+            "PRAGMA synchronous = NORMAL",
+            "PRAGMA cache_size = 10000",
+            "PRAGMA temp_store = MEMORY",
+            "PRAGMA mmap_size = 268435456",  # 256MB
+            "PRAGMA optimize"
+        ]
+        
+        for config in configurations:
+            self.cursor.execute(config)
+        
+        self.connection.commit()
     
-    def execute_update(self, query: str, params: tuple = None) -> int:
-        """Ejecutar consulta INSERT/UPDATE/DELETE y retornar filas afectadas"""
-        with self.get_cursor() as cursor:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            return cursor.rowcount
-    
-    def execute_insert(self, query: str, params: tuple = None) -> int:
-        """Ejecutar INSERT y retornar ID del registro insertado"""
-        with self.get_cursor() as cursor:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            return cursor.lastrowid
-    
-    def create_tables(self):
-        """Crear estructura completa de base de datos"""
+    def _create_all_tables(self):
+        """Crear todas las tablas del sistema"""
         tables = {
             # Usuarios y roles
             'roles': '''
@@ -126,10 +118,13 @@ class DatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre VARCHAR(50) UNIQUE NOT NULL,
                     descripcion TEXT,
-                    permisos TEXT, -- JSON con permisos
+                    permisos TEXT,
                     activo BOOLEAN DEFAULT 1,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    creado_por INTEGER,
+                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    actualizado_por INTEGER,
+                    FOREIGN KEY (creado_por) REFERENCES usuarios(id)
                 )
             ''',
             
@@ -138,93 +133,117 @@ class DatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username VARCHAR(50) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
-                    email VARCHAR(100),
-                    nombre_completo VARCHAR(100),
+                    email VARCHAR(100) UNIQUE,
+                    nombre_completo VARCHAR(100) NOT NULL,
+                    telefono VARCHAR(20),
                     rol_id INTEGER,
                     activo BOOLEAN DEFAULT 1,
                     ultimo_acceso TIMESTAMP,
-                    intentos_login INTEGER DEFAULT 0,
+                    intentos_fallidos INTEGER DEFAULT 0,
                     bloqueado_hasta TIMESTAMP,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    creado_por INTEGER,
                     actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (rol_id) REFERENCES roles(id)
+                    actualizado_por INTEGER,
+                    FOREIGN KEY (rol_id) REFERENCES roles(id),
+                    FOREIGN KEY (creado_por) REFERENCES usuarios(id),
+                    FOREIGN KEY (actualizado_por) REFERENCES usuarios(id)
                 )
             ''',
             
-            # Productos y categorías
+            # Categorías y proveedores
             'categorias': '''
                 CREATE TABLE IF NOT EXISTS categorias (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre VARCHAR(100) NOT NULL,
+                    nombre VARCHAR(100) UNIQUE NOT NULL,
                     descripcion TEXT,
-                    categoria_padre_id INTEGER,
+                    color VARCHAR(7) DEFAULT '#3498db',
+                    icono VARCHAR(50),
                     activo BOOLEAN DEFAULT 1,
-                    orden INTEGER DEFAULT 0,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (categoria_padre_id) REFERENCES categorias(id)
+                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''',
             
-            'productos': '''
-                CREATE TABLE IF NOT EXISTS productos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    codigo_barras VARCHAR(50) UNIQUE,
-                    codigo_interno VARCHAR(50),
-                    nombre VARCHAR(200) NOT NULL,
-                    descripcion TEXT,
-                    categoria_id INTEGER,
-                    precio_compra DECIMAL(10,2),
-                    precio_venta DECIMAL(10,2),
-                    precio_mayorista DECIMAL(10,2),
-                    margen_ganancia DECIMAL(5,2),
-                    stock_actual INTEGER DEFAULT 0,
-                    stock_minimo INTEGER DEFAULT 0,
-                    stock_maximo INTEGER DEFAULT 0,
-                    unidad_medida VARCHAR(20) DEFAULT 'UNIDAD',
-                    proveedor_id INTEGER,
-                    ubicacion VARCHAR(100),
-                    imagen_url VARCHAR(255),
-                    iva_porcentaje DECIMAL(5,2) DEFAULT 21,
-                    activo BOOLEAN DEFAULT 1,
-                    es_produccion_propia BOOLEAN DEFAULT 0,
-                    peso DECIMAL(8,3),
-                    vencimiento DATE,
-                    lote VARCHAR(50),
-                    permite_venta_sin_stock BOOLEAN DEFAULT 0,
-                    es_pesable BOOLEAN DEFAULT 0,
-                    codigo_plu VARCHAR(10),
-                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (categoria_id) REFERENCES categorias(id),
-                    FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
-                )
-            ''',
-            
-            # Proveedores
             'proveedores': '''
                 CREATE TABLE IF NOT EXISTS proveedores (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre VARCHAR(200) NOT NULL,
-                    cuit_dni VARCHAR(20),
+                    codigo VARCHAR(20) UNIQUE,
+                    nombre VARCHAR(100) NOT NULL,
+                    razon_social VARCHAR(150),
+                    cuit_cuil VARCHAR(15),
+                    telefono VARCHAR(20),
+                    email VARCHAR(100),
                     direccion TEXT,
                     ciudad VARCHAR(100),
                     provincia VARCHAR(100),
                     codigo_postal VARCHAR(10),
-                    telefono VARCHAR(50),
-                    telefono_alternativo VARCHAR(50),
-                    email VARCHAR(100),
-                    sitio_web VARCHAR(200),
-                    contacto_principal VARCHAR(100),
-                    cargo_contacto VARCHAR(100),
-                    condiciones_pago TEXT,
-                    descuento_porcentaje DECIMAL(5,2) DEFAULT 0,
-                    limite_credito DECIMAL(10,2) DEFAULT 0,
+                    contacto_nombre VARCHAR(100),
+                    contacto_telefono VARCHAR(20),
+                    contacto_email VARCHAR(100),
+                    condicion_iva VARCHAR(50) DEFAULT 'RESPONSABLE_INSCRIPTO',
+                    dias_pago INTEGER DEFAULT 30,
+                    limite_credito DECIMAL(12,2) DEFAULT 0,
                     activo BOOLEAN DEFAULT 1,
-                    calificacion INTEGER DEFAULT 5,
-                    notas TEXT,
+                    observaciones TEXT,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''',
+            
+            # Productos
+            'productos': '''
+                CREATE TABLE IF NOT EXISTS productos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    codigo_barras VARCHAR(50) UNIQUE,
+                    codigo_interno VARCHAR(50) UNIQUE NOT NULL,
+                    codigo_plu VARCHAR(20),
+                    nombre VARCHAR(200) NOT NULL,
+                    descripcion TEXT,
+                    categoria_id INTEGER,
+                    proveedor_id INTEGER,
+                    
+                    -- Precios
+                    precio_compra DECIMAL(10,2) DEFAULT 0,
+                    precio_venta DECIMAL(10,2) NOT NULL,
+                    precio_mayorista DECIMAL(10,2) DEFAULT 0,
+                    margen_ganancia DECIMAL(5,2) DEFAULT 0,
+                    
+                    -- Stock
+                    stock_actual DECIMAL(8,3) DEFAULT 0,
+                    stock_minimo DECIMAL(8,3) DEFAULT 0,
+                    stock_maximo DECIMAL(8,3) DEFAULT 0,
+                    stock_reservado DECIMAL(8,3) DEFAULT 0,
+                    
+                    -- Características
+                    unidad_medida VARCHAR(20) DEFAULT 'UNIDAD',
+                    peso DECIMAL(8,3),
+                    volumen DECIMAL(8,3),
+                    es_pesable BOOLEAN DEFAULT 0,
+                    es_produccion_propia BOOLEAN DEFAULT 0,
+                    permite_venta_sin_stock BOOLEAN DEFAULT 0,
+                    requiere_lote BOOLEAN DEFAULT 0,
+                    
+                    -- Impuestos
+                    iva_porcentaje DECIMAL(5,2) DEFAULT 21,
+                    impuestos_internos DECIMAL(5,2) DEFAULT 0,
+                    
+                    -- Ubicación y otros
+                    ubicacion VARCHAR(100),
+                    imagen_url VARCHAR(500),
+                    observaciones TEXT,
+                    
+                    -- Trazabilidad
+                    lote VARCHAR(50),
+                    fecha_vencimiento DATE,
+                    
+                    -- Control
+                    activo BOOLEAN DEFAULT 1,
+                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    
+                    FOREIGN KEY (categoria_id) REFERENCES categorias(id),
+                    FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
                 )
             ''',
             
@@ -232,24 +251,32 @@ class DatabaseManager:
             'clientes': '''
                 CREATE TABLE IF NOT EXISTS clientes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre VARCHAR(200) NOT NULL,
-                    apellido VARCHAR(200),
-                    dni_cuit VARCHAR(20),
+                    codigo VARCHAR(20) UNIQUE,
+                    tipo_documento VARCHAR(20) DEFAULT 'DNI',
+                    numero_documento VARCHAR(20),
+                    nombre VARCHAR(100) NOT NULL,
+                    apellido VARCHAR(100),
+                    razon_social VARCHAR(150),
+                    cuit_cuil VARCHAR(15),
+                    telefono VARCHAR(20),
+                    email VARCHAR(100),
+                    fecha_nacimiento DATE,
+                    
+                    -- Dirección
                     direccion TEXT,
                     ciudad VARCHAR(100),
                     provincia VARCHAR(100),
                     codigo_postal VARCHAR(10),
-                    telefono VARCHAR(50),
-                    telefono_alternativo VARCHAR(50),
-                    email VARCHAR(100),
-                    fecha_nacimiento DATE,
-                    limite_credito DECIMAL(10,2) DEFAULT 0,
-                    saldo_cuenta_corriente DECIMAL(10,2) DEFAULT 0,
+                    
+                    -- Comercial
+                    condicion_iva VARCHAR(50) DEFAULT 'CONSUMIDOR_FINAL',
+                    precio_lista VARCHAR(20) DEFAULT 'VENTA',
+                    limite_credito DECIMAL(12,2) DEFAULT 0,
                     descuento_porcentaje DECIMAL(5,2) DEFAULT 0,
-                    categoria_cliente VARCHAR(50) DEFAULT 'MINORISTA',
+                    
+                    -- Control
                     activo BOOLEAN DEFAULT 1,
-                    es_consumidor_final BOOLEAN DEFAULT 1,
-                    notas TEXT,
+                    observaciones TEXT,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -259,28 +286,35 @@ class DatabaseManager:
             'ventas': '''
                 CREATE TABLE IF NOT EXISTS ventas (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    numero_ticket VARCHAR(50) UNIQUE,
-                    numero_factura VARCHAR(50),
+                    numero_factura VARCHAR(50) UNIQUE NOT NULL,
+                    tipo_comprobante VARCHAR(20) DEFAULT 'TICKET',
+                    punto_venta INTEGER DEFAULT 1,
+                    
+                    -- Partes involucradas
                     cliente_id INTEGER,
-                    vendedor_id INTEGER NOT NULL,
+                    usuario_id INTEGER NOT NULL,
                     caja_id INTEGER,
-                    tipo_venta VARCHAR(20) DEFAULT 'CONTADO', -- CONTADO, CREDITO, CUENTA_CORRIENTE
-                    tipo_comprobante VARCHAR(20) DEFAULT 'TICKET', -- TICKET, FACTURA_A, FACTURA_B, etc.
-                    subtotal DECIMAL(10,2) NOT NULL,
-                    descuento DECIMAL(10,2) DEFAULT 0,
-                    recargo DECIMAL(10,2) DEFAULT 0,
-                    impuestos DECIMAL(10,2) DEFAULT 0,
-                    total DECIMAL(10,2) NOT NULL,
-                    metodo_pago VARCHAR(50), -- EFECTIVO, TARJETA, TRANSFERENCIA, MULTIPLE
-                    estado VARCHAR(20) DEFAULT 'COMPLETADA',
+                    
+                    -- Fechas
                     fecha_venta TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     fecha_vencimiento DATE,
+                    
+                    -- Importes
+                    subtotal DECIMAL(12,2) NOT NULL,
+                    descuento_porcentaje DECIMAL(5,2) DEFAULT 0,
+                    descuento_importe DECIMAL(12,2) DEFAULT 0,
+                    impuestos_importe DECIMAL(12,2) DEFAULT 0,
+                    total DECIMAL(12,2) NOT NULL,
+                    
+                    -- Control
+                    estado VARCHAR(20) DEFAULT 'ACTIVA',
                     observaciones TEXT,
-                    cae VARCHAR(20),
-                    fecha_vto_cae DATE,
-                    punto_venta INTEGER DEFAULT 1,
+                    completada_en TIMESTAMP,
+                    cancelada_en TIMESTAMP,
+                    devolucion_en TIMESTAMP,
+                    
                     FOREIGN KEY (cliente_id) REFERENCES clientes(id),
-                    FOREIGN KEY (vendedor_id) REFERENCES usuarios(id),
+                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
                     FOREIGN KEY (caja_id) REFERENCES cajas(id)
                 )
             ''',
@@ -290,15 +324,43 @@ class DatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     venta_id INTEGER NOT NULL,
                     producto_id INTEGER NOT NULL,
+                    
+                    -- Cantidades y precios
                     cantidad DECIMAL(8,3) NOT NULL,
                     precio_unitario DECIMAL(10,2) NOT NULL,
+                    costo_unitario DECIMAL(10,2) DEFAULT 0,
+                    
+                    -- Descuentos
                     descuento_porcentaje DECIMAL(5,2) DEFAULT 0,
                     descuento_importe DECIMAL(10,2) DEFAULT 0,
+                    
+                    -- Impuestos
+                    impuesto_porcentaje DECIMAL(5,2) DEFAULT 21,
+                    impuesto_importe DECIMAL(10,2) DEFAULT 0,
+                    
+                    -- Totales
                     subtotal DECIMAL(10,2) NOT NULL,
-                    iva_porcentaje DECIMAL(5,2) DEFAULT 21,
-                    iva_importe DECIMAL(10,2) DEFAULT 0,
+                    total DECIMAL(10,2) NOT NULL,
+                    
+                    -- Trazabilidad
+                    lote VARCHAR(50),
+                    fecha_vencimiento DATE,
+                    
                     FOREIGN KEY (venta_id) REFERENCES ventas(id) ON DELETE CASCADE,
                     FOREIGN KEY (producto_id) REFERENCES productos(id)
+                )
+            ''',
+            
+            'pagos_venta': '''
+                CREATE TABLE IF NOT EXISTS pagos_venta (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    venta_id INTEGER NOT NULL,
+                    metodo_pago VARCHAR(50) NOT NULL,
+                    importe DECIMAL(12,2) NOT NULL,
+                    referencia VARCHAR(100),
+                    fecha_pago TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    observaciones TEXT,
+                    FOREIGN KEY (venta_id) REFERENCES ventas(id) ON DELETE CASCADE
                 )
             ''',
             
@@ -306,21 +368,29 @@ class DatabaseManager:
             'compras': '''
                 CREATE TABLE IF NOT EXISTS compras (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    numero_orden VARCHAR(50) UNIQUE NOT NULL,
                     numero_factura VARCHAR(50),
-                    numero_remito VARCHAR(50),
                     proveedor_id INTEGER NOT NULL,
                     usuario_id INTEGER NOT NULL,
-                    subtotal DECIMAL(10,2) NOT NULL,
-                    descuento DECIMAL(10,2) DEFAULT 0,
-                    recargo DECIMAL(10,2) DEFAULT 0,
-                    impuestos DECIMAL(10,2) DEFAULT 0,
-                    total DECIMAL(10,2) NOT NULL,
+                    
+                    -- Fechas
                     fecha_compra TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     fecha_factura DATE,
                     fecha_vencimiento DATE,
-                    estado VARCHAR(20) DEFAULT 'PENDIENTE',
+                    fecha_recepcion TIMESTAMP,
+                    
+                    -- Importes
+                    subtotal DECIMAL(12,2) NOT NULL,
+                    descuento_importe DECIMAL(12,2) DEFAULT 0,
+                    impuestos_importe DECIMAL(12,2) DEFAULT 0,
+                    total DECIMAL(12,2) NOT NULL,
+                    
+                    -- Control
+                    estado VARCHAR(20) DEFAULT 'ORDENADA',
                     tipo_comprobante VARCHAR(20) DEFAULT 'FACTURA',
                     observaciones TEXT,
+                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    
                     FOREIGN KEY (proveedor_id) REFERENCES proveedores(id),
                     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                 )
@@ -331,16 +401,27 @@ class DatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     compra_id INTEGER NOT NULL,
                     producto_id INTEGER NOT NULL,
+                    
+                    -- Cantidades
                     cantidad DECIMAL(8,3) NOT NULL,
                     cantidad_recibida DECIMAL(8,3) DEFAULT 0,
+                    
+                    -- Precios
                     precio_unitario DECIMAL(10,2) NOT NULL,
                     descuento_porcentaje DECIMAL(5,2) DEFAULT 0,
                     descuento_importe DECIMAL(10,2) DEFAULT 0,
-                    subtotal DECIMAL(10,2) NOT NULL,
+                    
+                    -- Impuestos
                     iva_porcentaje DECIMAL(5,2) DEFAULT 21,
                     iva_importe DECIMAL(10,2) DEFAULT 0,
+                    
+                    -- Total
+                    subtotal DECIMAL(10,2) NOT NULL,
+                    
+                    -- Trazabilidad
                     lote VARCHAR(50),
                     fecha_vencimiento DATE,
+                    
                     FOREIGN KEY (compra_id) REFERENCES compras(id) ON DELETE CASCADE,
                     FOREIGN KEY (producto_id) REFERENCES productos(id)
                 )
@@ -351,37 +432,44 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS movimientos_stock (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     producto_id INTEGER NOT NULL,
-                    tipo_movimiento VARCHAR(20) NOT NULL, -- ENTRADA, SALIDA, AJUSTE
-                    motivo VARCHAR(50), -- VENTA, COMPRA, DEVOLUCION, AJUSTE_INVENTARIO, PRODUCCION
-                    cantidad_anterior DECIMAL(8,3),
+                    tipo_movimiento VARCHAR(20) NOT NULL,
+                    motivo VARCHAR(50) NOT NULL,
+                    
+                    -- Cantidades
+                    cantidad_anterior DECIMAL(8,3) NOT NULL,
                     cantidad_movimiento DECIMAL(8,3) NOT NULL,
-                    cantidad_nueva DECIMAL(8,3),
+                    cantidad_nueva DECIMAL(8,3) NOT NULL,
+                    
+                    -- Precio y referencia
                     precio_unitario DECIMAL(10,2),
-                    usuario_id INTEGER,
-                    referencia_id INTEGER, -- ID de venta/compra relacionada
-                    referencia_tipo VARCHAR(20), -- VENTA, COMPRA, AJUSTE
+                    usuario_id INTEGER NOT NULL,
+                    referencia_id INTEGER,
+                    referencia_tipo VARCHAR(20),
+                    
+                    -- Control
                     fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     observaciones TEXT,
                     lote VARCHAR(50),
+                    
                     FOREIGN KEY (producto_id) REFERENCES productos(id),
                     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                 )
             ''',
             
-            # Cuentas corrientes
+            # Cuenta corriente
             'cuenta_corriente': '''
                 CREATE TABLE IF NOT EXISTS cuenta_corriente (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     cliente_id INTEGER NOT NULL,
-                    tipo_movimiento VARCHAR(20) NOT NULL, -- DEBE, HABER
-                    concepto VARCHAR(100),
-                    importe DECIMAL(10,2) NOT NULL,
-                    saldo_anterior DECIMAL(10,2),
-                    saldo_nuevo DECIMAL(10,2),
+                    tipo_movimiento VARCHAR(20) NOT NULL,
+                    concepto VARCHAR(100) NOT NULL,
+                    importe DECIMAL(12,2) NOT NULL,
+                    saldo_anterior DECIMAL(12,2) NOT NULL,
+                    saldo_nuevo DECIMAL(12,2) NOT NULL,
                     venta_id INTEGER,
                     fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     fecha_vencimiento DATE,
-                    usuario_id INTEGER,
+                    usuario_id INTEGER NOT NULL,
                     observaciones TEXT,
                     FOREIGN KEY (cliente_id) REFERENCES clientes(id),
                     FOREIGN KEY (venta_id) REFERENCES ventas(id),
@@ -397,9 +485,10 @@ class DatabaseManager:
                     descripcion TEXT,
                     ubicacion VARCHAR(100),
                     impresora_ticket VARCHAR(200),
-                    cajón_monedero BOOLEAN DEFAULT 0,
+                    cajon_monedero BOOLEAN DEFAULT 0,
                     activo BOOLEAN DEFAULT 1,
-                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''',
             
@@ -410,11 +499,11 @@ class DatabaseManager:
                     usuario_id INTEGER NOT NULL,
                     fecha_apertura TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     fecha_cierre TIMESTAMP,
-                    monto_apertura DECIMAL(10,2) DEFAULT 0,
-                    monto_cierre DECIMAL(10,2) DEFAULT 0,
-                    monto_ventas DECIMAL(10,2) DEFAULT 0,
-                    monto_esperado DECIMAL(10,2) DEFAULT 0,
-                    diferencia DECIMAL(10,2) DEFAULT 0,
+                    monto_apertura DECIMAL(12,2) DEFAULT 0,
+                    monto_cierre DECIMAL(12,2) DEFAULT 0,
+                    monto_ventas DECIMAL(12,2) DEFAULT 0,
+                    monto_esperado DECIMAL(12,2) DEFAULT 0,
+                    diferencia DECIMAL(12,2) DEFAULT 0,
                     estado VARCHAR(20) DEFAULT 'ABIERTA',
                     observaciones TEXT,
                     FOREIGN KEY (caja_id) REFERENCES cajas(id),
@@ -426,11 +515,11 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS movimientos_caja (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     sesion_caja_id INTEGER NOT NULL,
-                    tipo_movimiento VARCHAR(20) NOT NULL, -- APERTURA, VENTA, GASTO, INGRESO, CIERRE
-                    concepto VARCHAR(100),
-                    importe DECIMAL(10,2) NOT NULL,
-                    saldo_anterior DECIMAL(10,2),
-                    saldo_nuevo DECIMAL(10,2),
+                    tipo_movimiento VARCHAR(20) NOT NULL,
+                    concepto VARCHAR(100) NOT NULL,
+                    importe DECIMAL(12,2) NOT NULL,
+                    saldo_anterior DECIMAL(12,2) NOT NULL,
+                    saldo_nuevo DECIMAL(12,2) NOT NULL,
                     venta_id INTEGER,
                     metodo_pago VARCHAR(50),
                     fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -438,6 +527,23 @@ class DatabaseManager:
                     observaciones TEXT,
                     FOREIGN KEY (sesion_caja_id) REFERENCES sesiones_caja(id),
                     FOREIGN KEY (venta_id) REFERENCES ventas(id),
+                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                )
+            ''',
+            
+            # Devoluciones
+            'devoluciones': '''
+                CREATE TABLE IF NOT EXISTS devoluciones (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    venta_id INTEGER NOT NULL,
+                    producto_id INTEGER NOT NULL,
+                    cantidad_devuelta DECIMAL(8,3) NOT NULL,
+                    precio_unitario DECIMAL(10,2) NOT NULL,
+                    motivo TEXT,
+                    usuario_id INTEGER NOT NULL,
+                    fecha_devolucion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (venta_id) REFERENCES ventas(id),
+                    FOREIGN KEY (producto_id) REFERENCES productos(id),
                     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                 )
             ''',
@@ -457,325 +563,311 @@ class DatabaseManager:
                 )
             ''',
             
-            # Backups y sincronización
-            'sync_log': '''
-                CREATE TABLE IF NOT EXISTS sync_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tabla VARCHAR(50),
-                    operacion VARCHAR(20), -- INSERT, UPDATE, DELETE
-                    registro_id INTEGER,
-                    datos_json TEXT,
-                    sincronizado BOOLEAN DEFAULT 0,
-                    fecha_operacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    fecha_sincronizacion TIMESTAMP,
-                    servidor_destino VARCHAR(100),
-                    error_mensaje TEXT
-                )
-            ''',
-            
-            # Notificaciones
-            'notificaciones': '''
-                CREATE TABLE IF NOT EXISTS notificaciones (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tipo VARCHAR(50) NOT NULL,
-                    titulo VARCHAR(200) NOT NULL,
-                    mensaje TEXT,
-                    usuario_id INTEGER,
-                    leida BOOLEAN DEFAULT 0,
-                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    fecha_lectura TIMESTAMP,
-                    fecha_expiracion TIMESTAMP,
-                    prioridad VARCHAR(20) DEFAULT 'NORMAL', -- BAJA, NORMAL, ALTA, CRITICA
-                    categoria VARCHAR(50) DEFAULT 'SISTEMA',
-                    datos_extra TEXT, -- JSON con datos adicionales
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-                )
-            ''',
-            
-            # Auditoría
+            # Log de auditoría
             'auditoria': '''
                 CREATE TABLE IF NOT EXISTS auditoria (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     tabla VARCHAR(50) NOT NULL,
-                    operacion VARCHAR(20) NOT NULL, -- INSERT, UPDATE, DELETE
+                    operacion VARCHAR(20) NOT NULL,
                     registro_id INTEGER,
-                    datos_anteriores TEXT, -- JSON
-                    datos_nuevos TEXT, -- JSON
+                    datos_anteriores TEXT,
+                    datos_nuevos TEXT,
                     usuario_id INTEGER,
+                    fecha_operacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     ip_address VARCHAR(45),
                     user_agent TEXT,
-                    fecha_operacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                 )
             '''
         }
         
-        with self.get_cursor() as cursor:
-            for table_name, sql in tables.items():
-                try:
-                    cursor.execute(sql)
-                    logger.info(f"Tabla {table_name} creada/verificada")
-                except Exception as e:
-                    logger.error(f"Error creando tabla {table_name}: {e}")
-                    raise
+        # Crear todas las tablas
+        for table_name, table_sql in tables.items():
+            try:
+                self.cursor.execute(table_sql)
+                self.logger.debug(f"Tabla creada/verificada: {table_name}")
+            except Exception as e:
+                self.logger.error(f"Error creando tabla {table_name}: {e}")
+                raise e
+        
+        self.connection.commit()
+        self.logger.info("Todas las tablas creadas exitosamente")
     
-    def create_indexes(self):
-        """Crear índices para optimizar rendimiento"""
+    def _create_indexes(self):
+        """Crear índices para optimización de consultas"""
         indexes = [
-            # Índices para productos
+            # Índices de productos
             "CREATE INDEX IF NOT EXISTS idx_productos_codigo_barras ON productos(codigo_barras)",
+            "CREATE INDEX IF NOT EXISTS idx_productos_codigo_interno ON productos(codigo_interno)",
             "CREATE INDEX IF NOT EXISTS idx_productos_nombre ON productos(nombre)",
             "CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos(categoria_id)",
+            "CREATE INDEX IF NOT EXISTS idx_productos_proveedor ON productos(proveedor_id)",
             "CREATE INDEX IF NOT EXISTS idx_productos_activo ON productos(activo)",
-            "CREATE INDEX IF NOT EXISTS idx_productos_stock ON productos(stock_actual)",
             
-            # Índices para ventas
+            # Índices de ventas
             "CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha_venta)",
             "CREATE INDEX IF NOT EXISTS idx_ventas_cliente ON ventas(cliente_id)",
-            "CREATE INDEX IF NOT EXISTS idx_ventas_vendedor ON ventas(vendedor_id)",
+            "CREATE INDEX IF NOT EXISTS idx_ventas_usuario ON ventas(usuario_id)",
             "CREATE INDEX IF NOT EXISTS idx_ventas_estado ON ventas(estado)",
-            "CREATE INDEX IF NOT EXISTS idx_ventas_numero_ticket ON ventas(numero_ticket)",
+            "CREATE INDEX IF NOT EXISTS idx_ventas_numero ON ventas(numero_factura)",
             
-            # Índices para detalle de ventas
+            # Índices de detalle ventas
             "CREATE INDEX IF NOT EXISTS idx_detalle_ventas_venta ON detalle_ventas(venta_id)",
             "CREATE INDEX IF NOT EXISTS idx_detalle_ventas_producto ON detalle_ventas(producto_id)",
             
-            # Índices para compras
+            # Índices de compras
             "CREATE INDEX IF NOT EXISTS idx_compras_fecha ON compras(fecha_compra)",
             "CREATE INDEX IF NOT EXISTS idx_compras_proveedor ON compras(proveedor_id)",
             "CREATE INDEX IF NOT EXISTS idx_compras_estado ON compras(estado)",
             
-            # Índices para movimientos de stock
-            "CREATE INDEX IF NOT EXISTS idx_movimientos_stock_producto ON movimientos_stock(producto_id)",
-            "CREATE INDEX IF NOT EXISTS idx_movimientos_stock_fecha ON movimientos_stock(fecha_movimiento)",
-            "CREATE INDEX IF NOT EXISTS idx_movimientos_stock_tipo ON movimientos_stock(tipo_movimiento)",
+            # Índices de movimientos stock
+            "CREATE INDEX IF NOT EXISTS idx_movimientos_producto ON movimientos_stock(producto_id)",
+            "CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON movimientos_stock(fecha_movimiento)",
+            "CREATE INDEX IF NOT EXISTS idx_movimientos_tipo ON movimientos_stock(tipo_movimiento)",
+            "CREATE INDEX IF NOT EXISTS idx_movimientos_referencia ON movimientos_stock(referencia_id, referencia_tipo)",
             
-            # Índices para cuenta corriente
+            # Índices de usuarios
+            "CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username)",
+            "CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)",
+            "CREATE INDEX IF NOT EXISTS idx_usuarios_activo ON usuarios(activo)",
+            
+            # Índices de clientes
+            "CREATE INDEX IF NOT EXISTS idx_clientes_documento ON clientes(numero_documento)",
+            "CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON clientes(nombre, apellido)",
+            "CREATE INDEX IF NOT EXISTS idx_clientes_activo ON clientes(activo)",
+            
+            # Índices de cuenta corriente
             "CREATE INDEX IF NOT EXISTS idx_cuenta_corriente_cliente ON cuenta_corriente(cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_cuenta_corriente_fecha ON cuenta_corriente(fecha_movimiento)",
             
-            # Índices para usuarios y seguridad
-            "CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username)",
-            "CREATE INDEX IF NOT EXISTS idx_usuarios_activo ON usuarios(activo)",
-            "CREATE INDEX IF NOT EXISTS idx_usuarios_ultimo_acceso ON usuarios(ultimo_acceso)",
-            
-            # Índices para sincronización
-            "CREATE INDEX IF NOT EXISTS idx_sync_log_sincronizado ON sync_log(sincronizado)",
-            "CREATE INDEX IF NOT EXISTS idx_sync_log_fecha ON sync_log(fecha_operacion)",
-            
-            # Índices para notificaciones
-            "CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario ON notificaciones(usuario_id)",
-            "CREATE INDEX IF NOT EXISTS idx_notificaciones_leida ON notificaciones(leida)",
-            "CREATE INDEX IF NOT EXISTS idx_notificaciones_fecha ON notificaciones(fecha_creacion)",
-            
-            # Índices para auditoría
+            # Índices de auditoría
             "CREATE INDEX IF NOT EXISTS idx_auditoria_tabla ON auditoria(tabla)",
-            "CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON auditoria(usuario_id)",
-            "CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON auditoria(fecha_operacion)"
+            "CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON auditoria(fecha_operacion)",
+            "CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON auditoria(usuario_id)"
         ]
         
-        with self.get_cursor() as cursor:
-            for index_sql in indexes:
-                try:
-                    cursor.execute(index_sql)
-                except Exception as e:
-                    logger.error(f"Error creando índice: {e}")
-    
-    def insert_default_data(self):
-        """Insertar datos por defecto del sistema"""
-        with self.get_cursor() as cursor:
-            
-            # Roles por defecto
-            roles_default = [
-                ('ADMIN', 'Administrador', '{"all": true}'),
-                ('GERENTE', 'Gerente', '{"ventas": true, "compras": true, "reportes": true, "stock": true, "configuracion": true}'),
-                ('VENDEDOR', 'Vendedor', '{"ventas": true, "clientes": true}'),
-                ('STOCK', 'Encargado de Stock', '{"stock": true, "productos": true, "compras": true}'),
-                ('CAJA', 'Cajero', '{"ventas": true, "caja": true}'),
-                ('CONSULTA', 'Solo Consulta', '{"reportes": true}')
-            ]
-            
-            for nombre, descripcion, permisos in roles_default:
-                try:
-                    cursor.execute("""
-                        INSERT OR IGNORE INTO roles (nombre, descripcion, permisos) 
-                        VALUES (?, ?, ?)
-                    """, (nombre, descripcion, permisos))
-                except Exception as e:
-                    logger.error(f"Error insertando rol {nombre}: {e}")
-            
-            # Usuario administrador por defecto
-            import hashlib
-            admin_password = hashlib.sha256("admin123".encode()).hexdigest()
+        for index_sql in indexes:
             try:
-                cursor.execute("""
-                    INSERT OR IGNORE INTO usuarios (username, password_hash, nombre_completo, rol_id) 
-                    VALUES ('admin', ?, 'Administrador del Sistema', 1)
-                """, (admin_password,))
+                self.cursor.execute(index_sql)
             except Exception as e:
-                logger.error(f"Error creando usuario admin: {e}")
+                self.logger.warning(f"Error creando índice: {e}")
+        
+        self.connection.commit()
+        self.logger.info("Índices creados exitosamente")
+    
+    def _create_triggers(self):
+        """Crear triggers para auditoría y validaciones"""
+        triggers = [
+            # Trigger para actualizar stock automáticamente
+            '''
+            CREATE TRIGGER IF NOT EXISTS trg_actualizar_timestamp_productos
+            AFTER UPDATE ON productos
+            FOR EACH ROW
+            BEGIN
+                UPDATE productos SET actualizado_en = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END
+            ''',
             
-            # Categorías por defecto
-            categorias_default = [
-                ('GENERAL', 'Productos generales', None, 0),
-                ('ALIMENTACION', 'Alimentos y bebidas', None, 1),
-                ('LIMPIEZA', 'Productos de limpieza', None, 2),
-                ('PERFUMERIA', 'Perfumería y cosmética', None, 3),
-                ('PANADERIA', 'Panadería y repostería', 2, 4),
-                ('FIAMBRERIA', 'Fiambres y lácteos', 2, 5),
-                ('CARNICERIA', 'Carnes y embutidos', 2, 6),
-                ('BEBIDAS', 'Bebidas y refrescos', 2, 7),
-                ('GOLOSINAS', 'Golosinas y snacks', 2, 8),
-                ('CIGARRILLOS', 'Cigarrillos y tabaco', None, 9),
-                ('LIBRERIA', 'Librería y papelería', None, 10)
-            ]
+            # Trigger para validar stock negativo
+            '''
+            CREATE TRIGGER IF NOT EXISTS trg_validar_stock_negativo
+            BEFORE UPDATE OF stock_actual ON productos
+            FOR EACH ROW
+            WHEN NEW.stock_actual < 0 AND NEW.permite_venta_sin_stock = 0
+            BEGIN
+                SELECT RAISE(ABORT, 'Stock no puede ser negativo para este producto');
+            END
+            ''',
             
-            for nombre, descripcion, padre_id, orden in categorias_default:
-                try:
-                    cursor.execute("""
-                        INSERT OR IGNORE INTO categorias (nombre, descripcion, categoria_padre_id, orden) 
-                        VALUES (?, ?, ?, ?)
-                    """, (nombre, descripcion, padre_id, orden))
-                except Exception as e:
-                    logger.error(f"Error insertando categoría {nombre}: {e}")
+            # Trigger para auditoría de cambios críticos
+            '''
+            CREATE TRIGGER IF NOT EXISTS trg_auditoria_productos
+            AFTER UPDATE ON productos
+            FOR EACH ROW
+            WHEN OLD.precio_venta != NEW.precio_venta OR OLD.stock_actual != NEW.stock_actual
+            BEGIN
+                INSERT INTO auditoria (tabla, operacion, registro_id, datos_anteriores, datos_nuevos, fecha_operacion)
+                VALUES ('productos', 'UPDATE', NEW.id, 
+                       json_object('precio_venta', OLD.precio_venta, 'stock_actual', OLD.stock_actual),
+                       json_object('precio_venta', NEW.precio_venta, 'stock_actual', NEW.stock_actual),
+                       CURRENT_TIMESTAMP);
+            END
+            '''
+        ]
+        
+        for trigger_sql in triggers:
+            try:
+                self.cursor.execute(trigger_sql)
+            except Exception as e:
+                self.logger.warning(f"Error creando trigger: {e}")
+        
+        self.connection.commit()
+        self.logger.info("Triggers creados exitosamente")
+    
+    def _insert_default_data(self):
+        """Insertar datos por defecto necesarios"""
+        try:
+            # Categoría por defecto
+            self.cursor.execute("""
+                INSERT OR IGNORE INTO categorias (id, nombre, descripcion, color)
+                VALUES (1, 'General', 'Categoría general para productos sin clasificar', '#3498db')
+            """)
             
             # Caja por defecto
-            try:
-                cursor.execute("""
-                    INSERT OR IGNORE INTO cajas (id, nombre, descripcion, activo) 
-                    VALUES (1, 'Caja Principal', 'Caja principal del local', 1)
-                """)
-            except Exception as e:
-                logger.error(f"Error creando caja por defecto: {e}")
+            self.cursor.execute("""
+                INSERT OR IGNORE INTO cajas (id, nombre, descripcion)
+                VALUES (1, 'Caja Principal', 'Caja principal del sistema')
+            """)
             
             # Configuraciones por defecto
-            config_default = [
-                ('empresa_nombre', 'Mi Almacén', 'Nombre de la empresa', 'STRING', 'EMPRESA'),
-                ('empresa_direccion', '', 'Dirección de la empresa', 'STRING', 'EMPRESA'),
-                ('empresa_telefono', '', 'Teléfono de la empresa', 'STRING', 'EMPRESA'),
-                ('empresa_email', '', 'Email de la empresa', 'STRING', 'EMPRESA'),
-                ('empresa_cuit', '', 'CUIT de la empresa', 'STRING', 'EMPRESA'),
-                ('empresa_logo', '', 'Ruta del logo de la empresa', 'STRING', 'EMPRESA'),
-                
-                ('ticket_pie_mensaje', 'Gracias por su compra', 'Mensaje al pie del ticket', 'STRING', 'TICKETS'),
-                ('ticket_incluir_logo', 'false', 'Incluir logo en ticket', 'BOOLEAN', 'TICKETS'),
-                ('ticket_auto_imprimir', 'false', 'Imprimir automáticamente', 'BOOLEAN', 'TICKETS'),
-                ('ticket_copias', '1', 'Número de copias', 'INTEGER', 'TICKETS'),
-                
-                ('impresora_tickets', '', 'Impresora para tickets', 'STRING', 'HARDWARE'),
-                ('cajon_monedero_habilitado', 'false', 'Cajón monedero habilitado', 'BOOLEAN', 'HARDWARE'),
-                ('scanner_habilitado', 'true', 'Scanner de códigos habilitado', 'BOOLEAN', 'HARDWARE'),
-                
-                ('backup_automatico', 'true', 'Backup automático habilitado', 'BOOLEAN', 'BACKUP'),
-                ('backup_intervalo_horas', '24', 'Intervalo de backup en horas', 'INTEGER', 'BACKUP'),
-                ('backup_max_archivos', '30', 'Máximo número de backups', 'INTEGER', 'BACKUP'),
-                
-                ('sync_habilitado', 'false', 'Sincronización habilitada', 'BOOLEAN', 'SYNC'),
-                ('sync_servidor_url', '', 'URL del servidor de sincronización', 'STRING', 'SYNC'),
-                ('sync_api_key', '', 'Clave API para sincronización', 'STRING', 'SYNC'),
-                
-                ('notificaciones_habilitadas', 'true', 'Notificaciones habilitadas', 'BOOLEAN', 'NOTIFICACIONES'),
-                ('notificaciones_stock_bajo', 'true', 'Alertas de stock bajo', 'BOOLEAN', 'NOTIFICACIONES'),
-                ('notificaciones_ventas_diarias', 'true', 'Resumen diario de ventas', 'BOOLEAN', 'NOTIFICACIONES'),
-                
-                ('tema_interfaz', 'light', 'Tema de la interfaz', 'STRING', 'UI'),
-                ('idioma', 'es', 'Idioma de la interfaz', 'STRING', 'UI'),
-                ('fuente_tamaño', '9', 'Tamaño de fuente', 'INTEGER', 'UI'),
-                
-                ('pos_modo_rapido', 'true', 'Modo rápido de ventas', 'BOOLEAN', 'POS'),
-                ('pos_confirmar_eliminacion', 'true', 'Confirmar eliminación de items', 'BOOLEAN', 'POS'),
-                ('pos_scanner_auto_agregar', 'true', 'Agregar automáticamente al escanear', 'BOOLEAN', 'POS')
+            default_configs = [
+                ('sistema.nombre_empresa', 'Mi Empresa', 'Nombre de la empresa'),
+                ('sistema.version', '2.0.0', 'Versión del sistema'),
+                ('ventas.iva_defecto', '21', 'IVA por defecto para productos'),
+                ('ventas.punto_venta', '1', 'Punto de venta por defecto'),
+                ('backup.automatico', '1', 'Backup automático habilitado'),
+                ('backup.intervalo_horas', '24', 'Intervalo de backup en horas')
             ]
             
-            for clave, valor, descripcion, tipo, categoria in config_default:
-                try:
-                    cursor.execute("""
-                        INSERT OR IGNORE INTO configuraciones (clave, valor, descripcion, tipo, categoria) 
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (clave, valor, descripcion, tipo, categoria))
-                except Exception as e:
-                    logger.error(f"Error insertando configuración {clave}: {e}")
+            for config in default_configs:
+                self.cursor.execute("""
+                    INSERT OR IGNORE INTO configuraciones (clave, valor, descripcion)
+                    VALUES (?, ?, ?)
+                """, config)
             
-            logger.info("Datos por defecto insertados correctamente")
-    
-    def get_database_version(self) -> str:
-        """Obtener versión de la base de datos"""
-        try:
-            result = self.execute_single("SELECT valor FROM configuraciones WHERE clave = 'db_version'")
-            return result['valor'] if result else '1.0'
-        except:
-            return '1.0'
-    
-    def update_database_version(self, version: str):
-        """Actualizar versión de la base de datos"""
-        try:
-            self.execute_update("""
-                INSERT OR REPLACE INTO configuraciones (clave, valor, descripcion, categoria)
-                VALUES ('db_version', ?, 'Versión de la base de datos', 'SISTEMA')
-            """, (version,))
+            self.connection.commit()
+            self.logger.info("Datos por defecto insertados")
+            
         except Exception as e:
-            logger.error(f"Error actualizando versión de BD: {e}")
+            self.logger.error(f"Error insertando datos por defecto: {e}")
     
-    def vacuum_database(self):
-        """Optimizar base de datos (VACUUM)"""
+    def _optimize_database(self):
+        """Optimizar base de datos"""
         try:
-            with self._lock:
-                self.connection.execute("VACUUM")
-                logger.info("Base de datos optimizada (VACUUM)")
-        except Exception as e:
-            logger.error(f"Error ejecutando VACUUM: {e}")
-    
-    def get_database_stats(self) -> Dict[str, Any]:
-        """Obtener estadísticas de la base de datos"""
-        try:
-            stats = {}
-            
-            # Tamaño de la base de datos
-            if hasattr(self, 'db_path'):
-                db_file = Path(self.db_path)
-                if db_file.exists():
-                    stats['file_size_mb'] = db_file.stat().st_size / (1024 * 1024)
-            
-            # Contar registros en tablas principales
-            tables = [
-                'productos', 'ventas', 'compras', 'clientes', 
-                'proveedores', 'movimientos_stock', 'usuarios'
+            optimization_commands = [
+                "ANALYZE",
+                "PRAGMA optimize",
+                "VACUUM"
             ]
+            
+            for command in optimization_commands:
+                self.cursor.execute(command)
+            
+            self.logger.info("Base de datos optimizada")
+            
+        except Exception as e:
+            self.logger.warning(f"Error optimizando base de datos: {e}")
+    
+    # Métodos de transacción
+    def begin_transaction(self):
+        """Iniciar transacción"""
+        with self.thread_lock:
+            self.cursor.execute("BEGIN TRANSACTION")
+    
+    def commit_transaction(self):
+        """Confirmar transacción"""
+        with self.thread_lock:
+            self.connection.commit()
+    
+    def rollback_transaction(self):
+        """Revertir transacción"""
+        with self.thread_lock:
+            self.connection.rollback()
+    
+    # Métodos de consulta
+    def execute_query(self, query: str, params: tuple = ()) -> List[Dict]:
+        """Ejecutar consulta SELECT"""
+        try:
+            with self.thread_lock:
+                self.cursor.execute(query, params)
+                return [dict(row) for row in self.cursor.fetchall()]
+        except Exception as e:
+            self.logger.error(f"Error ejecutando consulta: {e}")
+            raise e
+    
+    def execute_single(self, query: str, params: tuple = ()) -> Optional[Dict]:
+        """Ejecutar consulta que retorna un solo registro"""
+        try:
+            with self.thread_lock:
+                self.cursor.execute(query, params)
+                row = self.cursor.fetchone()
+                return dict(row) if row else None
+        except Exception as e:
+            self.logger.error(f"Error ejecutando consulta single: {e}")
+            raise e
+    
+    def execute_insert(self, query: str, params: tuple = ()) -> int:
+        """Ejecutar INSERT y retornar ID insertado"""
+        try:
+            with self.thread_lock:
+                self.cursor.execute(query, params)
+                self.connection.commit()
+                return self.cursor.lastrowid
+        except Exception as e:
+            self.logger.error(f"Error ejecutando insert: {e}")
+            raise e
+    
+    def execute_update(self, query: str, params: tuple = ()) -> bool:
+        """Ejecutar UPDATE/DELETE"""
+        try:
+            with self.thread_lock:
+                self.cursor.execute(query, params)
+                self.connection.commit()
+                return self.cursor.rowcount > 0
+        except Exception as e:
+            self.logger.error(f"Error ejecutando update: {e}")
+            raise e
+    
+    def get_database_info(self) -> Dict:
+        """Obtener información de la base de datos"""
+        try:
+            info = {
+                'path': str(self.db_path),
+                'size_mb': round(self.db_path.stat().st_size / (1024 * 1024), 2),
+                'tables': [],
+                'total_records': 0
+            }
+            
+            # Obtener lista de tablas
+            tables = self.execute_query("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name NOT LIKE 'sqlite_%'
+                ORDER BY name
+            """)
             
             for table in tables:
-                try:
-                    result = self.execute_single(f"SELECT COUNT(*) as count FROM {table}")
-                    stats[f'{table}_count'] = result['count'] if result else 0
-                except:
-                    stats[f'{table}_count'] = 0
-            
-            # Información de la base de datos
-            with self.get_cursor() as cursor:
-                cursor.execute("PRAGMA page_count")
-                page_count = cursor.fetchone()[0]
+                table_name = table['name']
+                count_result = self.execute_single(f"SELECT COUNT(*) as count FROM {table_name}")
+                record_count = count_result['count'] if count_result else 0
                 
-                cursor.execute("PRAGMA page_size")
-                page_size = cursor.fetchone()[0]
-                
-                stats['total_pages'] = page_count
-                stats['page_size'] = page_size
-                stats['estimated_size_mb'] = (page_count * page_size) / (1024 * 1024)
+                info['tables'].append({
+                    'name': table_name,
+                    'records': record_count
+                })
+                info['total_records'] += record_count
             
-            return stats
+            return info
             
         except Exception as e:
-            logger.error(f"Error obteniendo estadísticas de BD: {e}")
-            return {}
+            self.logger.error(f"Error obteniendo información de base de datos: {e}")
+            return {'error': str(e)}
     
-    def close(self):
-        """Cerrar conexión a la base de datos"""
-        if self.connection:
-            try:
-                self.connection.close()
-                logger.info("Conexión a base de datos cerrada")
-            except Exception as e:
-                logger.error(f"Error cerrando conexión: {e}")
-    
-    def __del__(self):
-        """Cerrar conexión al destruir el objeto"""
-        self.close()
+    def backup_database(self, backup_path: str) -> bool:
+        """Crear backup de la base de datos"""
+        try:
+            backup_path = Path(backup_path)
+            backup_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Crear conexión de backup
+            backup_conn = sqlite3.connect(str(backup_path))
+            
+            # Realizar backup
+            self.connection.backup(backup_conn)
+            backup_conn.close()
+            
+            self.logger.info(f"Backup creado: {backup_path}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error creando backup: {e}")
+            return False

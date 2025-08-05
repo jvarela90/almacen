@@ -1,25 +1,18 @@
 """
-Ventana principal de AlmacénPro
-Integra todos los módulos y componentes del sistema
+Ventana Principal de AlmacénPro v2.0
+Interfaz principal del sistema ERP/POS con navegación por tabs y dashboard
 """
 
-import sys
 import logging
-from typing import Optional
+from datetime import datetime, date
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-# Importar componentes del sistema
-from database.manager import DatabaseManager
-from managers.user_manager import UserManager
-from managers.product_manager import ProductManager
-from managers.sales_manager import SalesManager
-from managers.purchase_manager import PurchaseManager
-from managers.provider_manager import ProviderManager
-from managers.report_manager import ReportManager
-from utils.backup_manager import BackupManager
-from ui.dialogs.login_dialog import LoginDialog
+# Imports de widgets personalizados
+from ui.widgets.sales_widget import SalesWidget
+from ui.widgets.stock_widget import StockWidget
+from ui.widgets.dashboard_widget import DashboardWidget
 from ui.dialogs.backup_dialog import BackupDialog
 
 logger = logging.getLogger(__name__)
@@ -27,912 +20,706 @@ logger = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     """Ventana principal del sistema AlmacénPro"""
     
-    def __init__(self, settings):
-        super().__init__()
-        self.settings = settings
-        
-        # Inicializar componentes del sistema
-        self.init_system_components()
-        
-        # Mostrar login y configurar UI si es exitoso
-        if self.show_login():
-            self.init_ui()
-            self.init_backup_system()
-            self.setup_window_properties()
-            logger.info("Ventana principal inicializada correctamente")
-        else:
-            sys.exit(1)
+    # Señales personalizadas
+    logout_requested = pyqtSignal()
+    app_exit_requested = pyqtSignal()
     
-    def init_system_components(self):
-        """Inicializar todos los componentes del sistema"""
-        try:
-            # Base de datos
-            self.db_manager = DatabaseManager(self.settings)
-            
-            # Gestores de negocio
-            self.user_manager = UserManager(self.db_manager)
-            self.product_manager = ProductManager(self.db_manager)
-            self.sales_manager = SalesManager(self.db_manager, self.product_manager)
-            self.purchase_manager = PurchaseManager(self.db_manager, self.product_manager)
-            self.provider_manager = ProviderManager(self.db_manager)
-            self.report_manager = ReportManager(self.db_manager)
-            
-            # Sistema de backup
-            self.backup_manager = BackupManager(self.settings)
-            
-            logger.info("Componentes del sistema inicializados")
-            
-        except Exception as e:
-            logger.error(f"Error inicializando componentes: {e}")
-            QMessageBox.critical(None, "Error Crítico", 
-                f"No se pudieron inicializar los componentes del sistema:\n{str(e)}")
-            sys.exit(1)
-    
-    def show_login(self) -> bool:
-        """Mostrar diálogo de login"""
-        try:
-            login_dialog = LoginDialog(self.user_manager)
-            result = login_dialog.exec_()
-            
-            if result == QDialog.Accepted:
-                logger.info(f"Login exitoso: {self.user_manager.current_user['username']}")
-                return True
-            else:
-                logger.info("Login cancelado")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error en login: {e}")
-            QMessageBox.critical(None, "Error de Login", 
-                f"Error durante el proceso de login:\n{str(e)}")
-            return False
+    def __init__(self, managers: dict, current_user: dict, parent=None):
+        super().__init__(parent)
+        
+        self.managers = managers
+        self.current_user = current_user
+        self.widgets = {}
+        
+        # Configurar ventana principal
+        self.init_ui()
+        self.setup_menu_bar()
+        self.setup_toolbar()
+        self.setup_status_bar()
+        self.setup_shortcuts()
+        
+        # Cargar configuraciones de interfaz
+        self.load_ui_settings()
+        
+        # Mostrar mensaje de bienvenida
+        self.show_welcome_message()
+        
+        # Configurar timer para actualizar información
+        self.setup_update_timer()
     
     def init_ui(self):
         """Inicializar interfaz de usuario"""
-        self.setWindowTitle("AlmacénPro v2.0 - Sistema de Gestión Completo")
-        self.setWindowIcon(QIcon())  # Aquí se puede agregar un icono
+        self.setWindowTitle(f"AlmacénPro v2.0 - {self.current_user['nombre_completo']}")
+        self.setWindowIcon(QIcon("images/logo.png"))  # Si existe el logo
         
-        # Widget central
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        # Configurar tamaño inicial
+        self.resize(1400, 900)
+        self.center_window()
         
-        # Layout principal
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(5, 5, 5, 5)
-        main_layout.setSpacing(5)
+        # Widget central con tabs
+        self.central_widget = QTabWidget()
+        self.setCentralWidget(self.central_widget)
         
-        # Barra de estado del usuario
-        self.create_user_status_bar()
-        main_layout.addWidget(self.user_status_widget)
+        # Configurar tabs
+        self.central_widget.setTabsClosable(False)
+        self.central_widget.setMovable(True)
+        self.central_widget.setDocumentMode(True)
         
-        # Pestañas principales
-        self.create_main_tabs()
-        main_layout.addWidget(self.tab_widget)
-        
-        # Barra de estado
-        self.create_status_bar()
-        
-        # Configurar menús
-        self.create_menus()
-        
-        # Configurar shortcuts
-        self.setup_shortcuts()
-    
-    def create_user_status_bar(self):
-        """Crear barra de información del usuario"""
-        self.user_status_widget = QWidget()
-        self.user_status_widget.setFixedHeight(40)
-        self.user_status_widget.setStyleSheet("""
-            QWidget {
-                background-color: #2E86AB;
-                color: white;
-                border-radius: 5px;
-            }
-            QLabel {
-                font-weight: bold;
-                padding: 5px;
-            }
-            QPushButton {
-                background-color: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 3px;
-                padding: 5px 15px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.3);
-            }
-        """)
-        
-        layout = QHBoxLayout(self.user_status_widget)
-        layout.setContentsMargins(10, 5, 10, 5)
-        
-        # Información del usuario
-        user_info = QLabel(
-            f"👤 {self.user_manager.current_user['nombre_completo']} | "
-            f"📋 {self.user_manager.current_user.get('rol_nombre', 'Sin rol')} | "
-            f"🕐 {QDateTime.currentDateTime().toString('dd/MM/yyyy hh:mm')}"
-        )
-        layout.addWidget(user_info)
-        
-        layout.addStretch()
-        
-        # Botones de acceso rápido
-        backup_btn = QPushButton("💾 Backup")
-        backup_btn.setToolTip("Sistema de Backup")
-        backup_btn.clicked.connect(self.show_backup_dialog)
-        layout.addWidget(backup_btn)
-        
-        settings_btn = QPushButton("⚙️ Config")
-        settings_btn.setToolTip("Configuraciones")
-        settings_btn.clicked.connect(self.show_settings_dialog)
-        layout.addWidget(settings_btn)
-        
-        logout_btn = QPushButton("🚪 Salir")
-        logout_btn.setToolTip("Cerrar Sesión")
-        logout_btn.clicked.connect(self.logout)
-        layout.addWidget(logout_btn)
-    
-    def create_main_tabs(self):
-        """Crear pestañas principales según permisos del usuario"""
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setTabPosition(QTabWidget.North)
-        self.tab_widget.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #C0C0C0;
-                background-color: white;
-            }
-            QTabBar::tab {
-                background-color: #E0E0E0;
-                padding: 8px 16px;
-                margin-right: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-            }
-            QTabBar::tab:selected {
-                background-color: #2E86AB;
-                color: white;
-            }
-            QTabBar::tab:hover {
-                background-color: #4A9BC7;
-                color: white;
-            }
-        """)
-        
-        # Crear pestañas según permisos
-        if self.user_manager.has_permission('ventas'):
-            self.create_sales_tab()
-        
-        if self.user_manager.has_permission('stock'):
-            self.create_stock_tab()
-        
-        if self.user_manager.has_permission('compras'):
-            self.create_purchases_tab()
-        
-        if self.user_manager.has_permission('reportes'):
-            self.create_reports_tab()
-        
-        # Dashboard siempre visible
+        # Crear todos los tabs principales
         self.create_dashboard_tab()
+        self.create_sales_tab()
+        self.create_stock_tab()
+        self.create_purchases_tab()
+        self.create_customers_tab()
+        self.create_reports_tab()
         
-        if self.user_manager.has_permission('all'):
-            self.create_admin_tab()
-    
-    def create_sales_tab(self):
-        """Crear pestaña de ventas"""
-        sales_widget = QWidget()
-        layout = QVBoxLayout(sales_widget)
-        
-        # Mensaje temporal
-        temp_label = QLabel("🛒 Módulo de Ventas")
-        temp_label.setAlignment(Qt.AlignCenter)
-        temp_label.setStyleSheet("""
-            font-size: 18px; 
-            font-weight: bold; 
-            color: #2E86AB; 
-            padding: 50px;
-        """)
-        layout.addWidget(temp_label)
-        
-        info_label = QLabel("""
-        <p><b>Funcionalidades disponibles:</b></p>
-        <ul>
-        <li>✅ Scanner de códigos de barras integrado</li>
-        <li>✅ Carrito de compras inteligente</li>
-        <li>✅ Múltiples métodos de pago</li>
-        <li>✅ Cuenta corriente de clientes</li>
-        <li>✅ Impresión de tickets</li>
-        <li>✅ Gestión de descuentos</li>
-        </ul>
-        <p><i>La interfaz completa se está migrando al nuevo sistema modular...</i></p>
-        """)
-        info_label.setWordWrap(True)
-        layout.addWidget(info_label)
-        
-        layout.addStretch()
-        
-        self.tab_widget.addTab(sales_widget, "🛒 Ventas")
-    
-    def create_stock_tab(self):
-        """Crear pestaña de stock"""
-        stock_widget = QWidget()
-        layout = QVBoxLayout(stock_widget)
-        
-        # Barra de herramientas
-        toolbar = QHBoxLayout()
-        
-        add_product_btn = QPushButton("➕ Agregar Producto")
-        add_product_btn.clicked.connect(self.add_product)
-        toolbar.addWidget(add_product_btn)
-        
-        import_products_btn = QPushButton("📥 Importar Productos")
-        import_products_btn.clicked.connect(self.import_products)
-        toolbar.addWidget(import_products_btn)
-        
-        stock_alerts_btn = QPushButton("⚠️ Alertas de Stock")
-        stock_alerts_btn.clicked.connect(self.show_stock_alerts)
-        toolbar.addWidget(stock_alerts_btn)
-        
-        toolbar.addStretch()
-        
-        refresh_btn = QPushButton("🔄 Actualizar")
-        refresh_btn.clicked.connect(self.refresh_stock)
-        toolbar.addWidget(refresh_btn)
-        
-        layout.addLayout(toolbar)
-        
-        # Tabla de productos
-        self.stock_table = QTableWidget()
-        self.stock_table.setColumnCount(8)
-        self.stock_table.setHorizontalHeaderLabels([
-            "Código", "Producto", "Categoría", "Stock", "Stock Mín.", 
-            "Precio Venta", "Estado", "Acciones"
-        ])
-        
-        # Configurar tabla
-        header = self.stock_table.horizontalHeader()
-        header.setStretchLastSection(True)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        
-        layout.addWidget(self.stock_table)
-        
-        # Cargar datos iniciales
-        self.load_stock_data()
-        
-        self.tab_widget.addTab(stock_widget, "📦 Stock")
-    
-    def create_purchases_tab(self):
-        """Crear pestaña de compras"""
-        purchases_widget = QWidget()
-        layout = QVBoxLayout(purchases_widget)
-        
-        # Sub-pestañas para compras
-        purchases_subtabs = QTabWidget()
-        
-        # Nueva Compra
-        new_purchase_widget = QWidget()
-        new_purchase_layout = QVBoxLayout(new_purchase_widget)
-        new_purchase_layout.addWidget(QLabel("🛍️ Nueva Orden de Compra"))
-        purchases_subtabs.addTab(new_purchase_widget, "Nueva Compra")
-        
-        # Órdenes Pendientes
-        pending_orders_widget = QWidget()
-        pending_orders_layout = QVBoxLayout(pending_orders_widget)
-        pending_orders_layout.addWidget(QLabel("📋 Órdenes Pendientes"))
-        purchases_subtabs.addTab(pending_orders_widget, "Órdenes")
-        
-        # Proveedores
-        providers_widget = QWidget()
-        providers_layout = QVBoxLayout(providers_widget)
-        providers_layout.addWidget(QLabel("👥 Gestión de Proveedores"))
-        purchases_subtabs.addTab(providers_widget, "Proveedores")
-        
-        layout.addWidget(purchases_subtabs)
-        
-        self.tab_widget.addTab(purchases_widget, "🛍️ Compras")
-    
-    def create_reports_tab(self):
-        """Crear pestaña de reportes"""
-        reports_widget = QWidget()
-        layout = QVBoxLayout(reports_widget)
-        
-        # Grid de reportes disponibles
-        reports_grid = QGridLayout()
-        
-        # Reportes de ventas
-        sales_reports_group = QGroupBox("📊 Reportes de Ventas")
-        sales_reports_layout = QVBoxLayout(sales_reports_group)
-        
-        daily_sales_btn = QPushButton("Ventas Diarias")
-        daily_sales_btn.clicked.connect(lambda: self.generate_report('daily_sales'))
-        sales_reports_layout.addWidget(daily_sales_btn)
-        
-        monthly_sales_btn = QPushButton("Ventas Mensuales")
-        monthly_sales_btn.clicked.connect(lambda: self.generate_report('monthly_sales'))
-        sales_reports_layout.addWidget(monthly_sales_btn)
-        
-        top_products_btn = QPushButton("Productos Más Vendidos")
-        top_products_btn.clicked.connect(lambda: self.generate_report('top_products'))
-        sales_reports_layout.addWidget(top_products_btn)
-        
-        reports_grid.addWidget(sales_reports_group, 0, 0)
-        
-        # Reportes de stock
-        stock_reports_group = QGroupBox("📦 Reportes de Stock")
-        stock_reports_layout = QVBoxLayout(stock_reports_group)
-        
-        low_stock_btn = QPushButton("Stock Bajo")
-        low_stock_btn.clicked.connect(lambda: self.generate_report('low_stock'))
-        stock_reports_layout.addWidget(low_stock_btn)
-        
-        stock_valuation_btn = QPushButton("Valorización de Stock")
-        stock_valuation_btn.clicked.connect(lambda: self.generate_report('stock_valuation'))
-        stock_reports_layout.addWidget(stock_valuation_btn)
-        
-        reports_grid.addWidget(stock_reports_group, 0, 1)
-        
-        # Reportes financieros
-        financial_reports_group = QGroupBox("💰 Reportes Financieros")
-        financial_reports_layout = QVBoxLayout(financial_reports_group)
-        
-        accounts_receivable_btn = QPushButton("Cuentas por Cobrar")
-        accounts_receivable_btn.clicked.connect(lambda: self.generate_report('accounts_receivable'))
-        financial_reports_layout.addWidget(accounts_receivable_btn)
-        
-        profit_analysis_btn = QPushButton("Análisis de Rentabilidad")
-        profit_analysis_btn.clicked.connect(lambda: self.generate_report('profit_analysis'))
-        financial_reports_layout.addWidget(profit_analysis_btn)
-        
-        reports_grid.addWidget(financial_reports_group, 1, 0)
-        
-        # Reportes personalizados
-        custom_reports_group = QGroupBox("🔧 Reportes Personalizados")
-        custom_reports_layout = QVBoxLayout(custom_reports_group)
-        
-        custom_query_btn = QPushButton("Consulta Personalizada")
-        custom_query_btn.clicked.connect(lambda: self.generate_report('custom_query'))
-        custom_reports_layout.addWidget(custom_query_btn)
-        
-        export_data_btn = QPushButton("Exportar Datos")
-        export_data_btn.clicked.connect(lambda: self.generate_report('export_data'))
-        custom_reports_layout.addWidget(export_data_btn)
-        
-        reports_grid.addWidget(custom_reports_group, 1, 1)
-        
-        layout.addLayout(reports_grid)
-        layout.addStretch()
-        
-        self.tab_widget.addTab(reports_widget, "📊 Reportes")
+        # Tab de configuración (solo para administradores)
+        if self.user_has_permission('configuracion'):
+            self.create_settings_tab()
     
     def create_dashboard_tab(self):
-        """Crear pestaña de dashboard ejecutivo"""
-        dashboard_widget = QWidget()
-        layout = QVBoxLayout(dashboard_widget)
-        
-        # Título del dashboard
-        title = QLabel("📈 Dashboard Ejecutivo")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #2E86AB; padding: 10px;")
-        layout.addWidget(title)
-        
-        # Métricas principales en cards
-        metrics_layout = QHBoxLayout()
-        
-        # Card de ventas de hoy
-        today_sales_card = self.create_metric_card("Ventas Hoy", "$0", "🛒", "#4CAF50")
-        metrics_layout.addWidget(today_sales_card)
-        
-        # Card de productos en stock bajo
-        low_stock_card = self.create_metric_card("Stock Bajo", "0", "⚠️", "#FF9800")
-        metrics_layout.addWidget(low_stock_card)
-        
-        # Card de clientes con deuda
-        debt_card = self.create_metric_card("Cuentas por Cobrar", "$0", "💳", "#2196F3")
-        metrics_layout.addWidget(debt_card)
-        
-        # Card de órdenes pendientes
-        pending_orders_card = self.create_metric_card("Órdenes Pendientes", "0", "📋", "#9C27B0")
-        metrics_layout.addWidget(pending_orders_card)
-        
-        layout.addLayout(metrics_layout)
-        
-        # Gráficos (placeholder)
-        charts_layout = QHBoxLayout()
-        
-        # Gráfico de ventas semanales
-        sales_chart_group = QGroupBox("Ventas de la Semana")
-        sales_chart_layout = QVBoxLayout(sales_chart_group)
-        sales_chart_placeholder = QLabel("📊 Gráfico de ventas semanales\n(Próximamente)")
-        sales_chart_placeholder.setAlignment(Qt.AlignCenter)
-        sales_chart_placeholder.setStyleSheet("padding: 50px; border: 2px dashed #ccc;")
-        sales_chart_layout.addWidget(sales_chart_placeholder)
-        charts_layout.addWidget(sales_chart_group)
-        
-        # Gráfico de productos más vendidos
-        products_chart_group = QGroupBox("Top 10 Productos")
-        products_chart_layout = QVBoxLayout(products_chart_group)
-        products_chart_placeholder = QLabel("📈 Top productos más vendidos\n(Próximamente)")
-        products_chart_placeholder.setAlignment(Qt.AlignCenter)
-        products_chart_placeholder.setStyleSheet("padding: 50px; border: 2px dashed #ccc;")
-        products_chart_layout.addWidget(products_chart_placeholder)
-        charts_layout.addWidget(products_chart_group)
-        
-        layout.addLayout(charts_layout)
-        
-        # Cargar datos del dashboard
-        self.update_dashboard_metrics()
-        
-        self.tab_widget.addTab(dashboard_widget, "📈 Dashboard")
+        """Crear tab de dashboard principal"""
+        try:
+            dashboard_widget = DashboardWidget(
+                managers=self.managers,
+                current_user=self.current_user,
+                parent=self
+            )
+            
+            tab_index = self.central_widget.addTab(dashboard_widget, "📊 Dashboard")
+            self.central_widget.setTabIcon(tab_index, self.style().standardIcon(QStyle.SP_ComputerIcon))
+            
+            self.widgets['dashboard'] = dashboard_widget
+            
+        except Exception as e:
+            logger.error(f"Error creando tab dashboard: {e}")
+            # Crear tab simple si hay error
+            simple_widget = QLabel("Dashboard no disponible temporalmente")
+            simple_widget.setAlignment(Qt.AlignCenter)
+            self.central_widget.addTab(simple_widget, "📊 Dashboard")
     
-    def create_admin_tab(self):
-        """Crear pestaña de administración"""
-        admin_widget = QWidget()
-        layout = QVBoxLayout(admin_widget)
-        
-        # Secciones de administración
-        admin_sections = QGridLayout()
-        
-        # Gestión de usuarios
-        users_group = QGroupBox("👥 Gestión de Usuarios")
-        users_layout = QVBoxLayout(users_group)
-        
-        manage_users_btn = QPushButton("Gestionar Usuarios")
-        manage_users_btn.clicked.connect(self.manage_users)
-        users_layout.addWidget(manage_users_btn)
-        
-        manage_roles_btn = QPushButton("Gestionar Roles")
-        manage_roles_btn.clicked.connect(self.manage_roles)
-        users_layout.addWidget(manage_roles_btn)
-        
-        admin_sections.addWidget(users_group, 0, 0)
-        
-        # Configuración del sistema
-        system_group = QGroupBox("⚙️ Configuración del Sistema")
-        system_layout = QVBoxLayout(system_group)
-        
-        company_config_btn = QPushButton("Datos de la Empresa")
-        company_config_btn.clicked.connect(self.configure_company)
-        system_layout.addWidget(company_config_btn)
-        
-        backup_config_btn = QPushButton("Configurar Backup")
-        backup_config_btn.clicked.connect(self.show_backup_dialog)
-        system_layout.addWidget(backup_config_btn)
-        
-        admin_sections.addWidget(system_group, 0, 1)
-        
-        # Mantenimiento
-        maintenance_group = QGroupBox("🔧 Mantenimiento")
-        maintenance_layout = QVBoxLayout(maintenance_group)
-        
-        db_stats_btn = QPushButton("Estadísticas de BD")
-        db_stats_btn.clicked.connect(self.show_db_stats)
-        maintenance_layout.addWidget(db_stats_btn)
-        
-        optimize_db_btn = QPushButton("Optimizar Base de Datos")
-        optimize_db_btn.clicked.connect(self.optimize_database)
-        maintenance_layout.addWidget(optimize_db_btn)
-        
-        admin_sections.addWidget(maintenance_group, 1, 0)
-        
-        # Logs y auditoría
-        audit_group = QGroupBox("📋 Auditoría y Logs")
-        audit_layout = QVBoxLayout(audit_group)
-        
-        view_logs_btn = QPushButton("Ver Logs del Sistema")
-        view_logs_btn.clicked.connect(self.view_system_logs)
-        audit_layout.addWidget(view_logs_btn)
-        
-        audit_trail_btn = QPushButton("Pista de Auditoría")
-        audit_trail_btn.clicked.connect(self.show_audit_trail)
-        audit_layout.addWidget(audit_trail_btn)
-        
-        admin_sections.addWidget(audit_group, 1, 1)
-        
-        layout.addLayout(admin_sections)
-        layout.addStretch()
-        
-        self.tab_widget.addTab(admin_widget, "⚙️ Admin")
+    def create_sales_tab(self):
+        """Crear tab de ventas/POS"""
+        if not self.user_has_permission('ventas'):
+            return
+            
+        try:
+            sales_widget = SalesWidget(
+                sales_manager=self.managers['sales'],
+                product_manager=self.managers['product'],
+                user_manager=self.managers['user'],
+                parent=self
+            )
+            
+            tab_index = self.central_widget.addTab(sales_widget, "🛒 Ventas")
+            self.central_widget.setTabIcon(tab_index, self.style().standardIcon(QStyle.SP_DialogApplyButton))
+            
+            self.widgets['sales'] = sales_widget
+            
+            # Conectar señales importantes
+            sales_widget.sale_completed.connect(self.on_sale_completed)
+            
+        except Exception as e:
+            logger.error(f"Error creando tab ventas: {e}")
     
-    def create_metric_card(self, title: str, value: str, icon: str, color: str) -> QWidget:
-        """Crear tarjeta de métrica para el dashboard"""
-        card = QWidget()
-        card.setFixedSize(200, 120)
-        card.setStyleSheet(f"""
-            QWidget {{
-                background-color: white;
-                border: 2px solid {color};
-                border-radius: 10px;
-                margin: 5px;
-            }}
-            QLabel {{
-                color: {color};
-            }}
-        """)
-        
-        layout = QVBoxLayout(card)
-        layout.setAlignment(Qt.AlignCenter)
-        
-        # Icono
-        icon_label = QLabel(icon)
-        icon_label.setAlignment(Qt.AlignCenter)
-        icon_label.setStyleSheet("font-size: 24px;")
-        layout.addWidget(icon_label)
-        
-        # Valor
-        value_label = QLabel(value)
-        value_label.setAlignment(Qt.AlignCenter)
-        value_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        layout.addWidget(value_label)
-        
-        # Título
-        title_label = QLabel(title)
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 12px;")
-        layout.addWidget(title_label)
-        
-        return card
+    def create_stock_tab(self):
+        """Crear tab de gestión de stock"""
+        if not self.user_has_permission('productos'):
+            return
+            
+        try:
+            stock_widget = StockWidget(
+                product_manager=self.managers['product'],
+                provider_manager=self.managers['provider'],
+                user_manager=self.managers['user'],
+                parent=self
+            )
+            
+            tab_index = self.central_widget.addTab(stock_widget, "📦 Stock")
+            self.central_widget.setTabIcon(tab_index, self.style().standardIcon(QStyle.SP_DirIcon))
+            
+            self.widgets['stock'] = stock_widget
+            
+        except Exception as e:
+            logger.error(f"Error creando tab stock: {e}")
     
-    def create_menus(self):
-        """Crear menús de la aplicación"""
+    def create_purchases_tab(self):
+        """Crear tab de compras y órdenes"""
+        if not self.user_has_permission('compras'):
+            return
+            
+        try:
+            purchases_widget = self.create_purchases_widget()
+            
+            tab_index = self.central_widget.addTab(purchases_widget, "🛍️ Compras")
+            self.central_widget.setTabIcon(tab_index, self.style().standardIcon(QStyle.SP_DialogSaveButton))
+            
+            self.widgets['purchases'] = purchases_widget
+            
+        except Exception as e:
+            logger.error(f"Error creando tab compras: {e}")
+    
+    def create_customers_tab(self):
+        """Crear tab de gestión de clientes"""
+        if not self.user_has_permission('clientes'):
+            return
+            
+        try:
+            customers_widget = self.create_customers_widget()
+            
+            tab_index = self.central_widget.addTab(customers_widget, "👥 Clientes")
+            self.central_widget.setTabIcon(tab_index, self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
+            
+            self.widgets['customers'] = customers_widget
+            
+        except Exception as e:
+            logger.error(f"Error creando tab clientes: {e}")
+    
+    def create_reports_tab(self):
+        """Crear tab de reportes"""
+        if not self.user_has_permission('reportes'):
+            return
+            
+        try:
+            reports_widget = self.create_reports_widget()
+            
+            tab_index = self.central_widget.addTab(reports_widget, "📈 Reportes")
+            self.central_widget.setTabIcon(tab_index, self.style().standardIcon(QStyle.SP_FileDialogInfoView))
+            
+            self.widgets['reports'] = reports_widget
+            
+        except Exception as e:
+            logger.error(f"Error creando tab reportes: {e}")
+    
+    def create_settings_tab(self):
+        """Crear tab de configuraciones"""
+        try:
+            settings_widget = self.create_settings_widget()
+            
+            tab_index = self.central_widget.addTab(settings_widget, "⚙️ Configuración")
+            self.central_widget.setTabIcon(tab_index, self.style().standardIcon(QStyle.SP_ComputerIcon))
+            
+            self.widgets['settings'] = settings_widget
+            
+        except Exception as e:
+            logger.error(f"Error creando tab configuración: {e}")
+    
+    def setup_menu_bar(self):
+        """Configurar barra de menú"""
         menubar = self.menuBar()
         
         # Menú Archivo
-        file_menu = menubar.addMenu('📁 Archivo')
+        file_menu = menubar.addMenu("&Archivo")
         
-        backup_action = QAction('💾 Sistema de Backup', self)
-        backup_action.triggered.connect(self.show_backup_dialog)
-        file_menu.addAction(backup_action)
+        # Nueva venta
+        if self.user_has_permission('ventas'):
+            new_sale_action = QAction("&Nueva Venta", self)
+            new_sale_action.setShortcut("Ctrl+N")
+            new_sale_action.setStatusTip("Crear nueva venta")
+            new_sale_action.triggered.connect(lambda: self.switch_to_tab('sales'))
+            file_menu.addAction(new_sale_action)
         
         file_menu.addSeparator()
         
-        exit_action = QAction('🚪 Salir', self)
-        exit_action.setShortcut('Ctrl+Q')
+        # Backup
+        if self.user_has_permission('backup'):
+            backup_action = QAction("&Backup", self)
+            backup_action.setStatusTip("Gestionar backups del sistema")
+            backup_action.triggered.connect(self.show_backup_dialog)
+            file_menu.addAction(backup_action)
+        
+        file_menu.addSeparator()
+        
+        # Salir
+        exit_action = QAction("&Salir", self)
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.setStatusTip("Salir de la aplicación")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
-        # Menú Herramientas
-        tools_menu = menubar.addMenu('🔧 Herramientas')
+        # Menú Ventas
+        if self.user_has_permission('ventas'):
+            sales_menu = menubar.addMenu("&Ventas")
+            
+            pos_action = QAction("&Punto de Venta", self)
+            pos_action.setShortcut("F2")
+            pos_action.triggered.connect(lambda: self.switch_to_tab('sales'))
+            sales_menu.addAction(pos_action)
+            
+            sales_history_action = QAction("&Historial de Ventas", self)
+            sales_history_action.triggered.connect(self.show_sales_history)
+            sales_menu.addAction(sales_history_action)
         
-        calculator_action = QAction('🧮 Calculadora', self)
-        calculator_action.triggered.connect(self.open_calculator)
-        tools_menu.addAction(calculator_action)
+        # Menú Stock
+        if self.user_has_permission('productos'):
+            stock_menu = menubar.addMenu("&Stock")
+            
+            products_action = QAction("&Productos", self)
+            products_action.setShortcut("F3")
+            products_action.triggered.connect(lambda: self.switch_to_tab('stock'))
+            stock_menu.addAction(products_action)
+            
+            stock_report_action = QAction("&Reporte de Stock", self)
+            stock_report_action.triggered.connect(self.show_stock_report)
+            stock_menu.addAction(stock_report_action)
+        
+        # Menú Reportes
+        if self.user_has_permission('reportes'):
+            reports_menu = menubar.addMenu("&Reportes")
+            
+            daily_report_action = QAction("Reporte &Diario", self)
+            daily_report_action.triggered.connect(self.show_daily_report)
+            reports_menu.addAction(daily_report_action)
+            
+            monthly_report_action = QAction("Reporte &Mensual", self)
+            monthly_report_action.triggered.connect(self.show_monthly_report)
+            reports_menu.addAction(monthly_report_action)
         
         # Menú Ayuda
-        help_menu = menubar.addMenu('❓ Ayuda')
+        help_menu = menubar.addMenu("A&yuda")
         
-        about_action = QAction('ℹ️ Acerca de', self)
+        about_action = QAction("&Acerca de", self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
+        
+        shortcuts_action = QAction("&Atajos de Teclado", self)
+        shortcuts_action.setShortcut("F1")
+        shortcuts_action.triggered.connect(self.show_shortcuts)
+        help_menu.addAction(shortcuts_action)
     
-    def create_status_bar(self):
-        """Crear barra de estado"""
+    def setup_toolbar(self):
+        """Configurar barra de herramientas"""
+        toolbar = self.addToolBar("Principal")
+        toolbar.setMovable(False)
+        toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        
+        # Nueva venta
+        if self.user_has_permission('ventas'):
+            new_sale_btn = QAction("Nueva Venta", self)
+            new_sale_btn.setIcon(self.style().standardIcon(QStyle.SP_FileDialogNewFolder))
+            new_sale_btn.setShortcut("Ctrl+N")
+            new_sale_btn.triggered.connect(lambda: self.switch_to_tab('sales'))
+            toolbar.addAction(new_sale_btn)
+        
+        toolbar.addSeparator()
+        
+        # Buscar producto
+        if self.user_has_permission('productos'):
+            search_product_btn = QAction("Buscar Producto", self)
+            search_product_btn.setIcon(self.style().standardIcon(QStyle.SP_FileDialogStart))
+            search_product_btn.setShortcut("Ctrl+F")
+            search_product_btn.triggered.connect(self.show_product_search)
+            toolbar.addAction(search_product_btn)
+        
+        toolbar.addSeparator()
+        
+        # Backup rápido
+        if self.user_has_permission('backup'):
+            quick_backup_btn = QAction("Backup", self)
+            quick_backup_btn.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+            quick_backup_btn.triggered.connect(self.quick_backup)
+            toolbar.addAction(quick_backup_btn)
+        
+        # Spacer
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        toolbar.addWidget(spacer)
+        
+        # Información del usuario
+        user_info = QLabel(f"👤 {self.current_user['nombre_completo']} ({self.current_user['rol_nombre']})")
+        user_info.setStyleSheet("color: #2c3e50; font-weight: bold; margin: 5px;")
+        toolbar.addWidget(user_info)
+        
+        # Cerrar sesión
+        logout_btn = QAction("Cerrar Sesión", self)
+        logout_btn.setIcon(self.style().standardIcon(QStyle.SP_DialogCancelButton))
+        logout_btn.triggered.connect(self.logout)
+        toolbar.addAction(logout_btn)
+    
+    def setup_status_bar(self):
+        """Configurar barra de estado"""
         self.status_bar = self.statusBar()
         
-        # Mensaje por defecto
-        self.status_bar.showMessage("Listo")
+        # Mensaje principal
+        self.status_message = QLabel("Sistema listo")
+        self.status_bar.addWidget(self.status_message)
         
-        # Widget de estado de conexión BD
-        self.db_status_label = QLabel("🟢 BD: Conectada")
-        self.status_bar.addPermanentWidget(self.db_status_label)
+        # Información de la base de datos
+        db_info = self.managers['db'].get_database_info()
+        db_status = QLabel(f"BD: {db_info.get('total_records', 0)} registros")
+        self.status_bar.addPermanentWidget(db_status)
         
-        # Widget de estado de backup
-        self.backup_status_label = QLabel("💾 Backup: Activo")
-        self.status_bar.addPermanentWidget(self.backup_status_label)
+        # Hora actual
+        self.time_label = QLabel()
+        self.update_time()
+        self.status_bar.addPermanentWidget(self.time_label)
         
-        # Reloj
-        self.clock_label = QLabel()
-        self.update_clock()
-        self.status_bar.addPermanentWidget(self.clock_label)
-        
-        # Timer para actualizar reloj
-        self.clock_timer = QTimer()
-        self.clock_timer.timeout.connect(self.update_clock)
-        self.clock_timer.start(1000)  # Actualizar cada segundo
+        # Timer para actualizar hora
+        self.time_timer = QTimer()
+        self.time_timer.timeout.connect(self.update_time)
+        self.time_timer.start(1000)  # Actualizar cada segundo
     
     def setup_shortcuts(self):
-        """Configurar atajos de teclado"""
-        # Atajo para backup rápido
-        backup_shortcut = QShortcut(QKeySequence("Ctrl+B"), self)
-        backup_shortcut.activated.connect(self.quick_backup)
+        """Configurar atajos de teclado globales"""
+        shortcuts = [
+            ("F2", lambda: self.switch_to_tab('sales')),
+            ("F3", lambda: self.switch_to_tab('stock')),
+            ("F4", lambda: self.switch_to_tab('purchases')),
+            ("F5", self.refresh_all),
+            ("F11", self.toggle_fullscreen),
+            ("Escape", self.handle_escape),
+            ("Ctrl+1", lambda: self.central_widget.setCurrentIndex(0)),
+            ("Ctrl+2", lambda: self.central_widget.setCurrentIndex(1)),
+            ("Ctrl+3", lambda: self.central_widget.setCurrentIndex(2)),
+        ]
         
-        # Atajo para buscar productos
-        search_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
-        search_shortcut.activated.connect(self.focus_search)
-        
-        # Atajo para nueva venta
-        new_sale_shortcut = QShortcut(QKeySequence("F2"), self)
-        new_sale_shortcut.activated.connect(self.new_sale)
+        for shortcut_key, callback in shortcuts:
+            shortcut = QShortcut(QKeySequence(shortcut_key), self)
+            shortcut.activated.connect(callback)
     
-    def setup_window_properties(self):
-        """Configurar propiedades de la ventana"""
-        # Tamaño y posición
-        if self.settings.get('ui.window_maximized', True):
-            self.showMaximized()
-        else:
-            size = self.settings.get('ui.last_window_size', [1200, 800])
-            pos = self.settings.get('ui.last_window_position', [100, 100])
-            self.resize(size[0], size[1])
-            self.move(pos[0], pos[1])
-        
-        # Icono de la ventana
-        self.setWindowIcon(QIcon())  # Aquí se puede agregar un icono personalizado
+    def setup_update_timer(self):
+        """Configurar timer para actualizaciones automáticas"""
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.periodic_update)
+        self.update_timer.start(60000)  # Actualizar cada minuto
     
-    def init_backup_system(self):
-        """Inicializar sistema de backup automático"""
+    def center_window(self):
+        """Centrar ventana en la pantalla"""
+        screen_geometry = QApplication.desktop().screenGeometry()
+        window_geometry = self.geometry()
+        x = (screen_geometry.width() - window_geometry.width()) // 2
+        y = (screen_geometry.height() - window_geometry.height()) // 2
+        self.move(x, y)
+    
+    def load_ui_settings(self):
+        """Cargar configuraciones de interfaz guardadas"""
         try:
-            if self.settings.is_backup_enabled():
-                self.backup_manager.start_automatic_backup()
-                self.backup_status_label.setText("💾 Backup: Activo")
-                logger.info("Sistema de backup automático iniciado")
-            else:
-                self.backup_status_label.setText("💾 Backup: Inactivo")
-                logger.info("Sistema de backup automático deshabilitado")
+            # Aquí se cargarían las configuraciones guardadas
+            # Por ahora usar valores por defecto
+            pass
         except Exception as e:
-            logger.error(f"Error iniciando sistema de backup: {e}")
-            self.backup_status_label.setText("💾 Backup: Error")
+            logger.error(f"Error cargando configuraciones UI: {e}")
     
-    # ==================== SLOTS Y MÉTODOS DE EVENTOS ====================
+    def show_welcome_message(self):
+        """Mostrar mensaje de bienvenida"""
+        welcome_msg = f"¡Bienvenido/a {self.current_user['nombre_completo']}!"
+        self.status_message.setText(welcome_msg)
+        
+        # Timer para limpiar mensaje después de 5 segundos
+        QTimer.singleShot(5000, lambda: self.status_message.setText("Sistema listo"))
     
-    def show_backup_dialog(self):
-        """Mostrar diálogo de gestión de backup"""
+    def update_time(self):
+        """Actualizar etiqueta de hora"""
+        current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        self.time_label.setText(current_time)
+    
+    def periodic_update(self):
+        """Actualización periódica de datos"""
         try:
-            dialog = BackupDialog(self.settings, self.backup_manager, self)
+            # Actualizar dashboard si está visible
+            if 'dashboard' in self.widgets:
+                current_tab = self.central_widget.currentWidget()
+                if current_tab == self.widgets['dashboard']:
+                    self.widgets['dashboard'].refresh_data()
+            
+            # Verificar notificaciones importantes
+            self.check_notifications()
+            
+        except Exception as e:
+            logger.error(f"Error en actualización periódica: {e}")
+    
+    def check_notifications(self):
+        """Verificar y mostrar notificaciones importantes"""
+        try:
+            # Verificar productos con stock bajo
+            low_stock_products = self.managers['product'].get_products_with_low_stock()
+            if low_stock_products:
+                count = len(low_stock_products)
+                if count <= 5:
+                    products_list = ", ".join([p['nombre'] for p in low_stock_products])
+                    self.show_notification(f"Stock bajo en: {products_list}", "warning")
+                else:
+                    self.show_notification(f"{count} productos con stock bajo", "warning")
+            
+        except Exception as e:
+            logger.error(f"Error verificando notificaciones: {e}")
+    
+    def show_notification(self, message: str, notification_type: str = "info"):
+        """Mostrar notificación en la barra de estado"""
+        color_map = {
+            "info": "#3498db",
+            "success": "#27ae60",
+            "warning": "#f39c12",
+            "error": "#e74c3c"
+        }
+        
+        color = color_map.get(notification_type, "#3498db")
+        self.status_message.setStyleSheet(f"color: {color}; font-weight: bold;")
+        self.status_message.setText(message)
+        
+        # Volver a color normal después de 3 segundos
+        QTimer.singleShot(3000, lambda: (
+            self.status_message.setStyleSheet(""),
+            self.status_message.setText("Sistema listo")
+        ))
+    
+    # Métodos de navegación
+    def switch_to_tab(self, tab_name: str):
+        """Cambiar a un tab específico"""
+        if tab_name in self.widgets:
+            widget = self.widgets[tab_name]
+            index = self.central_widget.indexOf(widget)
+            if index >= 0:
+                self.central_widget.setCurrentIndex(index)
+    
+    # Métodos de eventos
+    def on_sale_completed(self, sale_data: dict):
+        """Manejar venta completada"""
+        try:
+            sale_id = sale_data.get('id')
+            total = sale_data.get('total', 0)
+            
+            self.show_notification(f"Venta #{sale_id} completada: ${total:.2f}", "success")
+            
+            # Actualizar dashboard si está visible
+            if 'dashboard' in self.widgets:
+                self.widgets['dashboard'].refresh_data()
+            
+        except Exception as e:
+            logger.error(f"Error procesando venta completada: {e}")
+    
+    # Métodos de diálogos
+    def show_backup_dialog(self):
+        """Mostrar diálogo de backup"""
+        try:
+            dialog = BackupDialog(self.managers['backup'], self)
             dialog.exec_()
         except Exception as e:
-            logger.error(f"Error mostrando diálogo de backup: {e}")
-            QMessageBox.critical(self, "Error", f"Error abriendo sistema de backup:\n{str(e)}")
+            logger.error(f"Error mostrando diálogo backup: {e}")
+            QMessageBox.warning(self, "Error", f"No se pudo abrir el diálogo de backup: {e}")
     
-    def show_settings_dialog(self):
-        """Mostrar diálogo de configuraciones"""
-        QMessageBox.information(self, "Configuraciones", "Diálogo de configuraciones en desarrollo")
+    def show_about(self):
+        """Mostrar información sobre la aplicación"""
+        about_text = """
+        <h2>AlmacénPro v2.0</h2>
+        <p><b>Sistema ERP/POS Completo</b></p>
+        <p>Sistema profesional de gestión para almacenes, kioscos y distribuidoras.</p>
+        <br>
+        <p><b>Características principales:</b></p>
+        <ul>
+        <li>Punto de venta (POS) completo</li>
+        <li>Gestión de inventario y stock</li>
+        <li>Control de compras y proveedores</li>
+        <li>Reportes y estadísticas</li>
+        <li>Sistema de backup automático</li>
+        <li>Gestión de usuarios y roles</li>
+        </ul>
+        <br>
+        <p>Desarrollado con Python y PyQt5</p>
+        """
+        
+        QMessageBox.about(self, "Acerca de AlmacénPro", about_text)
+    
+    def show_shortcuts(self):
+        """Mostrar atajos de teclado"""
+        shortcuts_text = """
+        <h3>Atajos de Teclado</h3>
+        <table>
+        <tr><td><b>F1</b></td><td>Ayuda</td></tr>
+        <tr><td><b>F2</b></td><td>Punto de Venta</td></tr>
+        <tr><td><b>F3</b></td><td>Stock/Productos</td></tr>
+        <tr><td><b>F4</b></td><td>Compras</td></tr>
+        <tr><td><b>F5</b></td><td>Actualizar</td></tr>
+        <tr><td><b>F11</b></td><td>Pantalla completa</td></tr>
+        <tr><td><b>Ctrl+N</b></td><td>Nueva venta</td></tr>
+        <tr><td><b>Ctrl+F</b></td><td>Buscar producto</td></tr>
+        <tr><td><b>Ctrl+Q</b></td><td>Salir</td></tr>
+        <tr><td><b>Ctrl+1-3</b></td><td>Cambiar tab</td></tr>
+        <tr><td><b>Escape</b></td><td>Cancelar acción</td></tr>
+        </table>
+        """
+        
+        QMessageBox.information(self, "Atajos de Teclado", shortcuts_text)
+    
+    # Métodos de acciones
+    def quick_backup(self):
+        """Realizar backup rápido"""
+        try:
+            self.show_notification("Creando backup...", "info")
+            
+            # Crear backup en hilo separado para no bloquear UI
+            backup_thread = BackupThread(self.managers['backup'])
+            backup_thread.backup_completed.connect(self.on_backup_completed)
+            backup_thread.backup_failed.connect(self.on_backup_failed)
+            backup_thread.start()
+            
+        except Exception as e:
+            logger.error(f"Error iniciando backup: {e}")
+            self.show_notification("Error iniciando backup", "error")
+    
+    def on_backup_completed(self, backup_path: str):
+        """Callback cuando backup se completa"""
+        self.show_notification("Backup creado exitosamente", "success")
+    
+    def on_backup_failed(self, error_message: str):
+        """Callback cuando backup falla"""
+        self.show_notification("Error creando backup", "error")
+        logger.error(f"Backup failed: {error_message}")
+    
+    def refresh_all(self):
+        """Actualizar todos los widgets"""
+        try:
+            self.show_notification("Actualizando datos...", "info")
+            
+            for widget_name, widget in self.widgets.items():
+                if hasattr(widget, 'refresh_data'):
+                    widget.refresh_data()
+            
+            self.show_notification("Datos actualizados", "success")
+            
+        except Exception as e:
+            logger.error(f"Error actualizando datos: {e}")
+            self.show_notification("Error actualizando datos", "error")
+    
+    def toggle_fullscreen(self):
+        """Alternar pantalla completa"""
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+    
+    def handle_escape(self):
+        """Manejar tecla Escape"""
+        # Si está en pantalla completa, salir
+        if self.isFullScreen():
+            self.showNormal()
+        # Otro comportamiento según el contexto
     
     def logout(self):
         """Cerrar sesión"""
         reply = QMessageBox.question(
-            self, "Cerrar Sesión", 
-            "¿Está seguro de que desea cerrar la sesión?",
+            self, 
+            "Cerrar Sesión",
+            "¿Está seguro que desea cerrar la sesión?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
         
         if reply == QMessageBox.Yes:
-            # Guardar configuraciones de ventana
-            self.save_window_settings()
-            
-            # Detener sistema de backup
-            if hasattr(self, 'backup_manager'):
-                self.backup_manager.stop_automatic_backup()
-            
-            # Cerrar base de datos
-            if hasattr(self, 'db_manager'):
-                self.db_manager.close()
-            
-            logger.info("Sesión cerrada por el usuario")
-            self.close()
+            self.logout_requested.emit()
     
-    def update_clock(self):
-        """Actualizar reloj en la barra de estado"""
-        current_time = QDateTime.currentDateTime().toString('hh:mm:ss')
-        self.clock_label.setText(f"🕐 {current_time}")
-    
-    def update_dashboard_metrics(self):
-        """Actualizar métricas del dashboard"""
-        # Aquí se implementará la actualización de métricas reales
-        pass
-    
-    def load_stock_data(self):
-        """Cargar datos de stock en la tabla"""
+    # Métodos de utilidad
+    def user_has_permission(self, permission: str) -> bool:
+        """Verificar si el usuario actual tiene un permiso"""
         try:
-            products = self.product_manager.get_all_products()
-            
-            self.stock_table.setRowCount(len(products))
-            
-            for i, product in enumerate(products):
-                # Código de barras
-                self.stock_table.setItem(i, 0, QTableWidgetItem(product.get('codigo_barras', '')))
-                
-                # Nombre del producto
-                self.stock_table.setItem(i, 1, QTableWidgetItem(product['nombre']))
-                
-                # Categoría
-                self.stock_table.setItem(i, 2, QTableWidgetItem(product.get('categoria_nombre', '')))
-                
-                # Stock actual
-                stock_item = QTableWidgetItem(str(product['stock_actual']))
-                if product['stock_actual'] <= 0:
-                    stock_item.setForeground(QColor('red'))
-                elif product['stock_actual'] <= product.get('stock_minimo', 0):
-                    stock_item.setForeground(QColor('orange'))
-                self.stock_table.setItem(i, 3, stock_item)
-                
-                # Stock mínimo
-                self.stock_table.setItem(i, 4, QTableWidgetItem(str(product.get('stock_minimo', 0))))
-                
-                # Precio de venta
-                self.stock_table.setItem(i, 5, QTableWidgetItem(f"${product.get('precio_venta', 0):.2f}"))
-                
-                # Estado
-                if product['stock_actual'] <= 0:
-                    status = "SIN STOCK"
-                    color = QColor('red')
-                elif product['stock_actual'] <= product.get('stock_minimo', 0):
-                    status = "STOCK BAJO"
-                    color = QColor('orange')
-                else:
-                    status = "OK"
-                    color = QColor('green')
-                
-                status_item = QTableWidgetItem(status)
-                status_item.setForeground(color)
-                self.stock_table.setItem(i, 6, status_item)
-                
-                # Botones de acción (placeholder)
-                actions_widget = QWidget()
-                actions_layout = QHBoxLayout(actions_widget)
-                actions_layout.setContentsMargins(5, 5, 5, 5)
-                
-                edit_btn = QPushButton("✏️")
-                edit_btn.setFixedSize(30, 25)
-                edit_btn.setToolTip("Editar producto")
-                actions_layout.addWidget(edit_btn)
-                
-                self.stock_table.setCellWidget(i, 7, actions_widget)
-                
-        except Exception as e:
-            logger.error(f"Error cargando datos de stock: {e}")
-            QMessageBox.critical(self, "Error", f"Error cargando productos:\n{str(e)}")
+            return self.managers['user'].user_has_permission(self.current_user['id'], permission)
+        except Exception:
+            return False
     
-    def save_window_settings(self):
-        """Guardar configuraciones de la ventana"""
-        try:
-            self.settings.update_ui_settings(
-                window_maximized=self.isMaximized(),
-                last_window_size=[self.width(), self.height()],
-                last_window_position=[self.x(), self.y()]
-            )
-        except Exception as e:
-            logger.error(f"Error guardando configuraciones de ventana: {e}")
+    # Métodos de widgets placeholder (a ser implementados)
+    def create_purchases_widget(self) -> QWidget:
+        """Crear widget de compras (placeholder)"""
+        widget = QLabel("Módulo de Compras\n\nEn desarrollo...")
+        widget.setAlignment(Qt.AlignCenter)
+        widget.setStyleSheet("font-size: 16px; color: #7f8c8d;")
+        return widget
     
-    # ==================== MÉTODOS PLACEHOLDER ====================
-    # (Implementar según se vayan desarrollando los módulos)
+    def create_customers_widget(self) -> QWidget:
+        """Crear widget de clientes (placeholder)"""
+        widget = QLabel("Módulo de Clientes\n\nEn desarrollo...")
+        widget.setAlignment(Qt.AlignCenter)
+        widget.setStyleSheet("font-size: 16px; color: #7f8c8d;")
+        return widget
     
-    def add_product(self):
-        QMessageBox.information(self, "Función", "Agregar producto - En desarrollo")
+    def create_reports_widget(self) -> QWidget:
+        """Crear widget de reportes (placeholder)"""
+        widget = QLabel("Módulo de Reportes\n\nEn desarrollo...")
+        widget.setAlignment(Qt.AlignCenter)
+        widget.setStyleSheet("font-size: 16px; color: #7f8c8d;")
+        return widget
     
-    def import_products(self):
-        QMessageBox.information(self, "Función", "Importar productos - En desarrollo")
+    def create_settings_widget(self) -> QWidget:
+        """Crear widget de configuraciones (placeholder)"""
+        widget = QLabel("Configuraciones del Sistema\n\nEn desarrollo...")
+        widget.setAlignment(Qt.AlignCenter)
+        widget.setStyleSheet("font-size: 16px; color: #7f8c8d;")
+        return widget
     
-    def show_stock_alerts(self):
-        QMessageBox.information(self, "Función", "Alertas de stock - En desarrollo")
+    # Métodos placeholder para reportes
+    def show_sales_history(self):
+        """Mostrar historial de ventas"""
+        QMessageBox.information(self, "Información", "Funcionalidad en desarrollo")
     
-    def refresh_stock(self):
-        self.load_stock_data()
-        self.status_bar.showMessage("Stock actualizado", 2000)
+    def show_stock_report(self):
+        """Mostrar reporte de stock"""
+        QMessageBox.information(self, "Información", "Funcionalidad en desarrollo")
     
-    def generate_report(self, report_type: str):
-        QMessageBox.information(self, "Reportes", f"Reporte {report_type} - En desarrollo")
+    def show_daily_report(self):
+        """Mostrar reporte diario"""
+        QMessageBox.information(self, "Información", "Funcionalidad en desarrollo")
     
-    def manage_users(self):
-        QMessageBox.information(self, "Admin", "Gestión de usuarios - En desarrollo")
+    def show_monthly_report(self):
+        """Mostrar reporte mensual"""
+        QMessageBox.information(self, "Información", "Funcionalidad en desarrollo")
     
-    def manage_roles(self):
-        QMessageBox.information(self, "Admin", "Gestión de roles - En desarrollo")
+    def show_product_search(self):
+        """Mostrar búsqueda de productos"""
+        QMessageBox.information(self, "Información", "Funcionalidad en desarrollo")
     
-    def configure_company(self):
-        QMessageBox.information(self, "Config", "Configuración de empresa - En desarrollo")
-    
-    def show_db_stats(self):
-        try:
-            stats = self.db_manager.get_database_stats()
-            stats_text = f"""
-            Estadísticas de Base de Datos:
-            
-            Tamaño del archivo: {stats.get('file_size_mb', 0):.2f} MB
-            
-            Registros por tabla:
-            • Productos: {stats.get('productos_count', 0)}
-            • Ventas: {stats.get('ventas_count', 0)}
-            • Compras: {stats.get('compras_count', 0)}
-            • Clientes: {stats.get('clientes_count', 0)}
-            • Proveedores: {stats.get('proveedores_count', 0)}
-            • Usuarios: {stats.get('usuarios_count', 0)}
-            """
-            QMessageBox.information(self, "Estadísticas de BD", stats_text)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error obteniendo estadísticas:\n{str(e)}")
-    
-    def optimize_database(self):
-        reply = QMessageBox.question(
-            self, "Optimizar BD",
-            "¿Desea optimizar la base de datos?\nEsto puede tardar unos minutos.",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            try:
-                self.db_manager.vacuum_database()
-                QMessageBox.information(self, "Éxito", "Base de datos optimizada correctamente")
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Error optimizando BD:\n{str(e)}")
-    
-    def view_system_logs(self):
-        QMessageBox.information(self, "Logs", "Visor de logs - En desarrollo")
-    
-    def show_audit_trail(self):
-        QMessageBox.information(self, "Auditoría", "Pista de auditoría - En desarrollo")
-    
-    def open_calculator(self):
-        try:
-            import subprocess
-            subprocess.Popen(['calc.exe'])
-        except:
-            QMessageBox.warning(self, "Calculadora", "No se pudo abrir la calculadora del sistema")
-    
-    def show_about(self):
-        QMessageBox.about(self, "Acerca de AlmacénPro", 
-            """
-            <h2>AlmacénPro v2.0</h2>
-            <p><b>Sistema ERP/POS Completo</b></p>
-            <p>Desarrollado en Python con PyQt5</p>
-            <p><b>Funcionalidades:</b></p>
-            <ul>
-            <li>✅ Sistema de ventas con scanner</li>
-            <li>✅ Gestión completa de stock</li>
-            <li>✅ Compras y proveedores</li>
-            <li>✅ Reportes avanzados</li>
-            <li>✅ Sistema de backup automático</li>
-            <li>✅ Multi-usuario con permisos</li>
-            </ul>
-            <p><i>Arquitectura modular profesional</i></p>
-            """)
-    
-    def quick_backup(self):
-        """Crear backup rápido con atajo de teclado"""
-        try:
-            self.status_bar.showMessage("Creando backup rápido...")
-            success, message, _ = self.backup_manager.create_backup("Backup manual rápido")
-            
-            if success:
-                self.status_bar.showMessage("Backup creado exitosamente", 3000)
-            else:
-                self.status_bar.showMessage("Error creando backup", 3000)
-                QMessageBox.critical(self, "Error de Backup", message)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error en backup rápido:\n{str(e)}")
-    
-    def focus_search(self):
-        """Dar foco al campo de búsqueda"""
-        # Cambiar a pestaña de ventas y enfocar búsqueda
-        for i in range(self.tab_widget.count()):
-            if "Ventas" in self.tab_widget.tabText(i):
-                self.tab_widget.setCurrentIndex(i)
-                break
-    
-    def new_sale(self):
-        """Iniciar nueva venta"""
-        self.focus_search()
-    
+    # Métodos de eventos de ventana
     def closeEvent(self, event):
-        """Manejar cierre de la aplicación"""
+        """Manejar cierre de ventana"""
         reply = QMessageBox.question(
-            self, "Salir de AlmacénPro",
-            "¿Está seguro de que desea salir?",
+            self,
+            "Salir",
+            "¿Está seguro que desea salir del sistema?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
         
         if reply == QMessageBox.Yes:
-            self.save_window_settings()
+            # Guardar configuraciones de la ventana
+            self.save_ui_settings()
             
-            # Detener sistema de backup
-            if hasattr(self, 'backup_manager'):
-                self.backup_manager.stop_automatic_backup()
+            # Detener timers
+            if hasattr(self, 'time_timer'):
+                self.time_timer.stop()
+            if hasattr(self, 'update_timer'):
+                self.update_timer.stop()
             
-            # Cerrar base de datos
-            if hasattr(self, 'db_manager'):
-                self.db_manager.close()
-            
+            # Emitir señal de salida
+            self.app_exit_requested.emit()
             event.accept()
-            logger.info("Aplicación cerrada correctamente")
         else:
             event.ignore()
+    
+    def save_ui_settings(self):
+        """Guardar configuraciones de la ventana"""
+        try:
+            # Aquí se guardarían las configuraciones
+            # como tamaño de ventana, posición, etc.
+            pass
+        except Exception as e:
+            logger.error(f"Error guardando configuraciones UI: {e}")
+
+
+class BackupThread(QThread):
+    """Hilo para realizar backup sin bloquear la UI"""
+    
+    backup_completed = pyqtSignal(str)
+    backup_failed = pyqtSignal(str)
+    
+    def __init__(self, backup_manager):
+        super().__init__()
+        self.backup_manager = backup_manager
+    
+    def run(self):
+        """Ejecutar backup"""
+        try:
+            backup_path = self.backup_manager.create_manual_backup()
+            if backup_path:
+                self.backup_completed.emit(str(backup_path))
+            else:
+                self.backup_failed.emit("Error desconocido creando backup")
+        except Exception as e:
+            self.backup_failed.emit(str(e))

@@ -1,310 +1,407 @@
 """
-Configuraciones globales de AlmacénPro
+Configuraciones globales para AlmacénPro v2.0
+Manejo centralizado de configuraciones del sistema
 """
 
-import json
 import os
+import json
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
-import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-class AppSettings:
-    """Gestor de configuraciones de la aplicación"""
+class Settings:
+    """Gestor de configuraciones del sistema"""
     
-    def __init__(self, config_file: str = "config.json"):
-        self.config_file = Path(config_file)
-        self.settings = self._load_default_settings()
-        self.load_from_file()
-    
-    def _load_default_settings(self) -> Dict[str, Any]:
-        """Cargar configuraciones por defecto"""
-        return {
-            # Configuraciones de base de datos
-            "database": {
-                "type": "sqlite",
-                "sqlite_path": "data/almacen_pro.db",
-                "postgresql": {
-                    "host": "localhost",
-                    "port": 5432,
-                    "database": "almacen_pro",
-                    "username": "",
-                    "password": ""
-                }
+    # Configuraciones por defecto
+    DEFAULT_SETTINGS = {
+        # Base de datos
+        'database': {
+            'path': 'almacen_pro.db',
+            'backup_on_startup': True,
+            'optimize_on_startup': True,
+            'enable_foreign_keys': True
+        },
+        
+        # Interfaz de usuario
+        'ui': {
+            'theme': 'default',
+            'language': 'es',
+            'window_size': {'width': 1200, 'height': 800},
+            'window_maximized': False,
+            'show_splash': True,
+            'auto_save_layout': True,
+            'grid_lines': True,
+            'row_height': 25
+        },
+        
+        # Ventas
+        'sales': {
+            'auto_print_ticket': False,
+            'ask_customer_data': False,
+            'allow_negative_stock': False,
+            'default_payment_method': 'EFECTIVO',
+            'tax_included': True,
+            'default_tax_rate': 21.0,
+            'round_totals': True,
+            'ticket_copies': 1
+        },
+        
+        # Productos
+        'products': {
+            'auto_generate_barcode': True,
+            'barcode_prefix': '200',
+            'require_category': False,
+            'require_provider': False,
+            'default_unit': 'UNIDAD',
+            'track_lot_numbers': False,
+            'track_expiration': False,
+            'low_stock_warning': True,
+            'low_stock_days': 30
+        },
+        
+        # Reportes
+        'reports': {
+            'default_format': 'PDF',
+            'include_logo': True,
+            'company_name': 'Mi Empresa',
+            'company_address': '',
+            'company_phone': '',
+            'company_email': '',
+            'auto_open_reports': True
+        },
+        
+        # Backup
+        'backup': {
+            'enabled': True,
+            'auto_backup': True,
+            'backup_interval': 24,  # horas
+            'keep_backups': 30,     # días
+            'compress_backups': True,
+            'backup_location': 'backups',
+            'include_images': True,
+            'cloud_backup': False
+        },
+        
+        # Seguridad
+        'security': {
+            'session_timeout': 480,  # minutos (8 horas)
+            'password_min_length': 6,
+            'require_strong_password': False,
+            'max_login_attempts': 5,
+            'lockout_duration': 15,  # minutos
+            'log_user_actions': True
+        },
+        
+        # Sistema
+        'system': {
+            'log_level': 'INFO',
+            'log_file_size': 10,  # MB
+            'log_files_keep': 5,
+            'enable_notifications': True,
+            'check_updates': True,
+            'send_usage_stats': False
+        },
+        
+        # Hardware
+        'hardware': {
+            'default_printer': '',
+            'ticket_printer': '',
+            'barcode_scanner': {
+                'enabled': True,
+                'auto_search': True,
+                'play_sound': True,
+                'prefix': '',
+                'suffix': ''
             },
-            
-            # Configuraciones de backup
-            "backup": {
-                "enabled": True,
-                "auto_backup": True,
-                "backup_interval_hours": 24,
-                "backup_path": "backups",
-                "max_backups": 30,
-                "compress_backups": True,
-                "cloud_backup": {
-                    "enabled": False,
-                    "provider": "google_drive",  # google_drive, dropbox, onedrive
-                    "credentials_file": "",
-                    "remote_folder": "AlmacenPro_Backups"
-                }
+            'cash_drawer': {
+                'enabled': False,
+                'open_on_sale': True,
+                'open_command': ''
             },
-            
-            # Configuraciones de la empresa
-            "company": {
-                "name": "Mi Almacén",
-                "address": "",
-                "phone": "",
-                "email": "",
-                "cuit": "",
-                "logo_path": ""
-            },
-            
-            # Configuraciones de tickets
-            "tickets": {
-                "printer_name": "",
-                "paper_width": 80,  # mm
-                "auto_print": False,
-                "copy_count": 1,
-                "footer_message": "¡Gracias por su compra!",
-                "include_logo": False
-            },
-            
-            # Configuraciones de interfaz
-            "ui": {
-                "theme": "light",  # light, dark
-                "language": "es",
-                "font_size": 9,
-                "window_maximized": True,
-                "last_window_size": [1200, 800],
-                "last_window_position": [100, 100]
-            },
-            
-            # Configuraciones de notificaciones
-            "notifications": {
-                "enabled": True,
-                "low_stock_alerts": True,
-                "daily_sales_summary": True,
-                "backup_notifications": True,
-                "system_notifications": True
-            },
-            
-            # Configuraciones de sincronización
-            "sync": {
-                "enabled": False,
-                "server_url": "",
-                "api_key": "",
-                "sync_interval_minutes": 30,
-                "offline_mode": True
-            },
-            
-            # Configuraciones de hardware
-            "hardware": {
-                "barcode_scanner": {
-                    "enabled": True,
-                    "port": "auto",
-                    "prefix": "",
-                    "suffix": ""
-                },
-                "cash_drawer": {
-                    "enabled": False,
-                    "port": "COM1",
-                    "open_command": ""
-                },
-                "scale": {
-                    "enabled": False,
-                    "port": "COM2",
-                    "brand": "toledo",  # toledo, systel, other
-                    "model": ""
-                }
-            },
-            
-            # Configuraciones de seguridad
-            "security": {
-                "session_timeout_minutes": 480,  # 8 horas
-                "password_min_length": 6,
-                "lock_after_attempts": 5,
-                "audit_log": True
-            },
-            
-            # Configuraciones de reportes
-            "reports": {
-                "default_export_format": "pdf",  # pdf, excel, csv
-                "include_charts": True,
-                "auto_save_path": "exports"
+            'display_customer': {
+                'enabled': False,
+                'port': '',
+                'show_total': True,
+                'show_change': True
             }
         }
+    }
     
-    def load_from_file(self) -> bool:
+    def __init__(self, config_file: str = 'config.json'):
+        self.config_file = Path(config_file)
+        self.settings = {}
+        self.load_settings()
+    
+    def load_settings(self):
         """Cargar configuraciones desde archivo"""
         try:
             if self.config_file.exists():
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     file_settings = json.load(f)
                 
-                # Fusionar configuraciones (mantener estructura por defecto)
-                self._merge_settings(self.settings, file_settings)
-                logger.info(f"Configuraciones cargadas desde {self.config_file}")
-                return True
+                # Combinar con configuraciones por defecto
+                self.settings = self._merge_settings(self.DEFAULT_SETTINGS.copy(), file_settings)
+                logger.info("Configuraciones cargadas desde archivo")
             else:
-                logger.info("Archivo de configuración no existe, usando valores por defecto")
-                self.save_to_file()  # Crear archivo con valores por defecto
-                return False
+                # Usar configuraciones por defecto
+                self.settings = self.DEFAULT_SETTINGS.copy()
+                self.save_settings()
+                logger.info("Configuraciones por defecto creadas")
+                
         except Exception as e:
             logger.error(f"Error cargando configuraciones: {e}")
-            return False
+            self.settings = self.DEFAULT_SETTINGS.copy()
     
-    def save_to_file(self) -> bool:
-        """Guardar configuraciones en archivo"""
+    def save_settings(self):
+        """Guardar configuraciones a archivo"""
         try:
             # Crear directorio si no existe
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
             
+            # Guardar con formato bonito
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.settings, f, indent=4, ensure_ascii=False)
             
-            logger.info(f"Configuraciones guardadas en {self.config_file}")
-            return True
+            logger.info("Configuraciones guardadas")
+            
         except Exception as e:
             logger.error(f"Error guardando configuraciones: {e}")
-            return False
     
-    def _merge_settings(self, default: Dict, file_settings: Dict):
-        """Fusionar configuraciones manteniendo estructura por defecto"""
-        for key, value in file_settings.items():
-            if key in default:
-                if isinstance(value, dict) and isinstance(default[key], dict):
-                    self._merge_settings(default[key], value)
-                else:
-                    default[key] = value
-    
-    def get(self, key_path: str, default: Any = None) -> Any:
-        """
-        Obtener valor de configuración usando notación de punto
-        Ejemplo: get('backup.enabled') o get('database.sqlite_path')
-        """
-        keys = key_path.split('.')
-        value = self.settings
-        
+    def get(self, key: str, default: Any = None) -> Any:
+        """Obtener valor de configuración usando notación de punto"""
         try:
-            for key in keys:
-                value = value[key]
+            keys = key.split('.')
+            value = self.settings
+            
+            for k in keys:
+                if isinstance(value, dict) and k in value:
+                    value = value[k]
+                else:
+                    return default
+            
             return value
-        except (KeyError, TypeError):
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo configuración '{key}': {e}")
             return default
     
-    def set(self, key_path: str, value: Any) -> bool:
-        """
-        Establecer valor de configuración usando notación de punto
-        Ejemplo: set('backup.enabled', True)
-        """
-        keys = key_path.split('.')
-        settings = self.settings
-        
+    def set(self, key: str, value: Any, save: bool = True):
+        """Establecer valor de configuración usando notación de punto"""
         try:
-            # Navegar hasta el penúltimo nivel
-            for key in keys[:-1]:
-                if key not in settings:
-                    settings[key] = {}
-                settings = settings[key]
+            keys = key.split('.')
+            current = self.settings
             
-            # Establecer el valor final
-            settings[keys[-1]] = value
-            return True
+            # Navegar hasta el penúltimo nivel
+            for k in keys[:-1]:
+                if k not in current or not isinstance(current[k], dict):
+                    current[k] = {}
+                current = current[k]
+            
+            # Establecer valor
+            current[keys[-1]] = value
+            
+            if save:
+                self.save_settings()
+            
+            logger.debug(f"Configuración establecida: {key} = {value}")
+            
         except Exception as e:
-            logger.error(f"Error estableciendo configuración {key_path}: {e}")
-            return False
+            logger.error(f"Error estableciendo configuración '{key}': {e}")
     
-    def get_database_path(self) -> str:
-        """Obtener ruta completa de la base de datos"""
-        db_path = self.get('database.sqlite_path')
-        if not os.path.isabs(db_path):
-            # Ruta relativa, convertir a absoluta
-            root_dir = Path(__file__).parent.parent
-            db_path = root_dir / db_path
-        return str(db_path)
+    def get_database_config(self) -> Dict[str, Any]:
+        """Obtener configuración de base de datos"""
+        return self.get('database', {})
     
-    def get_backup_path(self) -> Path:
-        """Obtener ruta completa de backups"""
-        backup_path = self.get('backup.backup_path')
-        if not os.path.isabs(backup_path):
-            root_dir = Path(__file__).parent.parent
-            backup_path = root_dir / backup_path
-        
-        backup_path = Path(backup_path)
-        backup_path.mkdir(parents=True, exist_ok=True)
-        return backup_path
+    def get_ui_config(self) -> Dict[str, Any]:
+        """Obtener configuración de interfaz"""
+        return self.get('ui', {})
     
-    def is_backup_enabled(self) -> bool:
-        """Verificar si el backup está habilitado"""
-        return self.get('backup.enabled', False) and self.get('backup.auto_backup', False)
+    def get_sales_config(self) -> Dict[str, Any]:
+        """Obtener configuración de ventas"""
+        return self.get('sales', {})
     
-    def get_backup_interval_seconds(self) -> int:
-        """Obtener intervalo de backup en segundos"""
-        hours = self.get('backup.backup_interval_hours', 24)
-        return hours * 3600
+    def get_backup_config(self) -> Dict[str, Any]:
+        """Obtener configuración de backup"""
+        return self.get('backup', {})
     
-    def update_ui_settings(self, **kwargs):
-        """Actualizar configuraciones de UI"""
-        for key, value in kwargs.items():
-            self.set(f'ui.{key}', value)
-        self.save_to_file()
+    def get_security_config(self) -> Dict[str, Any]:
+        """Obtener configuración de seguridad"""
+        return self.get('security', {})
     
-    def update_company_info(self, **kwargs):
-        """Actualizar información de la empresa"""
-        for key, value in kwargs.items():
-            self.set(f'company.{key}', value)
-        self.save_to_file()
-    
-    def update_backup_settings(self, **kwargs):
-        """Actualizar configuraciones de backup"""
-        for key, value in kwargs.items():
-            self.set(f'backup.{key}', value)
-        self.save_to_file()
-    
-    def export_settings(self, file_path: str) -> bool:
-        """Exportar configuraciones a un archivo"""
+    def reset_to_defaults(self, section: str = None):
+        """Resetear configuraciones a valores por defecto"""
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(self.settings, f, indent=4, ensure_ascii=False)
+            if section:
+                if section in self.DEFAULT_SETTINGS:
+                    self.settings[section] = self.DEFAULT_SETTINGS[section].copy()
+                    logger.info(f"Sección '{section}' reseteada a valores por defecto")
+                else:
+                    logger.warning(f"Sección '{section}' no encontrada")
+            else:
+                self.settings = self.DEFAULT_SETTINGS.copy()
+                logger.info("Todas las configuraciones reseteadas a valores por defecto")
+            
+            self.save_settings()
+            
+        except Exception as e:
+            logger.error(f"Error reseteando configuraciones: {e}")
+    
+    def export_settings(self, export_file: str) -> bool:
+        """Exportar configuraciones a archivo"""
+        try:
+            export_path = Path(export_file)
+            export_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            export_data = {
+                'exported_at': datetime.now().isoformat(),
+                'version': '2.0',
+                'settings': self.settings
+            }
+            
+            with open(export_path, 'w', encoding='utf-8') as f:
+                json.dump(export_data, f, indent=4, ensure_ascii=False)
+            
+            logger.info(f"Configuraciones exportadas a: {export_file}")
             return True
+            
         except Exception as e:
             logger.error(f"Error exportando configuraciones: {e}")
             return False
     
-    def import_settings(self, file_path: str) -> bool:
-        """Importar configuraciones desde un archivo"""
+    def import_settings(self, import_file: str, overwrite: bool = False) -> bool:
+        """Importar configuraciones desde archivo"""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                imported_settings = json.load(f)
+            import_path = Path(import_file)
+            if not import_path.exists():
+                logger.error(f"Archivo de importación no encontrado: {import_file}")
+                return False
             
-            # Hacer backup de configuraciones actuales
-            backup_file = self.config_file.with_suffix('.bak')
-            self.export_settings(str(backup_file))
+            with open(import_path, 'r', encoding='utf-8') as f:
+                import_data = json.load(f)
             
-            # Fusionar configuraciones importadas
-            self._merge_settings(self.settings, imported_settings)
-            self.save_to_file()
+            if 'settings' not in import_data:
+                logger.error("Archivo de importación inválido")
+                return False
             
-            logger.info(f"Configuraciones importadas desde {file_path}")
+            imported_settings = import_data['settings']
+            
+            if overwrite:
+                # Sobrescribir completamente
+                self.settings = self._merge_settings(self.DEFAULT_SETTINGS.copy(), imported_settings)
+            else:
+                # Combinar con configuraciones existentes
+                self.settings = self._merge_settings(self.settings, imported_settings)
+            
+            self.save_settings()
+            logger.info(f"Configuraciones importadas desde: {import_file}")
             return True
+            
         except Exception as e:
             logger.error(f"Error importando configuraciones: {e}")
             return False
     
-    def reset_to_defaults(self) -> bool:
-        """Restaurar configuraciones por defecto"""
+    def validate_settings(self) -> Dict[str, list]:
+        """Validar configuraciones actuales"""
+        errors = {}
+        warnings = {}
+        
         try:
-            # Hacer backup de configuraciones actuales
-            backup_file = self.config_file.with_suffix('.bak')
-            self.export_settings(str(backup_file))
+            # Validar base de datos
+            db_path = self.get('database.path')
+            if not db_path:
+                errors.setdefault('database', []).append("Ruta de base de datos requerida")
             
-            # Restaurar valores por defecto
-            self.settings = self._load_default_settings()
-            self.save_to_file()
+            # Validar backup
+            if self.get('backup.enabled'):
+                backup_location = self.get('backup.backup_location')
+                if not backup_location:
+                    errors.setdefault('backup', []).append("Ubicación de backup requerida")
+                
+                backup_interval = self.get('backup.backup_interval', 0)
+                if backup_interval <= 0 or backup_interval > 168:  # 1 semana máximo
+                    warnings.setdefault('backup', []).append("Intervalo de backup debería estar entre 1 y 168 horas")
             
-            logger.info("Configuraciones restauradas a valores por defecto")
-            return True
+            # Validar seguridad
+            session_timeout = self.get('security.session_timeout', 0)
+            if session_timeout <= 0:
+                warnings.setdefault('security', []).append("Timeout de sesión debería ser mayor a 0")
+            
+            password_length = self.get('security.password_min_length', 0)
+            if password_length < 4:
+                warnings.setdefault('security', []).append("Longitud mínima de contraseña debería ser al menos 4")
+            
+            # Validar ventas
+            tax_rate = self.get('sales.default_tax_rate', 0)
+            if tax_rate < 0 or tax_rate > 100:
+                errors.setdefault('sales', []).append("Tasa de impuesto debe estar entre 0 y 100")
+            
+            return {'errors': errors, 'warnings': warnings}
+            
         except Exception as e:
-            logger.error(f"Error restaurando configuraciones: {e}")
-            return False
+            logger.error(f"Error validando configuraciones: {e}")
+            return {'errors': {'general': [str(e)]}, 'warnings': {}}
+    
+    def _merge_settings(self, base: dict, overlay: dict) -> dict:
+        """Combinar configuraciones recursivamente"""
+        result = base.copy()
+        
+        for key, value in overlay.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._merge_settings(result[key], value)
+            else:
+                result[key] = value
+        
+        return result
+    
+    def get_company_info(self) -> Dict[str, str]:
+        """Obtener información de la empresa"""
+        return {
+            'name': self.get('reports.company_name', 'Mi Empresa'),
+            'address': self.get('reports.company_address', ''),
+            'phone': self.get('reports.company_phone', ''),
+            'email': self.get('reports.company_email', ''),
+        }
+    
+    def update_company_info(self, name: str = None, address: str = None, 
+                           phone: str = None, email: str = None):
+        """Actualizar información de la empresa"""
+        if name is not None:
+            self.set('reports.company_name', name, False)
+        if address is not None:
+            self.set('reports.company_address', address, False)
+        if phone is not None:
+            self.set('reports.company_phone', phone, False)
+        if email is not None:
+            self.set('reports.company_email', email, False)
+        
+        self.save_settings()
+    
+    def is_first_run(self) -> bool:
+        """Verificar si es la primera ejecución"""
+        return not self.config_file.exists()
+    
+    def create_directories(self):
+        """Crear directorios necesarios según configuración"""
+        try:
+            directories = [
+                'logs',
+                self.get('backup.backup_location', 'backups'),
+                'temp',
+                'reports',
+                'images/products',
+                'data'
+            ]
+            
+            for directory in directories:
+                Path(directory).mkdir(parents=True, exist_ok=True)
+                
+            logger.info("Directorios del sistema creados")
+            
+        except Exception as e:
+            logger.error(f"Error creando directorios: {e}")
+
+# Instancia global de configuraciones
+settings = Settings()

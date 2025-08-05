@@ -1,83 +1,235 @@
-# AlmacénPro - Dependencias del Proyecto
-# =====================================
+# AlmacénPro v2.0 - Dependencias del Proyecto
+# Sistema ERP/POS Completo
 
-# Interfaz Gráfica
-PyQt5>=5.15.0
-PyQt5-tools>=5.15.0
+# ============================================================================
+# INTERFAZ GRÁFICA
+# ============================================================================
+PyQt5>=5.15.4
+PyQt5-Qt5>=5.15.2
+PyQt5-sip>=12.9.0
 
-# Base de Datos
-# SQLite3 viene incluido en Python
+# ============================================================================
+# BASE DE DATOS
+# ============================================================================
+# SQLite viene incluido con Python
+# Para PostgreSQL (opcional):
+# psycopg2-binary>=2.9.3
 
-# Compresión y Archivos
-schedule>=1.2.0
+# ============================================================================
+# REPORTES Y DOCUMENTOS
+# ============================================================================
+reportlab>=3.6.0          # Generación de PDFs
+fpdf2>=2.5.4              # PDF alternativo más simple
+openpyxl>=3.0.10          # Excel (.xlsx)
+xlsxwriter>=3.0.3         # Escribir Excel con formato
 
-# Reportes y Exportación
-reportlab>=3.6.0
-pandas>=1.3.0
-openpyxl>=3.0.0
+# ============================================================================
+# IMÁGENES Y QR/CÓDIGOS DE BARRAS
+# ============================================================================
+Pillow>=9.2.0             # Procesamiento de imágenes
+qrcode>=7.3.1             # Generación de códigos QR
+python-barcode>=0.13.1    # Generación de códigos de barras
 
-# Backup en la Nube (opcional)
-google-api-python-client>=2.0.0
-google-auth-httplib2>=0.1.0
-google-auth-oauthlib>=0.5.0
-dropbox>=11.0.0
+# ============================================================================
+# FECHAS Y TIEMPO
+# ============================================================================
+python-dateutil>=2.8.2   # Manejo avanzado de fechas
 
-# Base de Datos Avanzada (opcional)
-psycopg2-binary>=2.9.0
+# ============================================================================
+# VALIDACIÓN Y UTILIDADES
+# ============================================================================
+validators>=0.20.0        # Validación de emails, URLs, etc.
+colorama>=0.4.5          # Colores en terminal (para logging)
 
-# Códigos de Barras y QR
-python-barcode>=0.14.0
-qrcode[pil]>=7.3.0
-Pillow>=8.0.0
+# ============================================================================
+# BACKUP Y COMPRESIÓN
+# ============================================================================
+# zipfile viene incluido con Python
+# shutil viene incluido con Python
 
-# Comunicación Serial (para hardware)
-pyserial>=3.5
+# ============================================================================
+# RED Y APIs (OPCIONAL)
+# ============================================================================
+requests>=2.28.1         # HTTP requests para APIs externas
+urllib3>=1.26.12         # Cliente HTTP de bajo nivel
 
-# Encriptación y Seguridad
-cryptography>=3.4.0
+# ============================================================================
+# ENCRIPTACIÓN Y SEGURIDAD
+# ============================================================================
+cryptography>=37.0.4     # Encriptación moderna
+bcrypt>=3.2.2            # Hash de contraseñas
 
-# HTTP y APIs
-requests>=2.28.0
+# ============================================================================
+# CONFIGURACIÓN Y LOGGING
+# ============================================================================
+# json viene incluido con Python
+# logging viene incluido con Python
+# configparser viene incluido con Python
 
-# Procesamiento de Imágenes
-Pillow>=8.0.0
+# ============================================================================
+# MATEMÁTICAS Y CÁLCULOS
+# ============================================================================
+# decimal viene incluido con Python
+# math viene incluido con Python
 
-# Fecha y Hora
-python-dateutil>=2.8.0
+# ============================================================================
+# DESARROLLO Y TESTING (OPCIONAL)
+# ============================================================================
+pytest>=7.1.2           # Testing framework
+pytest-qt>=4.1.0        # Testing para PyQt
+black>=22.6.0           # Formateador de código
+flake8>=5.0.4           # Linter de código
 
-# Logging Avanzado
-colorlog>=6.6.0
+# ============================================================================
+# IMPRESIÓN (OPCIONAL)
+# ============================================================================
+# Para impresoras térmicas:
+# python-escpos>=3.0a9
+# pyserial>=3.5           # Comunicación serial
 
-# Configuración y Entorno
-python-dotenv>=0.19.0
+# Para impresión avanzada:
+# cups-python>=1.9.74     # Linux/macOS
+# win32print              # Windows (viene con pywin32)
 
-# Testing (desarrollo)
-pytest>=7.0.0
-pytest-qt>=4.0.0
+# ============================================================================
+# DEPENDENCIAS DEL SISTEMA OPERATIVO
+# ============================================================================
+# Windows:
+# pywin32>=304            # APIs de Windows
 
-# Packaging
-PyInstaller>=5.0.0
+# Linux:
+# python3-dev            # Headers de desarrollo
+# libcups2-dev           # Desarrollo CUPS
 
-# Documentación (desarrollo)
-sphinx>=4.0.0
+# macOS:
+# No requiere dependencias especiales
 
-# Desarrollo y Debug
-black>=22.0.0
-flake8>=4.0.0
+# ============================================================================
+# NOTIFICACIONES
+# ============================================================================
+plyer>=2.1.0            # Notificaciones multiplataforma
 
-# Dashboard y Gráficos
-matplotlib>=3.5.0
-plotly>=5.10.0
+# ============================================================================
+# ANÁLISIS DE DATOS (OPCIONAL)
+# ============================================================================
+# pandas>=1.4.3          # Análisis de datos
+# matplotlib>=3.5.2      # Gráficos
+# seaborn>=0.11.2        # Gráficos estadísticos
 
-# Notificaciones del Sistema
-plyer>=2.1.0
+# ============================================================================
+# BASES DE DATOS ALTERNATIVAS (OPCIONAL)
+# ============================================================================
+# Para MySQL:
+# PyMySQL>=1.0.2
+# mysql-connector-python>=8.0.29
 
-# Manejo de Archivos Excel Avanzado
-xlsxwriter>=3.0.0
+# Para SQL Server:
+# pyodbc>=4.0.34
 
-# Validación de Datos
-pydantic>=1.9.0
+# ============================================================================
+# SERIALIZIZACIÓN Y FORMATO
+# ============================================================================
+# json viene incluido con Python
+# pickle viene incluido con Python
+# csv viene incluido con Python
 
-# Utilitarios
-tqdm>=4.64.0  # Barras de progreso
-rich>=12.0.0  # Output mejorado en consola
+# ============================================================================
+# CONCURRENCIA Y HILOS
+# ============================================================================
+# threading viene incluido con Python
+# multiprocessing viene incluido con Python
+
+# ============================================================================
+# INTERFAZ DE LÍNEA DE COMANDOS (OPCIONAL)
+# ============================================================================
+# click>=8.1.3           # CLI framework
+# rich>=12.5.1           # Terminal con formato rico
+
+# ============================================================================
+# MONITOREO Y RENDIMIENTO (OPCIONAL)
+# ============================================================================
+# psutil>=5.9.1          # Información del sistema
+# memory-profiler>=0.60.0 # Profiling de memoria
+
+# ============================================================================
+# DOCUMENTACIÓN (OPCIONAL)
+# ============================================================================
+# sphinx>=5.1.1          # Generación de documentación
+# sphinx-rtd-theme>=1.0.0 # Tema para Sphinx
+
+# ============================================================================
+# NOTAS DE INSTALACIÓN
+# ============================================================================
+# 
+# Instalación básica:
+# pip install -r requirements.txt
+# 
+# Para desarrollo:
+# pip install -r requirements.txt pytest black flake8
+# 
+# Para funcionalidades opcionales específicas:
+# 
+# 1. PostgreSQL:
+#    pip install psycopg2-binary
+# 
+# 2. MySQL:
+#    pip install PyMySQL
+# 
+# 3. Análisis de datos:
+#    pip install pandas matplotlib
+# 
+# 4. Impresoras térmicas:
+#    pip install python-escpos pyserial
+# 
+# 5. APIs Windows:
+#    pip install pywin32 (solo en Windows)
+# 
+# ============================================================================
+# VERSIONES MÍNIMAS REQUERIDAS
+# ============================================================================
+# Python >= 3.8
+# PyQt5 >= 5.15
+# 
+# Para mejor compatibilidad, se recomienda:
+# Python >= 3.9
+# 
+# ============================================================================
+# INSTALACIÓN EN DIFERENTES SISTEMAS OPERATIVOS
+# ============================================================================
+# 
+# WINDOWS:
+# 1. Instalar Python 3.8+ desde python.org
+# 2. pip install -r requirements.txt
+# 3. (Opcional) pip install pywin32 para funcionalidades de Windows
+# 
+# UBUNTU/DEBIAN:
+# 1. sudo apt update
+# 2. sudo apt install python3 python3-pip python3-dev
+# 3. sudo apt install python3-pyqt5 python3-pyqt5.qtsvg  # Opcional, desde repos
+# 4. pip3 install -r requirements.txt
+# 
+# MACOS:
+# 1. Instalar Python 3.8+ desde python.org o usar Homebrew
+# 2. pip install -r requirements.txt
+# 
+# ============================================================================
+# SOLUCIÓN DE PROBLEMAS COMUNES
+# ============================================================================
+# 
+# Error con PyQt5:
+# - Windows: Instalar Microsoft Visual C++ Redistributable
+# - Linux: sudo apt install python3-pyqt5-dev
+# - macOS: brew install pyqt5
+# 
+# Error con Pillow:
+# - Instalar dependencias de imagen del sistema
+# - Ubuntu: sudo apt install libjpeg-dev zlib1g-dev
+# 
+# Error con cryptography:
+# - Requiere Rust toolchain en algunos sistemas
+# - Ubuntu: sudo apt install build-essential libssl-dev libffi-dev
+# 
+# ============================================================================
+
+# Versión mínima de pip recomendada
+# pip >= 21.0
