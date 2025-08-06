@@ -1,902 +1,591 @@
 """
 Gestor de Reportes para AlmacénPro
-Genera reportes de ventas, stock, financieros y análisis de negocio
+Sistema completo de generación de reportes, estadísticas y análisis de datos
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, date, timedelta
-from decimal import Decimal
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Any
+import json
 
 logger = logging.getLogger(__name__)
 
 class ReportManager:
-    """Gestor de reportes y análisis"""
+    """Gestor principal para reportes y estadísticas del sistema"""
     
     def __init__(self, db_manager):
         self.db = db_manager
-        logger.info("ReportManager inicializado")
+        self.logger = logging.getLogger(__name__)
+        
+        # Directorio para reportes generados
+        self.reports_dir = Path("reports")
+        self.reports_dir.mkdir(exist_ok=True)
+        
+        # Tipos de reportes disponibles
+        self.REPORT_TYPES = {
+            'SALES_DAILY': 'Reporte Diario de Ventas',
+            'SALES_MONTHLY': 'Reporte Mensual de Ventas',
+            'SALES_YEARLY': 'Reporte Anual de Ventas',
+            'INVENTORY': 'Reporte de Inventario',
+            'LOW_STOCK': 'Productos con Stock Bajo',
+            'TOP_PRODUCTS': 'Productos Más Vendidos',
+            'TOP_CUSTOMERS': 'Mejores Clientes',
+            'PROVIDERS': 'Reporte de Proveedores',
+            'FINANCIAL': 'Reporte Financiero',
+            'MOVEMENTS': 'Movimientos de Stock'
+        }
     
-    def generate_sales_report(self, start_date: str, end_date: str, 
-                            vendedor_id: int = None, cliente_id: int = None,
-                            categoria_id: int = None) -> Dict:
-        """Generar reporte completo de ventas"""
+    def generate_daily_sales_report(self, target_date: date = None, user_id: int = None) -> Dict:
+        """Generar reporte diario de ventas"""
         try:
-            # Construir filtros dinámicos
-            where_conditions = ["DATE(v.fecha_venta) BETWEEN ? AND ?", "v.estado = 'COMPLETADA'"]
-            params = [start_date, end_date]
+            if not target_date:
+                target_date = date.today()
             
-            if vendedor_id:
-                where_conditions.append("v.vendedor_id = ?")
-                params.append(vendedor_id)
-            
-            if cliente_id:
-                where_conditions.append("v.cliente_id = ?")
-                params.append(cliente_id)
-            
-            if categoria_id:
-                where_conditions.append("p.categoria_id = ?")
-                params.append(categoria_id)
-            
-            where_clause = " AND ".join(where_conditions)
-            
-            # Resumen general de ventas
-            general_summary = self.db.execute_single(f"""
+            # Consulta principal de ventas del día
+            sales_query = """
                 SELECT 
-                    COUNT(DISTINCT v.id) as total_ventas,
-                    SUM(v.total) as total_facturado,
-                    AVG(v.total) as ticket_promedio,
-                    SUM(v.descuento) as total_descuentos,
-                    MIN(v.total) as venta_minima,
-                    MAX(v.total) as venta_maxima,
-                    COUNT(DISTINCT v.cliente_id) as clientes_unicos,
-                    COUNT(DISTINCT v.vendedor_id) as vendedores_activos,
-                    SUM(dv.cantidad) as unidades_vendidas
-                FROM ventas v
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                LEFT JOIN productos p ON dv.producto_id = p.id
-                WHERE {where_clause}
-            """, tuple(params))
+                    COUNT(*) as total_ventas,
+                    COUNT(CASE WHEN estado = 'COMPLETADA' THEN 1 END) as ventas_completadas,
+                    COUNT(CASE WHEN estado = 'CANCELADA' THEN 1 END) as ventas_canceladas,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN total ELSE 0 END) as monto_total,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN subtotal ELSE 0 END) as subtotal_total,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN impuestos_importe ELSE 0 END) as impuestos_total,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN descuento_importe ELSE 0 END) as descuentos_total,
+                    AVG(CASE WHEN estado = 'COMPLETADA' THEN total ELSE NULL END) as ticket_promedio,
+                    MIN(CASE WHEN estado = 'COMPLETADA' THEN total ELSE NULL END) as ticket_minimo,
+                    MAX(CASE WHEN estado = 'COMPLETADA' THEN total ELSE NULL END) as ticket_maximo
+                FROM ventas
+                WHERE DATE(fecha_venta) = ?
+            """
             
-            # Ventas por día
-            daily_sales = self.db.execute_query(f"""
-                SELECT 
-                    DATE(v.fecha_venta) as fecha,
-                    COUNT(v.id) as cantidad_ventas,
-                    SUM(v.total) as total_dia,
-                    AVG(v.total) as promedio_dia,
-                    SUM(dv.cantidad) as unidades_dia
-                FROM ventas v
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                LEFT JOIN productos p ON dv.producto_id = p.id
-                WHERE {where_clause}
-                GROUP BY DATE(v.fecha_venta)
-                ORDER BY fecha
-            """, tuple(params))
+            params = [target_date]
+            if user_id:
+                sales_query += " AND usuario_id = ?"
+                params.append(user_id)
             
-            # Ventas por método de pago
-            payment_methods = self.db.execute_query(f"""
-                SELECT 
-                    v.metodo_pago,
-                    COUNT(v.id) as cantidad,
-                    SUM(v.total) as total,
-                    AVG(v.total) as promedio,
-                    (SUM(v.total) * 100.0 / (SELECT SUM(total) FROM ventas v2 
-                     LEFT JOIN detalle_ventas dv2 ON v2.id = dv2.venta_id
-                     LEFT JOIN productos p2 ON dv2.producto_id = p2.id
-                     WHERE {where_clause.replace('v.', 'v2.').replace('dv.', 'dv2.').replace('p.', 'p2.')})) as porcentaje
-                FROM ventas v
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                LEFT JOIN productos p ON dv.producto_id = p.id
-                WHERE {where_clause}
-                GROUP BY v.metodo_pago
-                ORDER BY total DESC
-            """, tuple(params + params))
+            sales_data = self.db.execute_single(sales_query, params)
             
-            # Top vendedores
-            top_sellers = self.db.execute_query(f"""
-                SELECT 
-                    u.nombre_completo,
-                    COUNT(v.id) as cantidad_ventas,
-                    SUM(v.total) as total_vendido,
-                    AVG(v.total) as promedio_venta,
-                    SUM(dv.cantidad) as unidades_vendidas
-                FROM ventas v
-                JOIN usuarios u ON v.vendedor_id = u.id
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                LEFT JOIN productos p ON dv.producto_id = p.id
-                WHERE {where_clause}
-                GROUP BY v.vendedor_id, u.nombre_completo
-                ORDER BY total_vendido DESC
-                LIMIT 10
-            """, tuple(params))
+            # Métodos de pago
+            payment_methods = self.db.execute_query("""
+                SELECT pv.metodo_pago, 
+                       COUNT(*) as cantidad_transacciones,
+                       SUM(pv.importe) as monto_total
+                FROM pagos_venta pv
+                INNER JOIN ventas v ON pv.venta_id = v.id
+                WHERE DATE(v.fecha_venta) = ? AND v.estado = 'COMPLETADA'
+                {} 
+                GROUP BY pv.metodo_pago
+                ORDER BY monto_total DESC
+            """.format("AND v.usuario_id = ?" if user_id else ""), params)
             
-            # Top clientes
-            top_customers = self.db.execute_query(f"""
-                SELECT 
-                    COALESCE(c.nombre || ' ' || COALESCE(c.apellido, ''), 'Cliente Ocasional') as cliente,
-                    COUNT(v.id) as cantidad_compras,
-                    SUM(v.total) as total_comprado,
-                    AVG(v.total) as promedio_compra
-                FROM ventas v
-                LEFT JOIN clientes c ON v.cliente_id = c.id
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                LEFT JOIN productos p ON dv.producto_id = p.id
-                WHERE {where_clause}
-                GROUP BY v.cliente_id, c.nombre, c.apellido
-                ORDER BY total_comprado DESC
-                LIMIT 10
-            """, tuple(params))
-            
-            # Productos más vendidos
-            top_products = self.db.execute_query(f"""
-                SELECT 
-                    p.nombre,
-                    p.codigo_barras,
-                    cat.nombre as categoria,
-                    SUM(dv.cantidad) as cantidad_vendida,
-                    SUM(dv.subtotal) as total_vendido,
-                    AVG(dv.precio_unitario) as precio_promedio
-                FROM detalle_ventas dv
-                JOIN productos p ON dv.producto_id = p.id
-                JOIN ventas v ON dv.venta_id = v.id
-                LEFT JOIN categorias cat ON p.categoria_id = cat.id
-                WHERE {where_clause}
-                GROUP BY p.id, p.nombre, p.codigo_barras, cat.nombre
+            # Productos más vendidos del día
+            top_products = self.db.execute_query("""
+                SELECT p.nombre, p.codigo_barras,
+                       SUM(dv.cantidad) as cantidad_vendida,
+                       SUM(dv.total) as monto_total,
+                       COUNT(DISTINCT v.id) as transacciones
+                FROM productos p
+                INNER JOIN detalle_ventas dv ON p.id = dv.producto_id
+                INNER JOIN ventas v ON dv.venta_id = v.id
+                WHERE DATE(v.fecha_venta) = ? AND v.estado = 'COMPLETADA'
+                {}
+                GROUP BY p.id, p.nombre, p.codigo_barras
                 ORDER BY cantidad_vendida DESC
-                LIMIT 20
-            """, tuple(params))
+                LIMIT 10
+            """.format("AND v.usuario_id = ?" if user_id else ""), params)
             
-            # Ventas por hora del día
-            hourly_sales = self.db.execute_query(f"""
+            # Ventas por hora
+            hourly_sales = self.db.execute_query("""
                 SELECT 
-                    CAST(strftime('%H', v.fecha_venta) AS INTEGER) as hora,
-                    COUNT(v.id) as cantidad_ventas,
-                    SUM(v.total) as total_hora
-                FROM ventas v
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                LEFT JOIN productos p ON dv.producto_id = p.id
-                WHERE {where_clause}
-                GROUP BY CAST(strftime('%H', v.fecha_venta) AS INTEGER)
+                    strftime('%H', fecha_venta) as hora,
+                    COUNT(*) as cantidad_ventas,
+                    SUM(total) as monto_total
+                FROM ventas
+                WHERE DATE(fecha_venta) = ? AND estado = 'COMPLETADA'
+                {}
+                GROUP BY strftime('%H', fecha_venta)
                 ORDER BY hora
-            """, tuple(params))
+            """.format("AND usuario_id = ?" if user_id else ""), params)
             
-            return {
-                'periodo': {'inicio': start_date, 'fin': end_date},
-                'filtros': {
-                    'vendedor_id': vendedor_id,
-                    'cliente_id': cliente_id,
-                    'categoria_id': categoria_id
+            # Armar reporte
+            report = {
+                'tipo': 'SALES_DAILY',
+                'fecha': target_date.isoformat(),
+                'generado_en': datetime.now().isoformat(),
+                'usuario_id': user_id,
+                'resumen': {
+                    'total_ventas': sales_data.get('total_ventas', 0),
+                    'ventas_completadas': sales_data.get('ventas_completadas', 0),
+                    'ventas_canceladas': sales_data.get('ventas_canceladas', 0),
+                    'monto_total': float(sales_data.get('monto_total', 0) or 0),
+                    'subtotal_total': float(sales_data.get('subtotal_total', 0) or 0),
+                    'impuestos_total': float(sales_data.get('impuestos_total', 0) or 0),
+                    'descuentos_total': float(sales_data.get('descuentos_total', 0) or 0),
+                    'ticket_promedio': float(sales_data.get('ticket_promedio', 0) or 0),
+                    'ticket_minimo': float(sales_data.get('ticket_minimo', 0) or 0),
+                    'ticket_maximo': float(sales_data.get('ticket_maximo', 0) or 0)
                 },
-                'resumen_general': dict(general_summary) if general_summary else {},
-                'ventas_diarias': daily_sales,
-                'metodos_pago': payment_methods,
-                'top_vendedores': top_sellers,
-                'top_clientes': top_customers,
-                'productos_mas_vendidos': top_products,
-                'ventas_por_hora': hourly_sales
+                'metodos_pago': [dict(row) for row in payment_methods],
+                'productos_top': [dict(row) for row in top_products],
+                'ventas_por_hora': [dict(row) for row in hourly_sales]
             }
             
+            return report
+            
         except Exception as e:
-            logger.error(f"Error generando reporte de ventas: {e}")
-            return {}
+            self.logger.error(f"Error generando reporte diario: {e}")
+            return {'error': str(e)}
     
-    def generate_stock_report(self, include_movement_history: bool = False,
-                            low_stock_only: bool = False, categoria_id: int = None) -> Dict:
-        """Generar reporte de stock"""
+    def generate_monthly_sales_report(self, year: int, month: int, user_id: int = None) -> Dict:
+        """Generar reporte mensual de ventas"""
         try:
-            base_conditions = ["p.activo = 1"]
-            params = []
+            # Fechas del mes
+            start_date = date(year, month, 1)
+            if month == 12:
+                end_date = date(year + 1, 1, 1) - timedelta(days=1)
+            else:
+                end_date = date(year, month + 1, 1) - timedelta(days=1)
             
-            if low_stock_only:
-                base_conditions.append("p.stock_actual <= p.stock_minimo")
-            
-            if categoria_id:
-                base_conditions.append("p.categoria_id = ?")
-                params.append(categoria_id)
-            
-            where_clause = " AND ".join(base_conditions)
-            
-            # Resumen general de stock
-            stock_summary = self.db.execute_single(f"""
+            # Estadísticas generales del mes
+            monthly_stats = self.db.execute_single("""
                 SELECT 
-                    COUNT(*) as total_productos,
-                    SUM(p.stock_actual) as total_unidades,
-                    COUNT(CASE WHEN p.stock_actual <= 0 THEN 1 END) as productos_sin_stock,
-                    COUNT(CASE WHEN p.stock_actual <= p.stock_minimo AND p.stock_actual > 0 THEN 1 END) as productos_stock_bajo,
-                    COUNT(CASE WHEN p.stock_actual > p.stock_minimo THEN 1 END) as productos_stock_ok,
-                    SUM(p.stock_actual * p.precio_compra) as valor_stock_compra,
-                    SUM(p.stock_actual * p.precio_venta) as valor_stock_venta,
-                    AVG(p.stock_actual) as promedio_stock
+                    COUNT(*) as total_ventas,
+                    COUNT(CASE WHEN estado = 'COMPLETADA' THEN 1 END) as ventas_completadas,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN total ELSE 0 END) as monto_total,
+                    AVG(CASE WHEN estado = 'COMPLETADA' THEN total ELSE NULL END) as ticket_promedio,
+                    COUNT(DISTINCT cliente_id) as clientes_unicos,
+                    COUNT(DISTINCT DATE(fecha_venta)) as dias_con_ventas
+                FROM ventas
+                WHERE DATE(fecha_venta) BETWEEN ? AND ?
+                {}
+            """.format("AND usuario_id = ?" if user_id else ""), 
+            [start_date, end_date] + ([user_id] if user_id else []))
+            
+            # Ventas por día del mes
+            daily_sales = self.db.execute_query("""
+                SELECT 
+                    DATE(fecha_venta) as fecha,
+                    COUNT(*) as cantidad_ventas,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN total ELSE 0 END) as monto_total
+                FROM ventas
+                WHERE DATE(fecha_venta) BETWEEN ? AND ?
+                {}
+                GROUP BY DATE(fecha_venta)
+                ORDER BY fecha
+            """.format("AND usuario_id = ?" if user_id else ""), 
+            [start_date, end_date] + ([user_id] if user_id else []))
+            
+            # Top productos del mes
+            top_products_month = self.db.execute_query("""
+                SELECT p.nombre, p.codigo_barras, c.nombre as categoria,
+                       SUM(dv.cantidad) as cantidad_vendida,
+                       SUM(dv.total) as monto_total,
+                       COUNT(DISTINCT v.id) as transacciones
                 FROM productos p
+                INNER JOIN detalle_ventas dv ON p.id = dv.producto_id
+                INNER JOIN ventas v ON dv.venta_id = v.id
                 LEFT JOIN categorias c ON p.categoria_id = c.id
-                WHERE {where_clause}
-            """, tuple(params))
+                WHERE DATE(v.fecha_venta) BETWEEN ? AND ? AND v.estado = 'COMPLETADA'
+                {}
+                GROUP BY p.id, p.nombre, p.codigo_barras, c.nombre
+                ORDER BY monto_total DESC
+                LIMIT 20
+            """.format("AND v.usuario_id = ?" if user_id else ""), 
+            [start_date, end_date] + ([user_id] if user_id else []))
             
-            # Stock por categoría
-            stock_by_category = self.db.execute_query(f"""
-                SELECT 
-                    COALESCE(c.nombre, 'Sin Categoría') as categoria,
-                    COUNT(p.id) as productos,
-                    SUM(p.stock_actual) as unidades_total,
-                    SUM(p.stock_actual * p.precio_venta) as valor_categoria,
-                    COUNT(CASE WHEN p.stock_actual <= p.stock_minimo THEN 1 END) as productos_criticos
-                FROM productos p
-                LEFT JOIN categorias c ON p.categoria_id = c.id
-                WHERE {where_clause}
-                GROUP BY c.id, c.nombre
-                ORDER BY valor_categoria DESC
-            """, tuple(params))
+            # Comparación con mes anterior
+            prev_month_start = start_date - timedelta(days=start_date.day)
+            prev_month_start = prev_month_start.replace(day=1)
+            prev_month_end = start_date - timedelta(days=1)
             
-            # Productos críticos (sin stock o stock bajo)
-            critical_products = self.db.execute_query(f"""
+            prev_month_stats = self.db.execute_single("""
                 SELECT 
-                    p.id,
-                    p.nombre,
-                    p.codigo_barras,
-                    COALESCE(c.nombre, 'Sin Categoría') as categoria,
-                    p.stock_actual,
-                    p.stock_minimo,
-                    p.precio_venta,
-                    (p.stock_minimo - p.stock_actual) as unidades_faltantes,
-                    COALESCE(pr.nombre, 'Sin Proveedor') as proveedor,
-                    CASE 
-                        WHEN p.stock_actual <= 0 THEN 'SIN_STOCK'
-                        WHEN p.stock_actual <= p.stock_minimo THEN 'STOCK_BAJO'
-                        ELSE 'OK'
-                    END as estado_stock
+                    COUNT(CASE WHEN estado = 'COMPLETADA' THEN 1 END) as ventas_completadas,
+                    SUM(CASE WHEN estado = 'COMPLETADA' THEN total ELSE 0 END) as monto_total
+                FROM ventas
+                WHERE DATE(fecha_venta) BETWEEN ? AND ?
+                {}
+            """.format("AND usuario_id = ?" if user_id else ""), 
+            [prev_month_start, prev_month_end] + ([user_id] if user_id else []))
+            
+            # Calcular variaciones
+            current_sales = monthly_stats.get('ventas_completadas', 0)
+            current_amount = float(monthly_stats.get('monto_total', 0) or 0)
+            prev_sales = prev_month_stats.get('ventas_completadas', 0) if prev_month_stats else 0
+            prev_amount = float(prev_month_stats.get('monto_total', 0) or 0) if prev_month_stats else 0
+            
+            sales_growth = ((current_sales - prev_sales) / prev_sales * 100) if prev_sales > 0 else 0
+            amount_growth = ((current_amount - prev_amount) / prev_amount * 100) if prev_amount > 0 else 0
+            
+            report = {
+                'tipo': 'SALES_MONTHLY',
+                'periodo': f"{year}-{month:02d}",
+                'generado_en': datetime.now().isoformat(),
+                'usuario_id': user_id,
+                'resumen': {
+                    **dict(monthly_stats),
+                    'monto_total': current_amount,
+                    'ticket_promedio': float(monthly_stats.get('ticket_promedio', 0) or 0),
+                    'crecimiento_ventas_pct': round(sales_growth, 2),
+                    'crecimiento_monto_pct': round(amount_growth, 2)
+                },
+                'ventas_diarias': [dict(row) for row in daily_sales],
+                'productos_top': [dict(row) for row in top_products_month],
+                'comparacion_mes_anterior': {
+                    'ventas_anteriores': prev_sales,
+                    'monto_anterior': prev_amount
+                }
+            }
+            
+            return report
+            
+        except Exception as e:
+            self.logger.error(f"Error generando reporte mensual: {e}")
+            return {'error': str(e)}
+    
+    def generate_inventory_report(self, category_id: int = None, low_stock_only: bool = False) -> Dict:
+        """Generar reporte de inventario"""
+        try:
+            base_query = """
+                SELECT p.*, c.nombre as categoria_nombre, pr.nombre as proveedor_nombre,
+                       (p.stock_actual * p.precio_compra) as valor_stock_compra,
+                       (p.stock_actual * p.precio_venta) as valor_stock_venta,
+                       CASE 
+                           WHEN p.stock_minimo > 0 AND p.stock_actual <= p.stock_minimo THEN 'BAJO' 
+                           WHEN p.stock_actual = 0 THEN 'SIN_STOCK'
+                           ELSE 'NORMAL' 
+                       END as estado_stock
                 FROM productos p
                 LEFT JOIN categorias c ON p.categoria_id = c.id
                 LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
-                WHERE {where_clause} AND p.stock_actual <= p.stock_minimo
-                ORDER BY 
-                    CASE WHEN p.stock_actual <= 0 THEN 1 ELSE 2 END,
-                    (p.stock_actual - p.stock_minimo) ASC
-            """, tuple(params))
+                WHERE p.activo = 1
+            """
             
-            # Productos con mayor valor en stock
-            high_value_products = self.db.execute_query(f"""
-                SELECT 
-                    p.nombre,
-                    p.codigo_barras,
-                    p.stock_actual,
-                    p.precio_venta,
-                    (p.stock_actual * p.precio_venta) as valor_total_stock,
-                    COALESCE(c.nombre, 'Sin Categoría') as categoria
-                FROM productos p
-                LEFT JOIN categorias c ON p.categoria_id = c.id
-                WHERE {where_clause} AND p.stock_actual > 0
-                ORDER BY valor_total_stock DESC
-                LIMIT 20
-            """, tuple(params))
+            params = []
             
-            result = {
-                'fecha_reporte': datetime.now().isoformat(),
-                'filtros': {
-                    'low_stock_only': low_stock_only,
-                    'categoria_id': categoria_id
-                },
-                'resumen_general': dict(stock_summary) if stock_summary else {},
-                'stock_por_categoria': stock_by_category,
-                'productos_criticos': critical_products,
-                'productos_mayor_valor': high_value_products
+            if category_id:
+                base_query += " AND p.categoria_id = ?"
+                params.append(category_id)
+            
+            if low_stock_only:
+                base_query += " AND (p.stock_actual <= p.stock_minimo OR p.stock_actual = 0)"
+            
+            base_query += " ORDER BY p.nombre"
+            
+            products = self.db.execute_query(base_query, params)
+            
+            # Estadísticas generales
+            total_products = len(products)
+            total_stock_value_cost = sum(float(p.get('valor_stock_compra', 0) or 0) for p in products)
+            total_stock_value_sale = sum(float(p.get('valor_stock_venta', 0) or 0) for p in products)
+            
+            # Contadores por estado
+            stock_counts = {
+                'NORMAL': len([p for p in products if p['estado_stock'] == 'NORMAL']),
+                'BAJO': len([p for p in products if p['estado_stock'] == 'BAJO']),
+                'SIN_STOCK': len([p for p in products if p['estado_stock'] == 'SIN_STOCK'])
             }
             
-            # Historial de movimientos si se solicita
-            if include_movement_history:
-                recent_movements = self.db.execute_query(f"""
-                    SELECT 
-                        p.nombre as producto,
-                        ms.tipo_movimiento,
-                        ms.motivo,
-                        ms.cantidad_movimiento,
-                        ms.cantidad_nueva,
-                        ms.fecha_movimiento,
-                        u.nombre_completo as usuario
-                    FROM movimientos_stock ms
-                    JOIN productos p ON ms.producto_id = p.id
-                    LEFT JOIN usuarios u ON ms.usuario_id = u.id
-                    LEFT JOIN categorias c ON p.categoria_id = c.id
-                    WHERE {where_clause.replace('p.activo = 1', 'p.activo = 1')}
-                    AND ms.fecha_movimiento >= DATE('now', '-30 days')
-                    ORDER BY ms.fecha_movimiento DESC
-                    LIMIT 100
-                """, tuple(params))
+            # Productos por categoría
+            categories_stats = {}
+            for product in products:
+                cat_name = product.get('categoria_nombre', 'Sin Categoría')
+                if cat_name not in categories_stats:
+                    categories_stats[cat_name] = {
+                        'productos': 0,
+                        'valor_compra': 0,
+                        'valor_venta': 0
+                    }
                 
-                result['movimientos_recientes'] = recent_movements
+                categories_stats[cat_name]['productos'] += 1
+                categories_stats[cat_name]['valor_compra'] += float(product.get('valor_stock_compra', 0) or 0)
+                categories_stats[cat_name]['valor_venta'] += float(product.get('valor_stock_venta', 0) or 0)
             
-            return result
+            report = {
+                'tipo': 'INVENTORY',
+                'generado_en': datetime.now().isoformat(),
+                'filtros': {
+                    'categoria_id': category_id,
+                    'solo_stock_bajo': low_stock_only
+                },
+                'resumen': {
+                    'total_productos': total_products,
+                    'valor_total_compra': total_stock_value_cost,
+                    'valor_total_venta': total_stock_value_sale,
+                    'ganancia_potencial': total_stock_value_sale - total_stock_value_cost,
+                    'productos_stock_normal': stock_counts['NORMAL'],
+                    'productos_stock_bajo': stock_counts['BAJO'],
+                    'productos_sin_stock': stock_counts['SIN_STOCK']
+                },
+                'por_categoria': categories_stats,
+                'productos': [dict(p) for p in products]
+            }
+            
+            return report
             
         except Exception as e:
-            logger.error(f"Error generando reporte de stock: {e}")
-            return {}
+            self.logger.error(f"Error generando reporte de inventario: {e}")
+            return {'error': str(e)}
     
-    def generate_financial_report(self, start_date: str, end_date: str) -> Dict:
+    def generate_top_products_report(self, period_days: int = 30, limit: int = 50) -> Dict:
+        """Generar reporte de productos más vendidos"""
+        try:
+            start_date = date.today() - timedelta(days=period_days)
+            
+            top_products = self.db.execute_query("""
+                SELECT p.nombre, p.codigo_barras, c.nombre as categoria_nombre,
+                       SUM(dv.cantidad) as cantidad_vendida,
+                       SUM(dv.total) as monto_total,
+                       COUNT(DISTINCT v.id) as transacciones,
+                       AVG(dv.precio_unitario) as precio_promedio,
+                       p.stock_actual,
+                       p.stock_minimo,
+                       (SUM(dv.total) - SUM(dv.cantidad * COALESCE(p.precio_compra, 0))) as ganancia_bruta
+                FROM productos p
+                INNER JOIN detalle_ventas dv ON p.id = dv.producto_id
+                INNER JOIN ventas v ON dv.venta_id = v.id
+                LEFT JOIN categorias c ON p.categoria_id = c.id
+                WHERE DATE(v.fecha_venta) >= ? AND v.estado = 'COMPLETADA'
+                GROUP BY p.id, p.nombre, p.codigo_barras, c.nombre, p.stock_actual, p.stock_minimo
+                ORDER BY cantidad_vendida DESC
+                LIMIT ?
+            """, (start_date, limit))
+            
+            # Estadísticas del período
+            period_stats = self.db.execute_single("""
+                SELECT 
+                    COUNT(DISTINCT p.id) as productos_vendidos,
+                    SUM(dv.cantidad) as cantidad_total,
+                    SUM(dv.total) as monto_total
+                FROM productos p
+                INNER JOIN detalle_ventas dv ON p.id = dv.producto_id
+                INNER JOIN ventas v ON dv.venta_id = v.id
+                WHERE DATE(v.fecha_venta) >= ? AND v.estado = 'COMPLETADA'
+            """, (start_date,))
+            
+            report = {
+                'tipo': 'TOP_PRODUCTS',
+                'periodo_dias': period_days,
+                'fecha_desde': start_date.isoformat(),
+                'fecha_hasta': date.today().isoformat(),
+                'generado_en': datetime.now().isoformat(),
+                'resumen': dict(period_stats) if period_stats else {},
+                'productos': [dict(row) for row in top_products]
+            }
+            
+            return report
+            
+        except Exception as e:
+            self.logger.error(f"Error generando reporte de productos top: {e}")
+            return {'error': str(e)}
+    
+    def generate_financial_report(self, start_date: date, end_date: date) -> Dict:
         """Generar reporte financiero"""
         try:
-            # Resumen de ingresos
-            income_summary = self.db.execute_single("""
+            # Ingresos por ventas
+            sales_income = self.db.execute_single("""
                 SELECT 
-                    SUM(total) as total_ingresos,
-                    SUM(subtotal) as subtotal_ingresos,
-                    SUM(descuento) as total_descuentos,
-                    SUM(impuestos) as total_impuestos,
-                    COUNT(*) as total_transacciones,
-                    AVG(total) as ticket_promedio
-                FROM ventas 
-                WHERE DATE(fecha_venta) BETWEEN ? AND ? 
-                AND estado = 'COMPLETADA'
+                    SUM(total) as ingresos_brutos,
+                    SUM(subtotal) as ingresos_netos,
+                    SUM(impuestos_importe) as impuestos_recaudados,
+                    SUM(descuento_importe) as descuentos_otorgados,
+                    COUNT(*) as cantidad_transacciones
+                FROM ventas
+                WHERE DATE(fecha_venta) BETWEEN ? AND ? AND estado = 'COMPLETADA'
             """, (start_date, end_date))
             
-            # Resumen de egresos (compras)
-            expenses_summary = self.db.execute_single("""
+            # Costos por compras
+            purchase_costs = self.db.execute_single("""
                 SELECT 
-                    SUM(total) as total_egresos,
-                    SUM(subtotal) as subtotal_egresos,
-                    SUM(descuento) as descuentos_obtenidos,
-                    SUM(impuestos) as impuestos_pagados,
-                    COUNT(*) as total_compras
-                FROM compras 
-                WHERE DATE(fecha_compra) BETWEEN ? AND ? 
-                AND estado IN ('RECIBIDA', 'PARCIAL')
+                    SUM(total) as costos_compras,
+                    COUNT(*) as cantidad_compras
+                FROM compras
+                WHERE DATE(fecha_compra) BETWEEN ? AND ? AND estado = 'COMPLETADA'
             """, (start_date, end_date))
             
-            # Cuentas por cobrar
-            accounts_receivable = self.db.execute_single("""
+            # Margen bruto estimado (basado en productos vendidos)
+            gross_margin = self.db.execute_single("""
                 SELECT 
-                    COUNT(DISTINCT c.id) as clientes_con_deuda,
-                    SUM(c.saldo_cuenta_corriente) as total_por_cobrar,
-                    AVG(c.saldo_cuenta_corriente) as promedio_deuda,
-                    SUM(CASE WHEN v.fecha_vencimiento < DATE('now') THEN v.total ELSE 0 END) as deuda_vencida
-                FROM clientes c
-                LEFT JOIN ventas v ON c.id = v.cliente_id 
-                    AND v.tipo_venta = 'CUENTA_CORRIENTE' 
-                    AND v.estado = 'COMPLETADA'
-                WHERE c.saldo_cuenta_corriente > 0
-            """)
-            
-            # Flujo de caja diario
-            daily_cash_flow = self.db.execute_query("""
-                SELECT 
-                    fecha,
-                    SUM(ingresos) as ingresos_dia,
-                    SUM(egresos) as egresos_dia,
-                    (SUM(ingresos) - SUM(egresos)) as flujo_neto_dia
-                FROM (
-                    SELECT DATE(fecha_venta) as fecha, SUM(total) as ingresos, 0 as egresos
-                    FROM ventas 
-                    WHERE DATE(fecha_venta) BETWEEN ? AND ? 
-                    AND estado = 'COMPLETADA'
-                    AND tipo_venta != 'CUENTA_CORRIENTE'
-                    GROUP BY DATE(fecha_venta)
-                    
-                    UNION ALL
-                    
-                    SELECT DATE(fecha_compra) as fecha, 0 as ingresos, SUM(total) as egresos
-                    FROM compras 
-                    WHERE DATE(fecha_compra) BETWEEN ? AND ? 
-                    AND estado IN ('RECIBIDA', 'PARCIAL')
-                    GROUP BY DATE(fecha_compra)
-                )
-                GROUP BY fecha
-                ORDER BY fecha
-            """, (start_date, end_date, start_date, end_date))
-            
-            # Rentabilidad por producto (estimación)
-            product_profitability = self.db.execute_query("""
-                SELECT 
-                    p.nombre,
-                    SUM(dv.cantidad) as cantidad_vendida,
-                    SUM(dv.subtotal) as ingresos_producto,
-                    AVG(p.precio_compra) as costo_promedio,
-                    (SUM(dv.subtotal) - (SUM(dv.cantidad) * AVG(p.precio_compra))) as ganancia_estimada,
-                    ((SUM(dv.subtotal) - (SUM(dv.cantidad) * AVG(p.precio_compra))) / SUM(dv.subtotal) * 100) as margen_porcentaje
+                    SUM(dv.total) as ingresos_productos,
+                    SUM(dv.cantidad * COALESCE(p.precio_compra, 0)) as costos_productos,
+                    SUM(dv.total - (dv.cantidad * COALESCE(p.precio_compra, 0))) as margen_bruto
                 FROM detalle_ventas dv
-                JOIN productos p ON dv.producto_id = p.id
-                JOIN ventas v ON dv.venta_id = v.id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ? 
-                AND v.estado = 'COMPLETADA'
-                AND p.precio_compra > 0
-                GROUP BY p.id, p.nombre
-                HAVING cantidad_vendida > 0
-                ORDER BY ganancia_estimada DESC
-                LIMIT 20
+                INNER JOIN ventas v ON dv.venta_id = v.id
+                INNER JOIN productos p ON dv.producto_id = p.id
+                WHERE DATE(v.fecha_venta) BETWEEN ? AND ? AND v.estado = 'COMPLETADA'
             """, (start_date, end_date))
             
-            # Análisis de métodos de pago para cash flow
-            payment_analysis = self.db.execute_query("""
-                SELECT 
-                    metodo_pago,
-                    SUM(total) as total_metodo,
-                    COUNT(*) as transacciones,
-                    (SUM(total) * 100.0 / (SELECT SUM(total) FROM ventas 
-                     WHERE DATE(fecha_venta) BETWEEN ? AND ? AND estado = 'COMPLETADA')) as porcentaje_ingresos
-                FROM ventas 
-                WHERE DATE(fecha_venta) BETWEEN ? AND ? 
-                AND estado = 'COMPLETADA'
-                GROUP BY metodo_pago
-                ORDER BY total_metodo DESC
-            """, (start_date, end_date, start_date, end_date))
+            # Métodos de pago
+            payment_methods = self.db.execute_query("""
+                SELECT pv.metodo_pago, 
+                       SUM(pv.importe) as monto_total,
+                       COUNT(*) as cantidad_transacciones
+                FROM pagos_venta pv
+                INNER JOIN ventas v ON pv.venta_id = v.id
+                WHERE DATE(v.fecha_venta) BETWEEN ? AND ? AND v.estado = 'COMPLETADA'
+                GROUP BY pv.metodo_pago
+                ORDER BY monto_total DESC
+            """, (start_date, end_date))
             
-            # Calcular métricas derivadas
-            income = dict(income_summary) if income_summary else {}
-            expenses = dict(expenses_summary) if expenses_summary else {}
+            # Calcular ratios
+            ingresos_brutos = float(sales_income.get('ingresos_brutos', 0) or 0)
+            costos_compras = float(purchase_costs.get('costos_compras', 0) or 0)
+            margen_bruto_value = float(gross_margin.get('margen_bruto', 0) or 0)
             
-            total_income = income.get('total_ingresos', 0) or 0
-            total_expenses = expenses.get('total_egresos', 0) or 0
+            margen_bruto_pct = (margen_bruto_value / ingresos_brutos * 100) if ingresos_brutos > 0 else 0
             
-            financial_metrics = {
-                'utilidad_bruta': total_income - total_expenses,
-                'margen_bruto_porcentaje': ((total_income - total_expenses) / total_income * 100) if total_income > 0 else 0,
-                'roi_periodo': ((total_income - total_expenses) / total_expenses * 100) if total_expenses > 0 else 0
+            report = {
+                'tipo': 'FINANCIAL',
+                'periodo': {
+                    'fecha_inicio': start_date.isoformat(),
+                    'fecha_fin': end_date.isoformat(),
+                    'dias': (end_date - start_date).days + 1
+                },
+                'generado_en': datetime.now().isoformat(),
+                'ingresos': dict(sales_income) if sales_income else {},
+                'costos': dict(purchase_costs) if purchase_costs else {},
+                'margen': dict(gross_margin) if gross_margin else {},
+                'ratios': {
+                    'margen_bruto_porcentaje': round(margen_bruto_pct, 2),
+                    'ingresos_por_dia': round(ingresos_brutos / ((end_date - start_date).days + 1), 2) if ingresos_brutos > 0 else 0
+                },
+                'metodos_pago': [dict(row) for row in payment_methods]
             }
             
-            return {
-                'periodo': {'inicio': start_date, 'fin': end_date},
-                'resumen_ingresos': income,
-                'resumen_egresos': expenses,
-                'cuentas_por_cobrar': dict(accounts_receivable) if accounts_receivable else {},
-                'metricas_financieras': financial_metrics,
-                'flujo_caja_diario': daily_cash_flow,
-                'rentabilidad_productos': product_profitability,
-                'analisis_metodos_pago': payment_analysis
-            }
+            return report
             
         except Exception as e:
-            logger.error(f"Error generando reporte financiero: {e}")
-            return {}
+            self.logger.error(f"Error generando reporte financiero: {e}")
+            return {'error': str(e)}
     
-    def generate_customer_analysis(self, start_date: str, end_date: str) -> Dict:
-        """Generar análisis de clientes"""
+    def generate_stock_movements_report(self, start_date: date, end_date: date, 
+                                      product_id: int = None) -> Dict:
+        """Generar reporte de movimientos de stock"""
         try:
-            # Segmentación de clientes
-            customer_segments = self.db.execute_query("""
+            query = """
+                SELECT ms.*, p.nombre as producto_nombre, p.codigo_barras,
+                       u.nombre_completo as usuario_nombre
+                FROM movimientos_stock ms
+                INNER JOIN productos p ON ms.producto_id = p.id
+                LEFT JOIN usuarios u ON ms.usuario_id = u.id
+                WHERE DATE(ms.fecha_movimiento) BETWEEN ? AND ?
+            """
+            
+            params = [start_date, end_date]
+            
+            if product_id:
+                query += " AND ms.producto_id = ?"
+                params.append(product_id)
+            
+            query += " ORDER BY ms.fecha_movimiento DESC"
+            
+            movements = self.db.execute_query(query, params)
+            
+            # Estadísticas por tipo de movimiento
+            movement_stats = self.db.execute_query("""
                 SELECT 
-                    CASE 
-                        WHEN total_comprado >= 100000 THEN 'VIP'
-                        WHEN total_comprado >= 50000 THEN 'Premium'
-                        WHEN total_comprado >= 10000 THEN 'Regular'
-                        ELSE 'Ocasional'
-                    END as segmento,
-                    COUNT(*) as cantidad_clientes,
-                    SUM(total_comprado) as ingresos_segmento,
-                    AVG(total_comprado) as promedio_segmento,
-                    AVG(frecuencia_compra) as frecuencia_promedio
-                FROM (
-                    SELECT 
-                        c.id,
-                        c.nombre,
-                        SUM(v.total) as total_comprado,
-                        COUNT(v.id) as frecuencia_compra
-                    FROM clientes c
-                    JOIN ventas v ON c.id = v.cliente_id
-                    WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                    AND v.estado = 'COMPLETADA'
-                    GROUP BY c.id, c.nombre
-                ) customer_stats
-                GROUP BY segmento
-                ORDER BY 
-                    CASE segmento
-                        WHEN 'VIP' THEN 1
-                        WHEN 'Premium' THEN 2
-                        WHEN 'Regular' THEN 3
-                        ELSE 4
-                    END
-            """, (start_date, end_date))
+                    tipo_movimiento,
+                    COUNT(*) as cantidad_movimientos,
+                    SUM(ABS(cantidad_movimiento)) as cantidad_total
+                FROM movimientos_stock
+                WHERE DATE(fecha_movimiento) BETWEEN ? AND ?
+                {}
+                GROUP BY tipo_movimiento
+            """.format("AND producto_id = ?" if product_id else ""), 
+            params if not product_id else params)
             
-            # Clientes más valiosos
-            top_customers = self.db.execute_query("""
-                SELECT 
-                    c.nombre || ' ' || COALESCE(c.apellido, '') as cliente,
-                    c.telefono,
-                    c.saldo_cuenta_corriente,
-                    COUNT(v.id) as total_compras,
-                    SUM(v.total) as total_gastado,
-                    AVG(v.total) as ticket_promedio,
-                    MIN(v.fecha_venta) as primera_compra,
-                    MAX(v.fecha_venta) as ultima_compra,
-                    JULIANDAY('now') - JULIANDAY(MAX(v.fecha_venta)) as dias_sin_comprar
-                FROM clientes c
-                JOIN ventas v ON c.id = v.cliente_id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                AND v.estado = 'COMPLETADA'
-                GROUP BY c.id, c.nombre, c.apellido, c.telefono, c.saldo_cuenta_corriente
-                ORDER BY total_gastado DESC
-                LIMIT 20
-            """, (start_date, end_date))
-            
-            # Análisis de retención
-            retention_analysis = self.db.execute_single("""
-                SELECT 
-                    COUNT(DISTINCT CASE WHEN compras_mes_anterior > 0 AND compras_mes_actual > 0 THEN cliente_id END) as clientes_retenidos,
-                    COUNT(DISTINCT CASE WHEN compras_mes_anterior > 0 THEN cliente_id END) as clientes_mes_anterior,
-                    COUNT(DISTINCT CASE WHEN compras_mes_actual > 0 THEN cliente_id END) as clientes_mes_actual,
-                    COUNT(DISTINCT CASE WHEN compras_mes_anterior = 0 AND compras_mes_actual > 0 THEN cliente_id END) as clientes_nuevos
-                FROM (
-                    SELECT 
-                        v.cliente_id,
-                        SUM(CASE WHEN DATE(v.fecha_venta) BETWEEN DATE(?, '-1 month') AND DATE(?, '-1 day') THEN 1 ELSE 0 END) as compras_mes_anterior,
-                        SUM(CASE WHEN DATE(v.fecha_venta) BETWEEN ? AND ? THEN 1 ELSE 0 END) as compras_mes_actual
-                    FROM ventas v
-                    WHERE v.cliente_id IS NOT NULL
-                    AND v.estado = 'COMPLETADA'
-                    AND DATE(v.fecha_venta) BETWEEN DATE(?, '-1 month') AND ?
-                    GROUP BY v.cliente_id
-                )
-            """, (start_date, start_date, start_date, end_date, start_date, end_date))
-            
-            # Productos favoritos por segmento
-            favorite_products_by_segment = self.db.execute_query("""
-                SELECT 
-                    segmento,
-                    producto,
-                    cantidad_total,
-                    clientes_compraron
-                FROM (
-                    SELECT 
-                        CASE 
-                            WHEN customer_total >= 100000 THEN 'VIP'
-                            WHEN customer_total >= 50000 THEN 'Premium'
-                            WHEN customer_total >= 10000 THEN 'Regular'
-                            ELSE 'Ocasional'
-                        END as segmento,
-                        p.nombre as producto,
-                        SUM(dv.cantidad) as cantidad_total,
-                        COUNT(DISTINCT v.cliente_id) as clientes_compraron,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY CASE 
-                                WHEN customer_total >= 100000 THEN 'VIP'
-                                WHEN customer_total >= 50000 THEN 'Premium'
-                                WHEN customer_total >= 10000 THEN 'Regular'
-                                ELSE 'Ocasional'
-                            END 
-                            ORDER BY SUM(dv.cantidad) DESC
-                        ) as ranking
-                    FROM ventas v
-                    JOIN detalle_ventas dv ON v.id = dv.venta_id
-                    JOIN productos p ON dv.producto_id = p.id
-                    JOIN (
-                        SELECT cliente_id, SUM(total) as customer_total
-                        FROM ventas
-                        WHERE DATE(fecha_venta) BETWEEN ? AND ? AND estado = 'COMPLETADA'
-                        GROUP BY cliente_id
-                    ) ct ON v.cliente_id = ct.cliente_id
-                    WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                    AND v.estado = 'COMPLETADA'
-                    AND v.cliente_id IS NOT NULL
-                    GROUP BY segmento, p.id, p.nombre
-                ) ranked_products
-                WHERE ranking <= 5
-                ORDER BY segmento, ranking
-            """, (start_date, end_date, start_date, end_date))
-            
-            # Calcular tasa de retención
-            retention = dict(retention_analysis) if retention_analysis else {}
-            if retention.get('clientes_mes_anterior', 0) > 0:
-                retention['tasa_retencion'] = (retention.get('clientes_retenidos', 0) / retention['clientes_mes_anterior'] * 100)
-            else:
-                retention['tasa_retencion'] = 0
-            
-            return {
-                'periodo': {'inicio': start_date, 'fin': end_date},
-                'segmentacion_clientes': customer_segments,
-                'top_clientes': top_customers,
-                'analisis_retencion': retention,
-                'productos_favoritos_por_segmento': favorite_products_by_segment
+            report = {
+                'tipo': 'MOVEMENTS',
+                'periodo': {
+                    'fecha_inicio': start_date.isoformat(),
+                    'fecha_fin': end_date.isoformat()
+                },
+                'producto_id': product_id,
+                'generado_en': datetime.now().isoformat(),
+                'resumen': [dict(row) for row in movement_stats],
+                'movimientos': [dict(row) for row in movements]
             }
             
-        except Exception as e:
-            logger.error(f"Error generando análisis de clientes: {e}")
-            return {}
-    
-    def generate_inventory_turnover_report(self, months: int = 6) -> Dict:
-        """Generar reporte de rotación de inventario"""
-        try:
-            start_date = (datetime.now() - timedelta(days=months*30)).strftime('%Y-%m-%d')
-            end_date = datetime.now().strftime('%Y-%m-%d')
-            
-            # Rotación de inventario por producto
-            inventory_turnover = self.db.execute_query("""
-                SELECT 
-                    p.id,
-                    p.nombre,
-                    p.codigo_barras,
-                    c.nombre as categoria,
-                    p.stock_actual,
-                    p.precio_compra,
-                    p.precio_venta,
-                    COALESCE(sales_data.cantidad_vendida, 0) as cantidad_vendida,
-                    COALESCE(sales_data.ingresos_producto, 0) as ingresos_producto,
-                    CASE 
-                        WHEN p.stock_actual > 0 AND sales_data.cantidad_vendida > 0 
-                        THEN ROUND(sales_data.cantidad_vendida / (p.stock_actual * 1.0), 2)
-                        ELSE 0 
-                    END as rotacion_veces,
-                    CASE 
-                        WHEN sales_data.cantidad_vendida > 0 
-                        THEN ROUND((? * 30.0) / (sales_data.cantidad_vendida / (p.stock_actual + sales_data.cantidad_vendida)), 1)
-                        ELSE 999 
-                    END as dias_inventario,
-                    CASE 
-                        WHEN p.stock_actual > 0 AND p.precio_compra > 0
-                        THEN p.stock_actual * p.precio_compra
-                        ELSE 0
-                    END as valor_inventario
-                FROM productos p
-                LEFT JOIN categorias c ON p.categoria_id = c.id
-                LEFT JOIN (
-                    SELECT 
-                        dv.producto_id,
-                        SUM(dv.cantidad) as cantidad_vendida,
-                        SUM(dv.subtotal) as ingresos_producto
-                    FROM detalle_ventas dv
-                    JOIN ventas v ON dv.venta_id = v.id
-                    WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                    AND v.estado = 'COMPLETADA'
-                    GROUP BY dv.producto_id
-                ) sales_data ON p.id = sales_data.producto_id
-                WHERE p.activo = 1
-                ORDER BY rotacion_veces DESC, cantidad_vendida DESC
-            """, (months, start_date, end_date))
-            
-            # Resumen por categoría
-            category_turnover = self.db.execute_query("""
-                SELECT 
-                    COALESCE(c.nombre, 'Sin Categoría') as categoria,
-                    COUNT(p.id) as productos_categoria,
-                    SUM(p.stock_actual) as stock_total_categoria,
-                    SUM(p.stock_actual * p.precio_compra) as valor_inventario_categoria,
-                    SUM(COALESCE(sales_data.cantidad_vendida, 0)) as total_vendido_categoria,
-                    AVG(CASE 
-                        WHEN p.stock_actual > 0 AND sales_data.cantidad_vendida > 0 
-                        THEN sales_data.cantidad_vendida / (p.stock_actual * 1.0)
-                        ELSE 0 
-                    END) as rotacion_promedio_categoria
-                FROM productos p
-                LEFT JOIN categorias c ON p.categoria_id = c.id
-                LEFT JOIN (
-                    SELECT 
-                        dv.producto_id,
-                        SUM(dv.cantidad) as cantidad_vendida
-                    FROM detalle_ventas dv
-                    JOIN ventas v ON dv.venta_id = v.id
-                    WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                    AND v.estado = 'COMPLETADA'
-                    GROUP BY dv.producto_id
-                ) sales_data ON p.id = sales_data.producto_id
-                WHERE p.activo = 1
-                GROUP BY c.id, c.nombre
-                ORDER BY rotacion_promedio_categoria DESC
-            """, (start_date, end_date))
-            
-            # Productos de lenta rotación (posibles obsoletos)
-            slow_moving_products = [product for product in inventory_turnover 
-                                  if product['rotacion_veces'] < 0.5 and product['stock_actual'] > 0]
-            
-            # Productos de alta rotación (posibles faltantes)
-            fast_moving_products = [product for product in inventory_turnover 
-                                  if product['rotacion_veces'] > 4 and product['stock_actual'] > 0]
-            
-            # Análisis ABC (clasificación por valor)
-            total_inventory_value = sum(p['valor_inventario'] for p in inventory_turnover)
-            sorted_by_value = sorted(inventory_turnover, key=lambda x: x['valor_inventario'], reverse=True)
-            
-            abc_analysis = []
-            cumulative_value = 0
-            for product in sorted_by_value:
-                cumulative_value += product['valor_inventario']
-                cumulative_percentage = (cumulative_value / total_inventory_value * 100) if total_inventory_value > 0 else 0
-                
-                if cumulative_percentage <= 80:
-                    classification = 'A'
-                elif cumulative_percentage <= 95:
-                    classification = 'B'
-                else:
-                    classification = 'C'
-                
-                abc_analysis.append({
-                    'nombre': product['nombre'],
-                    'valor_inventario': product['valor_inventario'],
-                    'clasificacion': classification,
-                    'porcentaje_acumulado': cumulative_percentage
-                })
-            
-            return {
-                'periodo_analisis': {'inicio': start_date, 'fin': end_date, 'meses': months},
-                'rotacion_por_producto': inventory_turnover,
-                'rotacion_por_categoria': category_turnover,
-                'productos_lenta_rotacion': slow_moving_products,
-                'productos_alta_rotacion': fast_moving_products,
-                'analisis_abc': abc_analysis,
-                'resumen': {
-                    'valor_total_inventario': total_inventory_value,
-                    'productos_analizados': len(inventory_turnover),
-                    'productos_sin_movimiento': len([p for p in inventory_turnover if p['cantidad_vendida'] == 0]),
-                    'rotacion_promedio_general': sum(p['rotacion_veces'] for p in inventory_turnover) / len(inventory_turnover) if inventory_turnover else 0
-                }
-            }
+            return report
             
         except Exception as e:
-            logger.error(f"Error generando reporte de rotación: {e}")
-            return {}
+            self.logger.error(f"Error generando reporte de movimientos: {e}")
+            return {'error': str(e)}
     
-    def generate_comparative_report(self, current_start: str, current_end: str,
-                                  previous_start: str, previous_end: str) -> Dict:
-        """Generar reporte comparativo entre dos períodos"""
+    def save_report_to_file(self, report: Dict, filename: str = None) -> str:
+        """Guardar reporte en archivo JSON"""
         try:
-            # Obtener métricas del período actual
-            current_metrics = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as ventas_cantidad,
-                    SUM(total) as ventas_total,
-                    AVG(total) as ticket_promedio,
-                    COUNT(DISTINCT cliente_id) as clientes_unicos,
-                    SUM(dv.cantidad) as unidades_vendidas
-                FROM ventas v
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                AND v.estado = 'COMPLETADA'
-            """, (current_start, current_end))
+            if not filename:
+                report_type = report.get('tipo', 'UNKNOWN')
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"{report_type}_{timestamp}.json"
             
-            # Obtener métricas del período anterior
-            previous_metrics = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as ventas_cantidad,
-                    SUM(total) as ventas_total,
-                    AVG(total) as ticket_promedio,
-                    COUNT(DISTINCT cliente_id) as clientes_unicos,
-                    SUM(dv.cantidad) as unidades_vendidas
-                FROM ventas v
-                LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                AND v.estado = 'COMPLETADA'
-            """, (previous_start, previous_end))
+            filepath = self.reports_dir / filename
             
-            # Calcular variaciones porcentuales
-            def calculate_variation(current, previous):
-                if previous and previous > 0:
-                    return ((current - previous) / previous) * 100
-                return 0
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(report, f, indent=2, ensure_ascii=False, default=str)
             
-            current = dict(current_metrics) if current_metrics else {}
-            previous = dict(previous_metrics) if previous_metrics else {}
+            self.logger.info(f"Reporte guardado: {filepath}")
+            return str(filepath)
             
-            comparisons = {}
-            for metric in ['ventas_cantidad', 'ventas_total', 'ticket_promedio', 'clientes_unicos', 'unidades_vendidas']:
-                current_value = current.get(metric, 0) or 0
-                previous_value = previous.get(metric, 0) or 0
-                variation = calculate_variation(current_value, previous_value)
-                
-                comparisons[metric] = {
-                    'actual': current_value,
-                    'anterior': previous_value,
-                    'variacion_absoluta': current_value - previous_value,
-                    'variacion_porcentual': variation
+        except Exception as e:
+            self.logger.error(f"Error guardando reporte: {e}")
+            raise e
+    
+    def get_report_summary(self, report_type: str = None, days: int = 30) -> Dict:
+        """Obtener resumen rápido de reportes"""
+        try:
+            summary = {}
+            
+            # Resumen de ventas
+            sales_summary = self.generate_daily_sales_report()
+            if 'error' not in sales_summary:
+                summary['ventas_hoy'] = sales_summary['resumen']
+            
+            # Productos con stock bajo
+            low_stock = self.generate_inventory_report(low_stock_only=True)
+            if 'error' not in low_stock:
+                summary['stock_bajo'] = {
+                    'productos_stock_bajo': low_stock['resumen']['productos_stock_bajo'],
+                    'productos_sin_stock': low_stock['resumen']['productos_sin_stock']
                 }
             
-            # Top productos comparativo
-            current_top_products = self.db.execute_query("""
-                SELECT 
-                    p.nombre,
-                    SUM(dv.cantidad) as cantidad,
-                    SUM(dv.subtotal) as total
-                FROM detalle_ventas dv
-                JOIN productos p ON dv.producto_id = p.id
-                JOIN ventas v ON dv.venta_id = v.id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                AND v.estado = 'COMPLETADA'
-                GROUP BY p.id, p.nombre
-                ORDER BY cantidad DESC
-                LIMIT 10
-            """, (current_start, current_end))
+            # Top productos últimos días
+            top_products = self.generate_top_products_report(period_days=days, limit=5)
+            if 'error' not in top_products:
+                summary['top_productos'] = top_products['productos'][:5]
             
-            previous_top_products = self.db.execute_query("""
-                SELECT 
-                    p.nombre,
-                    SUM(dv.cantidad) as cantidad,
-                    SUM(dv.subtotal) as total
-                FROM detalle_ventas dv
-                JOIN productos p ON dv.producto_id = p.id
-                JOIN ventas v ON dv.venta_id = v.id
-                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
-                AND v.estado = 'COMPLETADA'
-                GROUP BY p.id, p.nombre
-                ORDER BY cantidad DESC
-                LIMIT 10
-            """, (previous_start, previous_end))
-            
-            return {
-                'periodo_actual': {'inicio': current_start, 'fin': current_end},
-                'periodo_anterior': {'inicio': previous_start, 'fin': previous_end},
-                'metricas_comparativas': comparisons,
-                'top_productos_actual': current_top_products,
-                'top_productos_anterior': previous_top_products
-            }
+            return summary
             
         except Exception as e:
-            logger.error(f"Error generando reporte comparativo: {e}")
-            return {}
+            self.logger.error(f"Error generando resumen de reportes: {e}")
+            return {'error': str(e)}
     
-    def export_report_to_csv(self, report_data: Dict, filename: str) -> Tuple[bool, str]:
-        """Exportar reporte a CSV"""
-        try:
-            import csv
-            import io
-            
-            # Esta función se implementaría según el tipo de reporte
-            # Por ahora retorna un placeholder
-            
-            logger.info(f"Exportación a CSV solicitada: {filename}")
-            return True, f"Reporte exportado a {filename}"
-            
-        except Exception as e:
-            logger.error(f"Error exportando a CSV: {e}")
-            return False, f"Error exportando reporte: {str(e)}"
+    def get_available_reports(self) -> List[Dict]:
+        """Obtener lista de tipos de reportes disponibles"""
+        return [
+            {'code': code, 'name': name} 
+            for code, name in self.REPORT_TYPES.items()
+        ]
     
-    def get_dashboard_metrics(self) -> Dict:
-        """Obtener métricas para dashboard ejecutivo"""
+    def cleanup_old_reports(self, days_to_keep: int = 30):
+        """Limpiar reportes antiguos"""
         try:
-            today = date.today().isoformat()
-            week_ago = (date.today() - timedelta(days=7)).isoformat()
-            month_ago = (date.today() - timedelta(days=30)).isoformat()
+            cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+            deleted_count = 0
             
-            # Ventas de hoy
-            today_sales = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as ventas_hoy,
-                    COALESCE(SUM(total), 0) as total_hoy
-                FROM ventas 
-                WHERE DATE(fecha_venta) = ? AND estado = 'COMPLETADA'
-            """, (today,))
+            for report_file in self.reports_dir.glob("*.json"):
+                try:
+                    file_time = datetime.fromtimestamp(report_file.stat().st_mtime)
+                    if file_time < cutoff_date:
+                        report_file.unlink()
+                        deleted_count += 1
+                except Exception as e:
+                    self.logger.warning(f"Error eliminando reporte {report_file}: {e}")
             
-            # Stock crítico
-            critical_stock = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as productos_sin_stock,
-                    COUNT(CASE WHEN stock_actual <= stock_minimo AND stock_actual > 0 THEN 1 END) as productos_stock_bajo
-                FROM productos 
-                WHERE activo = 1
-            """)
-            
-            # Cuentas por cobrar
-            accounts_receivable = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as clientes_con_deuda,
-                    COALESCE(SUM(saldo_cuenta_corriente), 0) as total_por_cobrar
-                FROM clientes 
-                WHERE saldo_cuenta_corriente > 0
-            """)
-            
-            # Órdenes pendientes
-            pending_orders = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as ordenes_pendientes,
-                    COALESCE(SUM(total), 0) as monto_pendiente
-                FROM compras 
-                WHERE estado IN ('PENDIENTE', 'CONFIRMADA', 'PARCIAL')
-            """)
-            
-            # Tendencia semanal
-            weekly_trend = self.db.execute_query("""
-                SELECT 
-                    DATE(fecha_venta) as fecha,
-                    COALESCE(SUM(total), 0) as total_dia
-                FROM ventas 
-                WHERE DATE(fecha_venta) BETWEEN ? AND ? 
-                AND estado = 'COMPLETADA'
-                GROUP BY DATE(fecha_venta)
-                ORDER BY fecha
-            """, (week_ago, today))
-            
-            return {
-                'fecha_actualizacion': datetime.now().isoformat(),
-                'ventas_hoy': dict(today_sales) if today_sales else {},
-                'stock_critico': dict(critical_stock) if critical_stock else {},
-                'cuentas_por_cobrar': dict(accounts_receivable) if accounts_receivable else {},
-                'ordenes_pendientes': dict(pending_orders) if pending_orders else {},
-                'tendencia_semanal': weekly_trend
-            }
-            
+            if deleted_count > 0:
+                self.logger.info(f"Limpieza de reportes completada: {deleted_count} archivos eliminados")
+                
         except Exception as e:
-            logger.error(f"Error obteniendo métricas de dashboard: {e}")
-            return {}
+            self.logger.error(f"Error limpiando reportes antiguos: {e}")

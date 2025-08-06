@@ -1,6 +1,6 @@
 """
-Diálogo de login para AlmacénPro
-Sistema de autenticación con validación de usuarios y roles
+Diálogo de Login para AlmacénPro
+Sistema de autenticación con validación de usuarios, roles y seguridad
 """
 
 import logging
@@ -16,478 +16,703 @@ class LoginDialog(QDialog):
     def __init__(self, user_manager, parent=None):
         super().__init__(parent)
         self.user_manager = user_manager
+        self.authenticated_user = None
+        self.failed_attempts = 0
+        self.max_attempts = 3
+        
         self.init_ui()
         self.setup_styles()
+        self.setup_validators()
+        
+        # Timer para bloqueo temporal
+        self.lockout_timer = QTimer()
+        self.lockout_timer.timeout.connect(self.unlock_login)
         
     def init_ui(self):
         """Inicializar interfaz de usuario"""
         self.setWindowTitle("AlmacénPro - Iniciar Sesión")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(450, 350)
         self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
         
         # Layout principal
-        main_layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
         main_layout.setSpacing(20)
-        main_layout.setContentsMargins(40, 30, 40, 30)
+        main_layout.setContentsMargins(30, 30, 30, 30)
         
         # Logo y título
-        self.create_header(main_layout)
+        header_widget = self.create_header()
+        main_layout.addWidget(header_widget)
         
         # Formulario de login
-        self.create_login_form(main_layout)
+        form_widget = self.create_login_form()
+        main_layout.addWidget(form_widget)
+        
+        # Mensajes de estado
+        self.status_label = QLabel()
+        self.status_label.setObjectName("status_label")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setWordWrap(True)
+        main_layout.addWidget(self.status_label)
         
         # Botones
-        self.create_buttons(main_layout)
+        buttons_widget = self.create_buttons()
+        main_layout.addWidget(buttons_widget)
         
         # Información adicional
-        self.create_footer(main_layout)
+        footer_widget = self.create_footer()
+        main_layout.addWidget(footer_widget)
         
-        self.setLayout(main_layout)
-        
-        # Configurar tab order
+        # Configurar orden de tabulación
         self.setTabOrder(self.username_input, self.password_input)
-        self.setTabOrder(self.password_input, self.login_btn)
+        self.setTabOrder(self.password_input, self.show_password_cb)
+        self.setTabOrder(self.show_password_cb, self.remember_me_cb)
+        self.setTabOrder(self.remember_me_cb, self.login_btn)
         self.setTabOrder(self.login_btn, self.cancel_btn)
         
-        # Foco inicial en username
+        # Foco inicial
         self.username_input.setFocus()
+        
+        # Cargar último usuario si está guardado
+        self.load_saved_credentials()
     
-    def create_header(self, layout):
+    def create_header(self) -> QWidget:
         """Crear header con logo y título"""
-        header_layout = QVBoxLayout()
-        header_layout.setAlignment(Qt.AlignCenter)
+        header = QWidget()
+        header.setObjectName("login_header")
+        layout = QVBoxLayout(header)
+        layout.setAlignment(Qt.AlignCenter)
+        layout.setSpacing(10)
         
         # Logo placeholder (se puede reemplazar con imagen real)
         logo_label = QLabel("🏪")
         logo_label.setAlignment(Qt.AlignCenter)
-        logo_label.setStyleSheet("font-size: 48px; margin-bottom: 10px;")
-        header_layout.addWidget(logo_label)
+        logo_label.setObjectName("logo_label")
+        layout.addWidget(logo_label)
         
-        # Título
+        # Título principal
         title_label = QLabel("AlmacénPro v2.0")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("""
-            font-size: 24px; 
-            font-weight: bold; 
-            color: #2E86AB; 
-            margin-bottom: 5px;
-        """)
-        header_layout.addWidget(title_label)
+        title_label.setObjectName("title_label")
+        layout.addWidget(title_label)
         
         # Subtítulo
-        subtitle_label = QLabel("Sistema de Gestión Completo")
+        subtitle_label = QLabel("Sistema ERP/POS Completo")
         subtitle_label.setAlignment(Qt.AlignCenter)
-        subtitle_label.setStyleSheet("font-size: 12px; color: #666; margin-bottom: 20px;")
-        header_layout.addWidget(subtitle_label)
+        subtitle_label.setObjectName("subtitle_label")
+        layout.addWidget(subtitle_label)
         
-        layout.addLayout(header_layout)
+        return header
     
-    def create_login_form(self, layout):
+    def create_login_form(self) -> QWidget:
         """Crear formulario de login"""
-        form_layout = QFormLayout()
+        form_widget = QWidget()
+        form_layout = QVBoxLayout(form_widget)
         form_layout.setSpacing(15)
         
         # Campo de usuario
+        username_layout = QVBoxLayout()
+        username_label = QLabel("Usuario:")
+        username_label.setObjectName("field_label")
+        username_layout.addWidget(username_label)
+        
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Ingrese su usuario")
-        self.username_input.returnPressed.connect(self.password_input.setFocus)
+        self.username_input.setObjectName("username_input")
+        self.username_input.setPlaceholderText("Ingrese su nombre de usuario")
+        self.username_input.setMaxLength(50)
+        username_layout.addWidget(self.username_input)
         
-        user_icon = QLabel("👤")
-        user_icon.setFixedWidth(25)
-        user_layout = QHBoxLayout()
-        user_layout.addWidget(user_icon)
-        user_layout.addWidget(self.username_input)
-        user_layout.setContentsMargins(0, 0, 0, 0)
-        user_widget = QWidget()
-        user_widget.setLayout(user_layout)
-        
-        form_layout.addRow("Usuario:", user_widget)
+        form_layout.addLayout(username_layout)
         
         # Campo de contraseña
+        password_layout = QVBoxLayout()
+        password_label = QLabel("Contraseña:")
+        password_label.setObjectName("field_label")
+        password_layout.addWidget(password_label)
+        
+        # Container para password y botón de mostrar
+        password_container = QHBoxLayout()
+        
         self.password_input = QLineEdit()
-        self.password_input.setEchoMode(QLineEdit.Password)
+        self.password_input.setObjectName("password_input")
         self.password_input.setPlaceholderText("Ingrese su contraseña")
-        self.password_input.returnPressed.connect(self.attempt_login)
+        self.password_input.setEchoMode(QLineEdit.Password)
+        self.password_input.setMaxLength(100)
+        password_container.addWidget(self.password_input)
         
-        pass_icon = QLabel("🔐")
-        pass_icon.setFixedWidth(25)
-        pass_layout = QHBoxLayout()
-        pass_layout.addWidget(pass_icon)
-        pass_layout.addWidget(self.password_input)
-        pass_layout.setContentsMargins(0, 0, 0, 0)
-        pass_widget = QWidget()
-        pass_widget.setLayout(pass_layout)
+        # Botón para mostrar/ocultar contraseña
+        self.toggle_password_btn = QPushButton("👁")
+        self.toggle_password_btn.setObjectName("toggle_password_btn")
+        self.toggle_password_btn.setFixedSize(30, 30)
+        self.toggle_password_btn.setCheckable(True)
+        self.toggle_password_btn.setToolTip("Mostrar/Ocultar contraseña")
+        self.toggle_password_btn.clicked.connect(self.toggle_password_visibility)
+        password_container.addWidget(self.toggle_password_btn)
         
-        form_layout.addRow("Contraseña:", pass_widget)
+        password_layout.addLayout(password_container)
+        form_layout.addLayout(password_layout)
         
-        # Checkbox para mostrar contraseña
+        # Opciones adicionales
+        options_layout = QVBoxLayout()
+        
+        # Mostrar contraseña (checkbox alternativo)
         self.show_password_cb = QCheckBox("Mostrar contraseña")
-        self.show_password_cb.toggled.connect(self.toggle_password_visibility)
-        form_layout.addRow("", self.show_password_cb)
+        self.show_password_cb.setObjectName("show_password_cb")
+        self.show_password_cb.toggled.connect(self.on_show_password_toggled)
+        options_layout.addWidget(self.show_password_cb)
         
-        layout.addLayout(form_layout)
+        # Recordar usuario
+        self.remember_me_cb = QCheckBox("Recordar usuario")
+        self.remember_me_cb.setObjectName("remember_me_cb")
+        self.remember_me_cb.setToolTip("Recordar el nombre de usuario para el próximo inicio de sesión")
+        options_layout.addWidget(self.remember_me_cb)
         
-        # Mensaje de error
-        self.error_label = QLabel()
-        self.error_label.setStyleSheet("""
-            color: #e74c3c; 
-            font-weight: bold; 
-            padding: 5px; 
-            background-color: #fdf2f2; 
-            border: 1px solid #fadadd; 
-            border-radius: 4px;
-        """)
-        self.error_label.setWordWrap(True)
-        self.error_label.hide()
-        layout.addWidget(self.error_label)
+        form_layout.addLayout(options_layout)
+        
+        # Conectar eventos
+        self.username_input.returnPressed.connect(self.password_input.setFocus)
+        self.password_input.returnPressed.connect(self.attempt_login)
+        self.username_input.textChanged.connect(self.clear_status)
+        self.password_input.textChanged.connect(self.clear_status)
+        
+        return form_widget
     
-    def create_buttons(self, layout):
+    def create_buttons(self) -> QWidget:
         """Crear botones de acción"""
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
+        buttons_widget = QWidget()
+        buttons_layout = QHBoxLayout(buttons_widget)
+        buttons_layout.setSpacing(10)
         
-        # Botón de cancelar
+        # Botón cancelar
         self.cancel_btn = QPushButton("Cancelar")
-        self.cancel_btn.setFixedHeight(35)
+        self.cancel_btn.setObjectName("cancel_btn")
+        self.cancel_btn.setMinimumHeight(35)
         self.cancel_btn.clicked.connect(self.reject)
-        button_layout.addWidget(self.cancel_btn)
+        buttons_layout.addWidget(self.cancel_btn)
         
-        # Espaciador
-        button_layout.addStretch()
+        buttons_layout.addStretch()
         
-        # Botón de login
+        # Botón login
         self.login_btn = QPushButton("Iniciar Sesión")
-        self.login_btn.setFixedHeight(35)
+        self.login_btn.setObjectName("login_btn")
+        self.login_btn.setMinimumHeight(35)
         self.login_btn.setDefault(True)
         self.login_btn.clicked.connect(self.attempt_login)
-        button_layout.addWidget(self.login_btn)
+        buttons_layout.addWidget(self.login_btn)
         
-        layout.addLayout(button_layout)
+        return buttons_widget
     
-    def create_footer(self, layout):
-        """Crear footer con información adicional"""
-        footer_layout = QVBoxLayout()
-        footer_layout.setAlignment(Qt.AlignCenter)
-        footer_layout.setSpacing(5)
+    def create_footer(self) -> QWidget:
+        """Crear información adicional en el footer"""
+        footer = QWidget()
+        footer.setObjectName("login_footer")
+        layout = QVBoxLayout(footer)
+        layout.setAlignment(Qt.AlignCenter)
+        layout.setSpacing(5)
         
-        # Información de usuario por defecto
-        default_info = QLabel("Usuario por defecto: admin | Contraseña: admin123")
-        default_info.setStyleSheet("font-size: 10px; color: #888; font-style: italic;")
-        default_info.setAlignment(Qt.AlignCenter)
-        footer_layout.addWidget(default_info)
+        # Información del sistema
+        system_info = QLabel("Sistema de gestión empresarial")
+        system_info.setObjectName("system_info")
+        system_info.setAlignment(Qt.AlignCenter)
+        layout.addWidget(system_info)
         
-        # Separador
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
-        line.setStyleSheet("margin: 10px 0;")
-        footer_layout.addWidget(line)
+        # Usuario por defecto (solo en desarrollo)
+        default_user_info = QLabel("Usuario por defecto: admin / admin123")
+        default_user_info.setObjectName("default_user_info")
+        default_user_info.setAlignment(Qt.AlignCenter)
+        layout.addWidget(default_user_info)
         
-        # Botón de configuración de conexión
-        config_btn = QPushButton("⚙️ Configurar Conexión")
-        config_btn.setFlat(True)
-        config_btn.setStyleSheet("color: #2E86AB; text-decoration: underline;")
-        config_btn.clicked.connect(self.show_connection_config)
-        footer_layout.addWidget(config_btn)
-        
-        layout.addLayout(footer_layout)
+        return footer
     
     def setup_styles(self):
-        """Configurar estilos CSS"""
+        """Configurar estilos CSS del diálogo"""
         self.setStyleSheet("""
             QDialog {
-                background-color: #f8f9fa;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
             }
             
-            QLineEdit {
-                padding: 8px 12px;
-                border: 2px solid #e9ecef;
-                border-radius: 6px;
+            #login_header {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, 
+                    stop:0 #2E86AB, stop:1 #A23B72);
+                border-radius: 15px;
+                padding: 25px;
+                margin-bottom: 20px;
+            }
+            
+            #logo_label {
+                font-size: 48px;
+                color: white;
+                margin-bottom: 5px;
+            }
+            
+            #title_label {
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+            
+            #subtitle_label {
+                color: #e8f4f8;
+                font-size: 12px;
+                font-style: italic;
+            }
+            
+            #field_label {
+                color: #2c3e50;
+                font-weight: bold;
+                font-size: 12px;
+                margin-bottom: 5px;
+            }
+            
+            #username_input, #password_input {
+                border: 2px solid #bdc3c7;
+                border-radius: 8px;
+                padding: 12px 15px;
                 font-size: 14px;
                 background-color: white;
+                color: #2c3e50;
             }
             
-            QLineEdit:focus {
-                border-color: #2E86AB;
+            #username_input:focus, #password_input:focus {
+                border-color: #3498db;
                 outline: none;
             }
             
-            QPushButton {
-                padding: 8px 20px;
-                border: none;
-                border-radius: 6px;
-                font-weight: bold;
-                font-size: 14px;
+            #username_input:hover, #password_input:hover {
+                border-color: #85c1e9;
             }
             
-            QPushButton#login_btn {
-                background-color: #2E86AB;
+            #toggle_password_btn {
+                border: 2px solid #bdc3c7;
+                border-radius: 8px;
+                background-color: white;
+                font-size: 12px;
+            }
+            
+            #toggle_password_btn:hover {
+                background-color: #ecf0f1;
+                border-color: #85c1e9;
+            }
+            
+            #toggle_password_btn:pressed {
+                background-color: #3498db;
                 color: white;
-            }
-            
-            QPushButton#login_btn:hover {
-                background-color: #1e5f7a;
-            }
-            
-            QPushButton#login_btn:pressed {
-                background-color: #164a5e;
-            }
-            
-            QPushButton#cancel_btn {
-                background-color: #6c757d;
-                color: white;
-            }
-            
-            QPushButton#cancel_btn:hover {
-                background-color: #5a6268;
             }
             
             QCheckBox {
-                font-size: 12px;
-                color: #495057;
+                color: #2c3e50;
+                font-size: 11px;
+                spacing: 8px;
             }
             
             QCheckBox::indicator {
                 width: 16px;
                 height: 16px;
-            }
-            
-            QCheckBox::indicator:unchecked {
-                border: 2px solid #ced4da;
+                border: 2px solid #bdc3c7;
                 border-radius: 3px;
                 background-color: white;
             }
             
             QCheckBox::indicator:checked {
-                border: 2px solid #2E86AB;
-                border-radius: 3px;
-                background-color: #2E86AB;
-                image: url(check.png); /* Se puede agregar icono de check */
+                background-color: #3498db;
+                border-color: #3498db;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
             }
             
-            QFormLayout QLabel {
+            #login_btn {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                    stop:0 #3498db, stop:1 #2980b9);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 12px 30px;
                 font-weight: bold;
-                color: #495057;
+                font-size: 14px;
+                min-width: 120px;
+            }
+            
+            #login_btn:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                    stop:0 #5dade2, stop:1 #3498db);
+            }
+            
+            #login_btn:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                    stop:0 #2980b9, stop:1 #21618c);
+            }
+            
+            #login_btn:disabled {
+                background-color: #bdc3c7;
+                color: #7f8c8d;
+            }
+            
+            #cancel_btn {
+                background-color: transparent;
+                color: #7f8c8d;
+                border: 2px solid #bdc3c7;
+                border-radius: 8px;
+                padding: 12px 30px;
+                font-weight: bold;
+                font-size: 14px;
+                min-width: 120px;
+            }
+            
+            #cancel_btn:hover {
+                background-color: #ecf0f1;
+                border-color: #95a5a6;
+                color: #2c3e50;
+            }
+            
+            #status_label {
+                font-size: 12px;
+                padding: 8px;
+                border-radius: 6px;
+                margin: 5px 0;
+            }
+            
+            #login_footer {
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 1px solid #ecf0f1;
+            }
+            
+            #system_info {
+                color: #7f8c8d;
+                font-size: 11px;
+                font-style: italic;
+            }
+            
+            #default_user_info {
+                color: #e67e22;
+                font-size: 10px;
+                font-weight: bold;
+                margin-top: 5px;
             }
         """)
-        
-        # Aplicar IDs para estilos específicos
-        self.login_btn.setObjectName("login_btn")
-        self.cancel_btn.setObjectName("cancel_btn")
     
-    def toggle_password_visibility(self, checked):
-        """Alternar visibilidad de contraseña"""
-        if checked:
+    def setup_validators(self):
+        """Configurar validadores de entrada"""
+        # Validador para username (solo letras, números y algunos caracteres especiales)
+        username_regex = QRegExp("[a-zA-Z0-9_.-]+")
+        username_validator = QRegExpValidator(username_regex)
+        self.username_input.setValidator(username_validator)
+    
+    def toggle_password_visibility(self):
+        """Alternar visibilidad de la contraseña"""
+        if self.toggle_password_btn.isChecked():
             self.password_input.setEchoMode(QLineEdit.Normal)
+            self.toggle_password_btn.setText("🙈")
+            self.show_password_cb.setChecked(True)
         else:
             self.password_input.setEchoMode(QLineEdit.Password)
+            self.toggle_password_btn.setText("👁")
+            self.show_password_cb.setChecked(False)
+    
+    def on_show_password_toggled(self, checked: bool):
+        """Manejar cambio en checkbox de mostrar contraseña"""
+        if checked:
+            self.password_input.setEchoMode(QLineEdit.Normal)
+            self.toggle_password_btn.setChecked(True)
+            self.toggle_password_btn.setText("🙈")
+        else:
+            self.password_input.setEchoMode(QLineEdit.Password)
+            self.toggle_password_btn.setChecked(False)
+            self.toggle_password_btn.setText("👁")
+    
+    def clear_status(self):
+        """Limpiar mensaje de estado"""
+        self.status_label.clear()
+        self.status_label.setStyleSheet("")
+    
+    def show_status(self, message: str, status_type: str = "info"):
+        """Mostrar mensaje de estado"""
+        self.status_label.setText(message)
+        
+        if status_type == "error":
+            self.status_label.setStyleSheet("""
+                background-color: #fadbd8;
+                color: #c0392b;
+                border: 1px solid #f1948a;
+            """)
+        elif status_type == "warning":
+            self.status_label.setStyleSheet("""
+                background-color: #fef9e7;
+                color: #b7950b;
+                border: 1px solid #f4d03f;
+            """)
+        elif status_type == "success":
+            self.status_label.setStyleSheet("""
+                background-color: #d5f4e6;
+                color: #27ae60;
+                border: 1px solid #82e0aa;
+            """)
+        else:  # info
+            self.status_label.setStyleSheet("""
+                background-color: #ebf3fd;
+                color: #2471a3;
+                border: 1px solid #85c1e9;
+            """)
     
     def attempt_login(self):
-        """Intentar autenticación"""
+        """Intentar iniciar sesión"""
+        if self.login_btn.isEnabled() == False:
+            return
+        
         username = self.username_input.text().strip()
         password = self.password_input.text()
         
         # Validaciones básicas
         if not username:
-            self.show_error("Por favor ingrese su nombre de usuario")
+            self.show_status("Por favor ingrese su nombre de usuario", "error")
             self.username_input.setFocus()
             return
         
         if not password:
-            self.show_error("Por favor ingrese su contraseña")
+            self.show_status("Por favor ingrese su contraseña", "error")
             self.password_input.setFocus()
             return
         
-        # Deshabilitar botón mientras se autentica
+        # Deshabilitar botón temporalmente
         self.login_btn.setEnabled(False)
-        self.login_btn.setText("Autenticando...")
+        self.show_status("Verificando credenciales...", "info")
         
-        # Procesar autenticación en el siguiente ciclo de eventos
-        QTimer.singleShot(100, lambda: self.process_login(username, password))
+        # Procesar en el próximo ciclo del event loop para mostrar el mensaje
+        QTimer.singleShot(100, lambda: self._process_login(username, password))
     
-    def process_login(self, username, password):
-        """Procesar login en el gestor de usuarios"""
+    def _process_login(self, username: str, password: str):
+        """Procesar login en segundo plano"""
         try:
-            success, message = self.user_manager.login(username, password)
+            # Intentar autenticación
+            success, message, user_data = self.user_manager.authenticate_user(username, password)
             
             if success:
-                logger.info(f"Login exitoso para usuario: {username}")
-                self.accept()  # Cerrar diálogo con éxito
-            else:
-                self.show_error(message)
-                logger.warning(f"Login fallido para usuario: {username}")
+                self.authenticated_user = user_data
+                self.failed_attempts = 0
                 
-                # Limpiar contraseña en caso de error
+                # Guardar credenciales si está marcado
+                if self.remember_me_cb.isChecked():
+                    self.save_credentials(username)
+                
+                self.show_status("Acceso autorizado. Iniciando sistema...", "success")
+                
+                # Pequelña pausa para mostrar mensaje de éxito
+                QTimer.singleShot(1000, self.accept)
+                
+            else:
+                self.failed_attempts += 1
+                self.show_status(message, "error")
+                
+                # Limpiar contraseña
                 self.password_input.clear()
                 self.password_input.setFocus()
                 
+                # Verificar intentos fallidos
+                if self.failed_attempts >= self.max_attempts:
+                    self.lock_login_temporarily()
+                else:
+                    remaining = self.max_attempts - self.failed_attempts
+                    self.show_status(f"{message}. Intentos restantes: {remaining}", "error")
+                
+                # Reactivar botón
+                self.login_btn.setEnabled(True)
+                
         except Exception as e:
-            logger.error(f"Error durante el login: {e}")
-            self.show_error("Error interno durante la autenticación")
-        
-        finally:
-            # Restaurar botón
+            logger.error(f"Error durante autenticación: {e}")
+            self.show_status("Error interno del sistema. Contacte al administrador.", "error")
             self.login_btn.setEnabled(True)
-            self.login_btn.setText("Iniciar Sesión")
     
-    def show_error(self, message):
-        """Mostrar mensaje de error"""
-        self.error_label.setText(f"❌ {message}")
-        self.error_label.show()
+    def lock_login_temporarily(self):
+        """Bloquear login temporalmente"""
+        lockout_seconds = 30
+        self.show_status(f"Demasiados intentos fallidos. Bloqueado por {lockout_seconds} segundos.", "error")
         
-        # Ocultar error después de 5 segundos
-        QTimer.singleShot(5000, self.error_label.hide)
+        # Deshabilitar campos
+        self.username_input.setEnabled(False)
+        self.password_input.setEnabled(False)
+        self.login_btn.setEnabled(False)
         
-        # Efecto visual de shake
-        self.shake_dialog()
+        # Iniciar countdown
+        self.lockout_remaining = lockout_seconds
+        self.countdown_timer = QTimer()
+        self.countdown_timer.timeout.connect(self.update_lockout_countdown)
+        self.countdown_timer.start(1000)
+        
+        # Timer principal para desbloquear
+        self.lockout_timer.start(lockout_seconds * 1000)
     
-    def shake_dialog(self):
-        """Efecto de shake para indicar error"""
+    def update_lockout_countdown(self):
+        """Actualizar countdown de bloqueo"""
+        self.lockout_remaining -= 1
+        if self.lockout_remaining > 0:
+            self.show_status(f"Sistema bloqueado. Tiempo restante: {self.lockout_remaining} segundos.", "warning")
+        else:
+            self.countdown_timer.stop()
+    
+    def unlock_login(self):
+        """Desbloquear login después del timeout"""
+        self.lockout_timer.stop()
+        if hasattr(self, 'countdown_timer'):
+            self.countdown_timer.stop()
+        
+        # Reactivar campos
+        self.username_input.setEnabled(True)
+        self.password_input.setEnabled(True)
+        self.login_btn.setEnabled(True)
+        
+        # Resetear intentos
+        self.failed_attempts = 0
+        
+        # Limpiar status
+        self.clear_status()
+        self.show_status("Sistema desbloqueado. Puede intentar nuevamente.", "info")
+        
+        # Foco en username
+        self.username_input.setFocus()
+    
+    def load_saved_credentials(self):
+        """Cargar credenciales guardadas"""
         try:
-            original_pos = self.pos()
+            from PyQt5.QtCore import QSettings
+            settings = QSettings("AlmacenPro", "LoginCredentials")
             
-            # Crear animación de shake
-            self.animation = QPropertyAnimation(self, b"pos")
-            self.animation.setDuration(500)
-            self.animation.setLoopCount(3)
+            saved_username = settings.value("username", "")
+            remember_user = settings.value("remember_user", False, type=bool)
             
-            # Definir keyframes
-            self.animation.setKeyValueAt(0, original_pos)
-            self.animation.setKeyValueAt(0.25, QPoint(original_pos.x() + 10, original_pos.y()))
-            self.animation.setKeyValueAt(0.75, QPoint(original_pos.x() - 10, original_pos.y()))
-            self.animation.setKeyValueAt(1, original_pos)
-            
-            self.animation.start()
+            if saved_username and remember_user:
+                self.username_input.setText(saved_username)
+                self.remember_me_cb.setChecked(True)
+                self.password_input.setFocus()
             
         except Exception as e:
-            logger.error(f"Error en animación shake: {e}")
+            logger.warning(f"Error cargando credenciales guardadas: {e}")
     
-    def show_connection_config(self):
-        """Mostrar configuración de conexión a BD"""
-        msg = QMessageBox.information(
-            self, "Configuración de Conexión",
-            "Configuración de conexión a base de datos:\n\n"
-            "• Tipo: SQLite\n"
-            "• Archivo: data/almacen_pro.db\n"
-            "• Estado: Conectado ✅\n\n"
-            "Para configuraciones avanzadas, contacte al administrador."
-        )
+    def save_credentials(self, username: str):
+        """Guardar credenciales para recordar"""
+        try:
+            from PyQt5.QtCore import QSettings
+            settings = QSettings("AlmacenPro", "LoginCredentials")
+            
+            settings.setValue("username", username)
+            settings.setValue("remember_user", True)
+            
+        except Exception as e:
+            logger.warning(f"Error guardando credenciales: {e}")
+    
+    def clear_saved_credentials(self):
+        """Limpiar credenciales guardadas"""
+        try:
+            from PyQt5.QtCore import QSettings
+            settings = QSettings("AlmacenPro", "LoginCredentials")
+            settings.clear()
+            
+        except Exception as e:
+            logger.warning(f"Error limpiando credenciales: {e}")
+    
+    def get_authenticated_user(self) -> dict:
+        """Obtener datos del usuario autenticado"""
+        return self.authenticated_user
     
     def keyPressEvent(self, event):
         """Manejar eventos de teclado"""
-        if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-            if self.username_input.hasFocus():
-                self.password_input.setFocus()
-            elif self.password_input.hasFocus():
-                self.attempt_login()
-        elif event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key_Escape:
             self.reject()
+        elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            if not self.login_btn.isEnabled():
+                return
+                
+            if self.username_input.hasFocus() and not self.username_input.text().strip():
+                return
+            elif self.password_input.hasFocus() or self.login_btn.hasFocus():
+                self.attempt_login()
         else:
             super().keyPressEvent(event)
     
     def closeEvent(self, event):
         """Manejar cierre del diálogo"""
-        # Si el usuario cierra la ventana, considerarlo como cancelación
-        self.reject()
+        # Detener timers si están activos
+        if hasattr(self, 'lockout_timer'):
+            self.lockout_timer.stop()
+        if hasattr(self, 'countdown_timer'):
+            self.countdown_timer.stop()
+        
+        # Si no hay usuario autenticado y se cierra, es cancelación
+        if not self.authenticated_user:
+            self.reject()
+        
         event.accept()
+    
+    def reject(self):
+        """Rechazar diálogo (cancelar)"""
+        # Limpiar credenciales si no se debe recordar
+        if not self.remember_me_cb.isChecked():
+            self.clear_saved_credentials()
+        
+        super().reject()
+    
+    def accept(self):
+        """Aceptar diálogo (login exitoso)"""
+        if self.authenticated_user:
+            super().accept()
+        else:
+            # No se puede aceptar sin autenticación válida
+            self.show_status("Error: No hay usuario autenticado", "error")
 
 
-class ChangePasswordDialog(QDialog):
-    """Diálogo para cambiar contraseña"""
+class LoginSplashScreen(QSplashScreen):
+    """Splash screen personalizado para mostrar durante la carga"""
     
-    def __init__(self, user_manager, parent=None):
-        super().__init__(parent)
-        self.user_manager = user_manager
-        self.init_ui()
+    def __init__(self):
+        # Crear pixmap personalizado
+        pixmap = QPixmap(400, 300)
+        pixmap.fill(Qt.white)
+        
+        super().__init__(pixmap)
+        
+        # Configurar estilo
+        self.setStyleSheet("""
+            QSplashScreen {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, 
+                    stop:0 #2E86AB, stop:1 #A23B72);
+                border: 3px solid #2E86AB;
+                border-radius: 15px;
+            }
+        """)
+        
+        # Mostrar información de carga
+        self.showMessage(
+            "AlmacénPro v2.0\n\nIniciando sistema...",
+            Qt.AlignCenter | Qt.AlignBottom,
+            Qt.white
+        )
     
-    def init_ui(self):
-        """Inicializar interfaz"""
-        self.setWindowTitle("Cambiar Contraseña")
-        self.setFixedSize(350, 250)
-        
-        layout = QVBoxLayout()
-        
-        # Título
-        title = QLabel("Cambiar Contraseña")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 20px;")
-        title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
-        
-        # Formulario
-        form_layout = QFormLayout()
-        
-        self.current_password = QLineEdit()
-        self.current_password.setEchoMode(QLineEdit.Password)
-        self.current_password.setPlaceholderText("Contraseña actual")
-        form_layout.addRow("Contraseña Actual:", self.current_password)
-        
-        self.new_password = QLineEdit()
-        self.new_password.setEchoMode(QLineEdit.Password)
-        self.new_password.setPlaceholderText("Nueva contraseña")
-        form_layout.addRow("Nueva Contraseña:", self.new_password)
-        
-        self.confirm_password = QLineEdit()
-        self.confirm_password.setEchoMode(QLineEdit.Password)
-        self.confirm_password.setPlaceholderText("Confirmar contraseña")
-        form_layout.addRow("Confirmar:", self.confirm_password)
-        
-        layout.addLayout(form_layout)
-        
-        # Mensaje de error
-        self.error_label = QLabel()
-        self.error_label.setStyleSheet("color: red; font-weight: bold;")
-        self.error_label.setWordWrap(True)
-        self.error_label.hide()
-        layout.addWidget(self.error_label)
-        
-        # Botones
-        button_layout = QHBoxLayout()
-        
-        cancel_btn = QPushButton("Cancelar")
-        cancel_btn.clicked.connect(self.reject)
-        button_layout.addWidget(cancel_btn)
-        
-        save_btn = QPushButton("Cambiar Contraseña")
-        save_btn.setStyleSheet("background-color: #2E86AB; color: white; font-weight: bold;")
-        save_btn.clicked.connect(self.change_password)
-        button_layout.addWidget(save_btn)
-        
-        layout.addLayout(button_layout)
-        self.setLayout(layout)
+    def update_message(self, message: str):
+        """Actualizar mensaje del splash"""
+        self.showMessage(
+            f"AlmacénPro v2.0\n\n{message}",
+            Qt.AlignCenter | Qt.AlignBottom,
+            Qt.white
+        )
+        QApplication.processEvents()
+
+
+# Función de utilidad para mostrar diálogo de login
+def show_login_dialog(user_manager, parent=None) -> tuple:
+    """
+    Mostrar diálogo de login y retornar resultado
     
-    def change_password(self):
-        """Cambiar contraseña"""
-        current = self.current_password.text()
-        new_pass = self.new_password.text()
-        confirm = self.confirm_password.text()
+    Returns:
+        tuple: (success: bool, user_data: dict or None)
+    """
+    try:
+        dialog = LoginDialog(user_manager, parent)
+        result = dialog.exec_()
         
-        if not all([current, new_pass, confirm]):
-            self.show_error("Todos los campos son obligatorios")
-            return
-        
-        if new_pass != confirm:
-            self.show_error("Las contraseñas nuevas no coinciden")
-            return
-        
-        if len(new_pass) < 6:
-            self.show_error("La nueva contraseña debe tener al menos 6 caracteres")
-            return
-        
-        try:
-            user_id = self.user_manager.current_user['id']
-            success, message = self.user_manager.change_password(user_id, current, new_pass)
+        if result == QDialog.Accepted:
+            return True, dialog.get_authenticated_user()
+        else:
+            return False, None
             
-            if success:
-                QMessageBox.information(self, "Éxito", "Contraseña cambiada exitosamente")
-                self.accept()
-            else:
-                self.show_error(message)
-                
-        except Exception as e:
-            self.show_error(f"Error cambiando contraseña: {str(e)}")
-    
-    def show_error(self, message):
-        """Mostrar mensaje de error"""
-        self.error_label.setText(message)
-        self.error_label.show()
+    except Exception as e:
+        logger.error(f"Error mostrando diálogo de login: {e}")
+        return False, None

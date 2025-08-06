@@ -1,154 +1,100 @@
 """
 Gestor de Proveedores para AlmacénPro
-Maneja proveedores, contactos y relaciones comerciales
+Manejo completo de proveedores, contactos y relaciones comerciales
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, date
+from typing import Dict, List, Optional, Tuple, Any
+import re
 
 logger = logging.getLogger(__name__)
 
 class ProviderManager:
-    """Gestor de proveedores"""
+    """Gestor principal para proveedores y relaciones comerciales"""
     
     def __init__(self, db_manager):
         self.db = db_manager
-        logger.info("ProviderManager inicializado")
+        self.logger = logging.getLogger(__name__)
+        
+        # Tipos de condición ante IVA válidos
+        self.VALID_IVA_CONDITIONS = [
+            'RESPONSABLE_INSCRIPTO',
+            'RESPONSABLE_NO_INSCRIPTO',
+            'EXENTO',
+            'MONOTRIBUTISTA',
+            'CONSUMIDOR_FINAL',
+            'NO_RESPONSABLE',
+            'SUJETO_NO_CATEGORIZADO'
+        ]
     
-    def create_provider(self, provider_data: Dict) -> Tuple[bool, str, int]:
+    def create_provider(self, provider_data: Dict, user_id: int = None) -> Tuple[bool, str, int]:
         """Crear nuevo proveedor"""
         try:
             # Validaciones básicas
-            if not provider_data.get('nombre') or not provider_data['nombre'].strip():
+            if not provider_data.get('nombre'):
                 return False, "El nombre del proveedor es obligatorio", 0
             
-            # Verificar CUIT único (si se proporciona)
-            if provider_data.get('cuit_dni'):
-                existing = self.db.execute_single("""
-                    SELECT id FROM proveedores WHERE cuit_dni = ? AND activo = 1
-                """, (provider_data['cuit_dni'],))
-                
-                if existing:
-                    return False, "Ya existe un proveedor con ese CUIT/DNI", 0
+            # Generar código si no se proporciona
+            if not provider_data.get('codigo'):
+                provider_data['codigo'] = self._generate_provider_code()
             
-            # Validar email (si se proporciona)
-            if provider_data.get('email') and '@' not in provider_data['email']:
+            # Validar código único
+            if self._provider_code_exists(provider_data['codigo']):
+                return False, f"Ya existe un proveedor con el código {provider_data['codigo']}", 0
+            
+            # Validar email si se proporciona
+            if provider_data.get('email') and not self._validate_email(provider_data['email']):
                 return False, "El formato del email no es válido", 0
             
-            # Crear proveedor
+            # Validar CUIT/CUIL si se proporciona
+            if provider_data.get('cuit_cuil') and not self._validate_cuit_cuil(provider_data['cuit_cuil']):
+                return False, "El formato del CUIT/CUIL no es válido", 0
+            
+            # Validar condición IVA
+            iva_condition = provider_data.get('condicion_iva', 'RESPONSABLE_INSCRIPTO')
+            if iva_condition not in self.VALID_IVA_CONDITIONS:
+                return False, "Condición de IVA no válida", 0
+            
+            # Insertar proveedor
             provider_id = self.db.execute_insert("""
                 INSERT INTO proveedores (
-                    nombre, cuit_dni, direccion, ciudad, provincia, codigo_postal,
-                    telefono, telefono_alternativo, email, sitio_web,
-                    contacto_principal, cargo_contacto, condiciones_pago,
-                    descuento_porcentaje, limite_credito, calificacion, notas
+                    codigo, nombre, razon_social, cuit_cuil, telefono, email,
+                    direccion, ciudad, provincia, codigo_postal,
+                    contacto_nombre, contacto_telefono, contacto_email,
+                    condicion_iva, dias_pago, limite_credito, observaciones
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                provider_data['nombre'].strip(),
-                provider_data.get('cuit_dni', '').strip() or None,
-                provider_data.get('direccion', '').strip() or None,
-                provider_data.get('ciudad', '').strip() or None,
-                provider_data.get('provincia', '').strip() or None,
-                provider_data.get('codigo_postal', '').strip() or None,
-                provider_data.get('telefono', '').strip() or None,
-                provider_data.get('telefono_alternativo', '').strip() or None,
-                provider_data.get('email', '').strip() or None,
-                provider_data.get('sitio_web', '').strip() or None,
-                provider_data.get('contacto_principal', '').strip() or None,
-                provider_data.get('cargo_contacto', '').strip() or None,
-                provider_data.get('condiciones_pago', '').strip() or None,
-                provider_data.get('descuento_porcentaje', 0),
+                provider_data['codigo'],
+                provider_data['nombre'],
+                provider_data.get('razon_social'),
+                provider_data.get('cuit_cuil'),
+                provider_data.get('telefono'),
+                provider_data.get('email'),
+                provider_data.get('direccion'),
+                provider_data.get('ciudad'),
+                provider_data.get('provincia'),
+                provider_data.get('codigo_postal'),
+                provider_data.get('contacto_nombre'),
+                provider_data.get('contacto_telefono'),
+                provider_data.get('contacto_email'),
+                iva_condition,
+                provider_data.get('dias_pago', 30),
                 provider_data.get('limite_credito', 0),
-                provider_data.get('calificacion', 5),
-                provider_data.get('notas', '').strip() or None
+                provider_data.get('observaciones')
             ))
             
-            logger.info(f"Proveedor creado: {provider_data['nombre']} (ID: {provider_id})")
-            return True, f"Proveedor '{provider_data['nombre']}' creado exitosamente", provider_id
-            
+            if provider_id:
+                self.logger.info(f"Proveedor creado exitosamente: {provider_data['nombre']} (ID: {provider_id})")
+                return True, f"Proveedor creado exitosamente", provider_id
+            else:
+                return False, "Error al crear el proveedor", 0
+                
         except Exception as e:
-            logger.error(f"Error creando proveedor: {e}")
+            self.logger.error(f"Error creando proveedor: {e}")
             return False, f"Error creando proveedor: {str(e)}", 0
     
-    def get_provider_by_id(self, provider_id: int) -> Optional[Dict]:
-        """Obtener proveedor por ID"""
-        try:
-            provider = self.db.execute_single("""
-                SELECT * FROM proveedores WHERE id = ?
-            """, (provider_id,))
-            
-            if provider:
-                # Agregar estadísticas básicas
-                stats = self.get_provider_statistics(provider_id)
-                provider_dict = dict(provider)
-                provider_dict['estadisticas'] = stats
-                return provider_dict
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error obteniendo proveedor: {e}")
-            return None
-    
-    def get_all_providers(self, active_only: bool = True, 
-                         include_stats: bool = False) -> List[Dict]:
-        """Obtener lista de todos los proveedores"""
-        try:
-            query = "SELECT * FROM proveedores"
-            
-            if active_only:
-                query += " WHERE activo = 1"
-            
-            query += " ORDER BY nombre"
-            
-            providers = self.db.execute_query(query)
-            
-            if include_stats:
-                for provider in providers:
-                    provider['estadisticas'] = self.get_provider_statistics(provider['id'])
-            
-            return providers
-            
-        except Exception as e:
-            logger.error(f"Error obteniendo proveedores: {e}")
-            return []
-    
-    def search_providers(self, search_term: str) -> List[Dict]:
-        """Buscar proveedores por nombre, CUIT o contacto"""
-        try:
-            search_term = search_term.strip()
-            if not search_term:
-                return []
-            
-            providers = self.db.execute_query("""
-                SELECT * FROM proveedores 
-                WHERE (
-                    nombre LIKE ? OR 
-                    cuit_dni LIKE ? OR 
-                    contacto_principal LIKE ? OR
-                    email LIKE ?
-                ) AND activo = 1
-                ORDER BY 
-                    CASE 
-                        WHEN nombre LIKE ? THEN 1
-                        WHEN cuit_dni LIKE ? THEN 2
-                        ELSE 3
-                    END,
-                    nombre
-                LIMIT 50
-            """, (
-                f"%{search_term}%", f"%{search_term}%", f"%{search_term}%", f"%{search_term}%",
-                f"{search_term}%", f"{search_term}%"
-            ))
-            
-            return providers
-            
-        except Exception as e:
-            logger.error(f"Error buscando proveedores: {e}")
-            return []
-    
-    def update_provider(self, provider_id: int, provider_data: Dict) -> Tuple[bool, str]:
+    def update_provider(self, provider_id: int, provider_data: Dict, user_id: int = None) -> Tuple[bool, str]:
         """Actualizar proveedor existente"""
         try:
             # Verificar que el proveedor existe
@@ -156,43 +102,42 @@ class ProviderManager:
             if not existing_provider:
                 return False, "Proveedor no encontrado"
             
-            # Validaciones
-            if 'nombre' in provider_data and not provider_data['nombre'].strip():
-                return False, "El nombre del proveedor es obligatorio"
+            # Validaciones básicas
+            if provider_data.get('nombre') and not provider_data['nombre'].strip():
+                return False, "El nombre del proveedor no puede estar vacío"
             
-            # Verificar CUIT único (si se está cambiando)
-            if 'cuit_dni' in provider_data and provider_data['cuit_dni']:
-                existing = self.db.execute_single("""
-                    SELECT id FROM proveedores 
-                    WHERE cuit_dni = ? AND id != ? AND activo = 1
-                """, (provider_data['cuit_dni'], provider_id))
-                
-                if existing:
-                    return False, "Ya existe otro proveedor con ese CUIT/DNI"
+            # Validar código único (si se está cambiando)
+            if provider_data.get('codigo') and provider_data['codigo'] != existing_provider['codigo']:
+                if self._provider_code_exists(provider_data['codigo']):
+                    return False, f"Ya existe un proveedor con el código {provider_data['codigo']}"
             
-            # Validar email
-            if 'email' in provider_data and provider_data['email'] and '@' not in provider_data['email']:
+            # Validar email si se proporciona
+            if provider_data.get('email') and not self._validate_email(provider_data['email']):
                 return False, "El formato del email no es válido"
+            
+            # Validar CUIT/CUIL si se proporciona
+            if provider_data.get('cuit_cuil') and not self._validate_cuit_cuil(provider_data['cuit_cuil']):
+                return False, "El formato del CUIT/CUIL no es válido"
+            
+            # Validar condición IVA
+            if provider_data.get('condicion_iva') and provider_data['condicion_iva'] not in self.VALID_IVA_CONDITIONS:
+                return False, "Condición de IVA no válida"
             
             # Construir query de actualización dinámicamente
             update_fields = []
             update_values = []
             
             allowed_fields = [
-                'nombre', 'cuit_dni', 'direccion', 'ciudad', 'provincia', 'codigo_postal',
-                'telefono', 'telefono_alternativo', 'email', 'sitio_web',
-                'contacto_principal', 'cargo_contacto', 'condiciones_pago',
-                'descuento_porcentaje', 'limite_credito', 'calificacion', 'notas', 'activo'
+                'codigo', 'nombre', 'razon_social', 'cuit_cuil', 'telefono', 'email',
+                'direccion', 'ciudad', 'provincia', 'codigo_postal',
+                'contacto_nombre', 'contacto_telefono', 'contacto_email',
+                'condicion_iva', 'dias_pago', 'limite_credito', 'observaciones', 'activo'
             ]
             
             for field, value in provider_data.items():
-                if field in allowed_fields:
+                if field in allowed_fields and value is not None:
                     update_fields.append(f"{field} = ?")
-                    # Limpiar strings vacíos a NULL
-                    if isinstance(value, str) and not value.strip():
-                        update_values.append(None)
-                    else:
-                        update_values.append(value)
+                    update_values.append(value)
             
             if not update_fields:
                 return False, "No hay campos válidos para actualizar"
@@ -203,473 +148,485 @@ class ProviderManager:
             
             query = f"UPDATE proveedores SET {', '.join(update_fields)} WHERE id = ?"
             
-            rows_affected = self.db.execute_update(query, tuple(update_values))
+            success = self.db.execute_update(query, update_values)
             
-            if rows_affected > 0:
-                logger.info(f"Proveedor actualizado: ID {provider_id}")
+            if success:
+                self.logger.info(f"Proveedor actualizado: ID {provider_id}")
                 return True, "Proveedor actualizado exitosamente"
             else:
-                return False, "No se pudo actualizar el proveedor"
+                return False, "Error al actualizar el proveedor"
                 
         except Exception as e:
-            logger.error(f"Error actualizando proveedor: {e}")
+            self.logger.error(f"Error actualizando proveedor: {e}")
             return False, f"Error actualizando proveedor: {str(e)}"
     
-    def deactivate_provider(self, provider_id: int, reason: str = None) -> Tuple[bool, str]:
-        """Desactivar proveedor (eliminación lógica)"""
+    def get_provider_by_id(self, provider_id: int) -> Optional[Dict]:
+        """Obtener proveedor por ID"""
         try:
-            # Verificar si tiene compras pendientes
-            pending_purchases = self.db.execute_single("""
-                SELECT COUNT(*) as count FROM compras 
-                WHERE proveedor_id = ? AND estado IN ('PENDIENTE', 'CONFIRMADA', 'PARCIAL')
+            return self.db.execute_single("""
+                SELECT * FROM proveedores WHERE id = ?
             """, (provider_id,))
             
-            if pending_purchases and pending_purchases['count'] > 0:
-                return False, f"No se puede desactivar: tiene {pending_purchases['count']} compras pendientes"
+        except Exception as e:
+            self.logger.error(f"Error obteniendo proveedor por ID: {e}")
+            return None
+    
+    def get_provider_by_code(self, codigo: str) -> Optional[Dict]:
+        """Obtener proveedor por código"""
+        try:
+            return self.db.execute_single("""
+                SELECT * FROM proveedores WHERE codigo = ? AND activo = 1
+            """, (codigo,))
             
-            # Verificar si tiene productos asignados
-            assigned_products = self.db.execute_single("""
+        except Exception as e:
+            self.logger.error(f"Error obteniendo proveedor por código: {e}")
+            return None
+    
+    def search_providers(self, search_term: str, include_inactive: bool = False) -> List[Dict]:
+        """Buscar proveedores por nombre, código o razón social"""
+        try:
+            if not search_term.strip():
+                return []
+            
+            search_pattern = f"%{search_term.strip()}%"
+            
+            query = """
+                SELECT p.*, 
+                       COUNT(pr.id) as total_productos,
+                       COUNT(c.id) as total_compras,
+                       COALESCE(SUM(c.total), 0) as monto_total_compras
+                FROM proveedores p
+                LEFT JOIN productos pr ON p.id = pr.proveedor_id AND pr.activo = 1
+                LEFT JOIN compras c ON p.id = c.proveedor_id
+                WHERE (p.nombre LIKE ? OR p.codigo LIKE ? OR p.razon_social LIKE ?)
+            """
+            
+            params = [search_pattern, search_pattern, search_pattern]
+            
+            if not include_inactive:
+                query += " AND p.activo = 1"
+            
+            query += """
+                GROUP BY p.id
+                ORDER BY p.nombre
+                LIMIT 100
+            """
+            
+            return self.db.execute_query(query, params)
+            
+        except Exception as e:
+            self.logger.error(f"Error buscando proveedores: {e}")
+            return []
+    
+    def get_all_providers(self, include_inactive: bool = False, page: int = 1, page_size: int = 100) -> List[Dict]:
+        """Obtener todos los proveedores con paginación"""
+        try:
+            query = """
+                SELECT p.*,
+                       COUNT(pr.id) as total_productos,
+                       COUNT(c.id) as total_compras,
+                       COALESCE(SUM(c.total), 0) as monto_total_compras,
+                       MAX(c.fecha_compra) as ultima_compra
+                FROM proveedores p
+                LEFT JOIN productos pr ON p.id = pr.proveedor_id AND pr.activo = 1
+                LEFT JOIN compras c ON p.id = c.proveedor_id
+            """
+            
+            params = []
+            
+            if not include_inactive:
+                query += " WHERE p.activo = 1"
+            
+            query += """
+                GROUP BY p.id
+                ORDER BY p.nombre
+                LIMIT ? OFFSET ?
+            """
+            
+            params.extend([page_size, (page - 1) * page_size])
+            
+            return self.db.execute_query(query, params)
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo proveedores: {e}")
+            return []
+    
+    def get_provider_statistics(self, provider_id: int) -> Dict:
+        """Obtener estadísticas detalladas de un proveedor"""
+        try:
+            # Estadísticas básicas
+            stats = self.db.execute_single("""
+                SELECT 
+                    COUNT(DISTINCT pr.id) as total_productos,
+                    COUNT(DISTINCT c.id) as total_compras,
+                    COALESCE(SUM(c.total), 0) as monto_total_compras,
+                    COALESCE(AVG(c.total), 0) as promedio_compra,
+                    MIN(c.fecha_compra) as primera_compra,
+                    MAX(c.fecha_compra) as ultima_compra,
+                    COUNT(CASE WHEN c.estado = 'COMPLETADA' THEN 1 END) as compras_completadas,
+                    COUNT(CASE WHEN c.estado = 'PENDIENTE' THEN 1 END) as compras_pendientes
+                FROM proveedores p
+                LEFT JOIN productos pr ON p.id = pr.proveedor_id AND pr.activo = 1
+                LEFT JOIN compras c ON p.id = c.proveedor_id
+                WHERE p.id = ?
+                GROUP BY p.id
+            """, (provider_id,))
+            
+            if not stats:
+                return {
+                    'total_productos': 0,
+                    'total_compras': 0,
+                    'monto_total_compras': 0.0,
+                    'promedio_compra': 0.0,
+                    'primera_compra': None,
+                    'ultima_compra': None,
+                    'compras_completadas': 0,
+                    'compras_pendientes': 0
+                }
+            
+            # Productos más comprados
+            top_products = self.db.execute_query("""
+                SELECT pr.nombre, pr.codigo_barras,
+                       SUM(dc.cantidad) as cantidad_total,
+                       SUM(dc.subtotal) as monto_total,
+                       COUNT(DISTINCT c.id) as veces_comprado
+                FROM productos pr
+                INNER JOIN detalle_compras dc ON pr.id = dc.producto_id
+                INNER JOIN compras c ON dc.compra_id = c.id
+                WHERE c.proveedor_id = ? AND c.estado = 'COMPLETADA'
+                GROUP BY pr.id, pr.nombre, pr.codigo_barras
+                ORDER BY cantidad_total DESC
+                LIMIT 10
+            """, (provider_id,))
+            
+            # Compras por mes (últimos 12 meses)
+            monthly_purchases = self.db.execute_query("""
+                SELECT 
+                    strftime('%Y-%m', fecha_compra) as mes,
+                    COUNT(*) as total_compras,
+                    SUM(total) as monto_total
+                FROM compras
+                WHERE proveedor_id = ? 
+                AND fecha_compra >= date('now', '-12 months')
+                AND estado = 'COMPLETADA'
+                GROUP BY strftime('%Y-%m', fecha_compra)
+                ORDER BY mes DESC
+            """, (provider_id,))
+            
+            # Combinar resultados
+            result = dict(stats)
+            result['top_products'] = [dict(row) for row in top_products]
+            result['monthly_purchases'] = [dict(row) for row in monthly_purchases]
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo estadísticas del proveedor: {e}")
+            return {}
+    
+    def get_providers_with_pending_orders(self) -> List[Dict]:
+        """Obtener proveedores con órdenes de compra pendientes"""
+        try:
+            return self.db.execute_query("""
+                SELECT p.*, 
+                       COUNT(c.id) as ordenes_pendientes,
+                       SUM(c.total) as monto_pendiente
+                FROM proveedores p
+                INNER JOIN compras c ON p.id = c.proveedor_id
+                WHERE c.estado IN ('ORDENADA', 'CONFIRMADA', 'PARCIAL')
+                AND p.activo = 1
+                GROUP BY p.id, p.nombre
+                ORDER BY ordenes_pendientes DESC, monto_pendiente DESC
+            """)
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo proveedores con órdenes pendientes: {e}")
+            return []
+    
+    def get_top_providers_by_volume(self, limit: int = 10, period_months: int = 12) -> List[Dict]:
+        """Obtener top proveedores por volumen de compras"""
+        try:
+            return self.db.execute_query("""
+                SELECT p.*,
+                       COUNT(c.id) as total_compras,
+                       SUM(c.total) as monto_total,
+                       AVG(c.total) as promedio_compra,
+                       MAX(c.fecha_compra) as ultima_compra
+                FROM proveedores p
+                INNER JOIN compras c ON p.id = c.proveedor_id
+                WHERE c.fecha_compra >= date('now', '-{} months')
+                AND c.estado = 'COMPLETADA'
+                AND p.activo = 1
+                GROUP BY p.id
+                ORDER BY monto_total DESC
+                LIMIT ?
+            """.format(period_months), (limit,))
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo top proveedores: {e}")
+            return []
+    
+    def deactivate_provider(self, provider_id: int, user_id: int = None) -> Tuple[bool, str]:
+        """Desactivar proveedor"""
+        try:
+            # Verificar que el proveedor existe
+            provider = self.get_provider_by_id(provider_id)
+            if not provider:
+                return False, "Proveedor no encontrado"
+            
+            if not provider['activo']:
+                return False, "El proveedor ya está inactivo"
+            
+            # Verificar si tiene productos activos
+            active_products = self.db.execute_single("""
                 SELECT COUNT(*) as count FROM productos 
                 WHERE proveedor_id = ? AND activo = 1
             """, (provider_id,))
             
-            if assigned_products and assigned_products['count'] > 0:
-                # Advertir pero permitir la desactivación
-                logger.warning(f"Proveedor {provider_id} tiene {assigned_products['count']} productos asignados")
+            if active_products and active_products['count'] > 0:
+                return False, f"No se puede desactivar: tiene {active_products['count']} productos activos"
+            
+            # Verificar si tiene órdenes pendientes
+            pending_orders = self.db.execute_single("""
+                SELECT COUNT(*) as count FROM compras 
+                WHERE proveedor_id = ? AND estado IN ('ORDENADA', 'CONFIRMADA', 'PARCIAL')
+            """, (provider_id,))
+            
+            if pending_orders and pending_orders['count'] > 0:
+                return False, f"No se puede desactivar: tiene {pending_orders['count']} órdenes pendientes"
             
             # Desactivar proveedor
-            notes_update = f"DESACTIVADO: {reason}" if reason else "DESACTIVADO"
-            
-            rows_affected = self.db.execute_update("""
+            success = self.db.execute_update("""
                 UPDATE proveedores 
-                SET activo = 0, 
-                    notas = COALESCE(notas || '\n', '') || ?,
-                    actualizado_en = CURRENT_TIMESTAMP
+                SET activo = 0, actualizado_en = CURRENT_TIMESTAMP 
                 WHERE id = ?
-            """, (notes_update, provider_id))
+            """, (provider_id,))
             
-            if rows_affected > 0:
-                logger.info(f"Proveedor desactivado: ID {provider_id}")
+            if success:
+                self.logger.info(f"Proveedor desactivado: {provider['nombre']} (ID: {provider_id})")
                 return True, "Proveedor desactivado exitosamente"
             else:
-                return False, "Proveedor no encontrado"
+                return False, "Error al desactivar el proveedor"
                 
         except Exception as e:
-            logger.error(f"Error desactivando proveedor: {e}")
+            self.logger.error(f"Error desactivando proveedor: {e}")
             return False, f"Error desactivando proveedor: {str(e)}"
     
-    def get_provider_statistics(self, provider_id: int) -> Dict:
-        """Obtener estadísticas del proveedor"""
+    def reactivate_provider(self, provider_id: int, user_id: int = None) -> Tuple[bool, str]:
+        """Reactivar proveedor"""
         try:
-            # Estadísticas de compras
-            purchase_stats = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as total_ordenes,
-                    SUM(total) as total_comprado,
-                    AVG(total) as promedio_orden,
-                    MAX(fecha_compra) as ultima_compra,
-                    MIN(fecha_compra) as primera_compra,
-                    SUM(CASE WHEN estado = 'RECIBIDA' THEN 1 ELSE 0 END) as ordenes_completadas,
-                    SUM(CASE WHEN estado IN ('PENDIENTE', 'CONFIRMADA', 'PARCIAL') THEN 1 ELSE 0 END) as ordenes_pendientes
-                FROM compras 
-                WHERE proveedor_id = ?
-            """, (provider_id,))
-            
-            # Productos suministrados
-            products_stats = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as productos_asignados,
-                    COUNT(CASE WHEN activo = 1 THEN 1 END) as productos_activos
-                FROM productos 
-                WHERE proveedor_id = ?
-            """, (provider_id,))
-            
-            # Últimas compras
-            recent_purchases = self.db.execute_query("""
-                SELECT fecha_compra, total, estado
-                FROM compras 
-                WHERE proveedor_id = ?
-                ORDER BY fecha_compra DESC
-                LIMIT 5
-            """, (provider_id,))
-            
-            # Promedio de días entre compras
-            avg_days_between = self.db.execute_single("""
-                SELECT AVG(dias_entre_compras) as promedio_dias
-                FROM (
-                    SELECT JULIANDAY(fecha_compra) - LAG(JULIANDAY(fecha_compra)) 
-                           OVER (ORDER BY fecha_compra) as dias_entre_compras
-                    FROM compras 
-                    WHERE proveedor_id = ? AND estado != 'CANCELADA'
-                ) WHERE dias_entre_compras IS NOT NULL
-            """, (provider_id,))
-            
-            return {
-                'compras': dict(purchase_stats) if purchase_stats else {},
-                'productos': dict(products_stats) if products_stats else {},
-                'compras_recientes': recent_purchases,
-                'promedio_dias_entre_compras': avg_days_between['promedio_dias'] if avg_days_between and avg_days_between['promedio_dias'] else None
-            }
-            
-        except Exception as e:
-            logger.error(f"Error obteniendo estadísticas del proveedor: {e}")
-            return {}
-    
-    def get_provider_products(self, provider_id: int, active_only: bool = True) -> List[Dict]:
-        """Obtener productos del proveedor"""
-        try:
-            query = """
-                SELECT p.*, c.nombre as categoria_nombre
-                FROM productos p
-                LEFT JOIN categorias c ON p.categoria_id = c.id
-                WHERE p.proveedor_id = ?
-            """
-            
-            params = [provider_id]
-            
-            if active_only:
-                query += " AND p.activo = 1"
-            
-            query += " ORDER BY p.nombre"
-            
-            return self.db.execute_query(query, tuple(params))
-            
-        except Exception as e:
-            logger.error(f"Error obteniendo productos del proveedor: {e}")
-            return []
-    
-    def get_provider_purchases(self, provider_id: int, start_date: str = None, 
-                             end_date: str = None, status: str = None) -> List[Dict]:
-        """Obtener compras del proveedor"""
-        try:
-            query = """
-                SELECT c.*, u.nombre_completo as usuario_nombre
-                FROM compras c
-                LEFT JOIN usuarios u ON c.usuario_id = u.id
-                WHERE c.proveedor_id = ?
-            """
-            
-            params = [provider_id]
-            
-            if start_date and end_date:
-                query += " AND DATE(c.fecha_compra) BETWEEN ? AND ?"
-                params.extend([start_date, end_date])
-            
-            if status:
-                query += " AND c.estado = ?"
-                params.append(status)
-            
-            query += " ORDER BY c.fecha_compra DESC"
-            
-            return self.db.execute_query(query, tuple(params))
-            
-        except Exception as e:
-            logger.error(f"Error obteniendo compras del proveedor: {e}")
-            return []
-    
-    def update_provider_rating(self, provider_id: int, rating: int, 
-                             reason: str = None) -> Tuple[bool, str]:
-        """Actualizar calificación del proveedor"""
-        try:
-            if rating < 1 or rating > 5:
-                return False, "La calificación debe estar entre 1 y 5"
-            
-            notes_update = ""
-            if reason:
-                current_date = datetime.now().strftime("%Y-%m-%d")
-                notes_update = f"\n[{current_date}] Calificación: {rating}/5 - {reason}"
-            
-            rows_affected = self.db.execute_update("""
-                UPDATE proveedores 
-                SET calificacion = ?,
-                    notas = COALESCE(notas, '') || ?,
-                    actualizado_en = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (rating, notes_update, provider_id))
-            
-            if rows_affected > 0:
-                logger.info(f"Calificación actualizada: Proveedor {provider_id} -> {rating}/5")
-                return True, f"Calificación actualizada a {rating}/5"
-            else:
+            # Verificar que el proveedor existe
+            provider = self.get_provider_by_id(provider_id)
+            if not provider:
                 return False, "Proveedor no encontrado"
+            
+            if provider['activo']:
+                return False, "El proveedor ya está activo"
+            
+            # Reactivar proveedor
+            success = self.db.execute_update("""
+                UPDATE proveedores 
+                SET activo = 1, actualizado_en = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, (provider_id,))
+            
+            if success:
+                self.logger.info(f"Proveedor reactivado: {provider['nombre']} (ID: {provider_id})")
+                return True, "Proveedor reactivado exitosamente"
+            else:
+                return False, "Error al reactivar el proveedor"
                 
         except Exception as e:
-            logger.error(f"Error actualizando calificación: {e}")
-            return False, f"Error actualizando calificación: {str(e)}"
+            self.logger.error(f"Error reactivando proveedor: {e}")
+            return False, f"Error reactivando proveedor: {str(e)}"
     
-    def get_providers_by_rating(self, min_rating: int = 1, max_rating: int = 5) -> List[Dict]:
-        """Obtener proveedores por rango de calificación"""
+    def delete_provider(self, provider_id: int, user_id: int = None) -> Tuple[bool, str]:
+        """Eliminar proveedor (solo si no tiene relaciones)"""
         try:
-            return self.db.execute_query("""
-                SELECT p.*, 
-                       COUNT(c.id) as total_compras,
-                       SUM(c.total) as total_comprado
-                FROM proveedores p
-                LEFT JOIN compras c ON p.id = c.proveedor_id AND c.estado != 'CANCELADA'
-                WHERE p.calificacion BETWEEN ? AND ? AND p.activo = 1
-                GROUP BY p.id
-                ORDER BY p.calificacion DESC, p.nombre
-            """, (min_rating, max_rating))
+            # Verificar que el proveedor existe
+            provider = self.get_provider_by_id(provider_id)
+            if not provider:
+                return False, "Proveedor no encontrado"
             
-        except Exception as e:
-            logger.error(f"Error obteniendo proveedores por calificación: {e}")
-            return []
-    
-    def get_provider_contact_info(self, provider_id: int) -> Dict:
-        """Obtener información de contacto del proveedor"""
-        try:
-            provider = self.db.execute_single("""
-                SELECT nombre, telefono, telefono_alternativo, email, 
-                       contacto_principal, cargo_contacto, direccion,
-                       ciudad, provincia, codigo_postal, sitio_web
-                FROM proveedores 
-                WHERE id = ? AND activo = 1
+            # Verificar relaciones existentes
+            has_products = self.db.execute_single("""
+                SELECT COUNT(*) as count FROM productos WHERE proveedor_id = ?
             """, (provider_id,))
             
-            return dict(provider) if provider else {}
+            if has_products and has_products['count'] > 0:
+                return False, f"No se puede eliminar: tiene {has_products['count']} productos asociados"
             
-        except Exception as e:
-            logger.error(f"Error obteniendo info de contacto: {e}")
-            return {}
-    
-    def get_top_providers_by_volume(self, start_date: str, end_date: str, 
-                                   limit: int = 10) -> List[Dict]:
-        """Obtener principales proveedores por volumen de compras"""
-        try:
-            return self.db.execute_query("""
-                SELECT 
-                    p.id,
-                    p.nombre,
-                    p.telefono,
-                    p.email,
-                    p.calificacion,
-                    COUNT(c.id) as total_ordenes,
-                    SUM(c.total) as total_comprado,
-                    AVG(c.total) as promedio_orden,
-                    MAX(c.fecha_compra) as ultima_compra
-                FROM proveedores p
-                JOIN compras c ON p.id = c.proveedor_id
-                WHERE DATE(c.fecha_compra) BETWEEN ? AND ?
-                AND c.estado != 'CANCELADA'
-                AND p.activo = 1
-                GROUP BY p.id, p.nombre, p.telefono, p.email, p.calificacion
-                ORDER BY total_comprado DESC
-                LIMIT ?
-            """, (start_date, end_date, limit))
+            has_purchases = self.db.execute_single("""
+                SELECT COUNT(*) as count FROM compras WHERE proveedor_id = ?
+            """, (provider_id,))
             
+            if has_purchases and has_purchases['count'] > 0:
+                return False, f"No se puede eliminar: tiene {has_purchases['count']} compras asociadas"
+            
+            # Eliminar proveedor
+            success = self.db.execute_update("DELETE FROM proveedores WHERE id = ?", (provider_id,))
+            
+            if success:
+                self.logger.info(f"Proveedor eliminado: {provider['nombre']} (ID: {provider_id})")
+                return True, "Proveedor eliminado exitosamente"
+            else:
+                return False, "Error al eliminar el proveedor"
+                
         except Exception as e:
-            logger.error(f"Error obteniendo top proveedores: {e}")
-            return []
+            self.logger.error(f"Error eliminando proveedor: {e}")
+            return False, f"Error eliminando proveedor: {str(e)}"
     
-    def get_providers_with_pending_orders(self) -> List[Dict]:
-        """Obtener proveedores con órdenes pendientes"""
+    def _generate_provider_code(self) -> str:
+        """Generar código único para proveedor"""
         try:
-            return self.db.execute_query("""
-                SELECT 
-                    p.id,
-                    p.nombre,
-                    p.telefono,
-                    p.email,
-                    COUNT(c.id) as ordenes_pendientes,
-                    SUM(c.total) as monto_pendiente,
-                    MIN(c.fecha_compra) as orden_mas_antigua,
-                    AVG(JULIANDAY('now') - JULIANDAY(c.fecha_compra)) as dias_promedio_pendiente
-                FROM proveedores p
-                JOIN compras c ON p.id = c.proveedor_id
-                WHERE c.estado IN ('PENDIENTE', 'CONFIRMADA', 'PARCIAL')
-                AND p.activo = 1
-                GROUP BY p.id, p.nombre, p.telefono, p.email
-                ORDER BY dias_promedio_pendiente DESC
+            # Obtener siguiente número secuencial
+            result = self.db.execute_single("""
+                SELECT COALESCE(MAX(CAST(SUBSTR(codigo, 5) AS INTEGER)), 0) + 1 as next_num
+                FROM proveedores 
+                WHERE codigo LIKE 'PROV%'
             """)
             
-        except Exception as e:
-            logger.error(f"Error obteniendo proveedores con órdenes pendientes: {e}")
-            return []
-    
-    def suggest_alternative_providers(self, product_id: int) -> List[Dict]:
-        """Sugerir proveedores alternativos para un producto"""
-        try:
-            # Obtener producto actual
-            product = self.db.execute_single("""
-                SELECT nombre, categoria_id, proveedor_id FROM productos WHERE id = ?
-            """, (product_id,))
+            if result:
+                next_num = result['next_num']
+            else:
+                next_num = 1
             
-            if not product:
+            return f"PROV{next_num:04d}"
+            
+        except Exception as e:
+            self.logger.error(f"Error generando código de proveedor: {e}")
+            # Fallback usando timestamp
+            import time
+            return f"PROV{int(time.time())}"
+    
+    def _provider_code_exists(self, codigo: str) -> bool:
+        """Verificar si existe un proveedor con el código dado"""
+        try:
+            result = self.db.execute_single("""
+                SELECT id FROM proveedores WHERE codigo = ?
+            """, (codigo,))
+            return result is not None
+        except Exception:
+            return False
+    
+    def _validate_email(self, email: str) -> bool:
+        """Validar formato de email"""
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email.strip()) is not None
+    
+    def _validate_cuit_cuil(self, cuit_cuil: str) -> bool:
+        """Validar formato de CUIT/CUIL"""
+        # Limpiar guiones y espacios
+        cuit_cuil = re.sub(r'[-\s]', '', cuit_cuil.strip())
+        
+        # Debe tener exactamente 11 dígitos
+        if not re.match(r'^\d{11}$', cuit_cuil):
+            return False
+        
+        # Algoritmo de validación de CUIT/CUIL
+        try:
+            # Multiplicadores
+            multiplicadores = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]
+            
+            # Calcular suma
+            suma = sum(int(cuit_cuil[i]) * multiplicadores[i] for i in range(10))
+            
+            # Calcular dígito verificador
+            resto = suma % 11
+            if resto < 2:
+                digito_verificador = resto
+            else:
+                digito_verificador = 11 - resto
+            
+            # Comparar con el dígito verificador proporcionado
+            return int(cuit_cuil[10]) == digito_verificador
+            
+        except Exception as e:
+            self.logger.error(f"Error validando CUIT/CUIL: {e}")
+            return False
+    
+    def get_provider_contacts(self, provider_id: int) -> List[Dict]:
+        """Obtener contactos de un proveedor (implementación futura)"""
+        # Para futuras versiones - sistema de múltiples contactos por proveedor
+        try:
+            provider = self.get_provider_by_id(provider_id)
+            if not provider:
                 return []
             
-            # Buscar proveedores que suministren productos similares
-            alternatives = self.db.execute_query("""
-                SELECT DISTINCT
-                    p.id,
-                    p.nombre,
-                    p.telefono,
-                    p.email,
-                    p.calificacion,
-                    p.descuento_porcentaje,
-                    COUNT(DISTINCT pr.id) as productos_similares,
-                    AVG(pr.precio_compra) as precio_promedio,
-                    MAX(c.fecha_compra) as ultima_compra
-                FROM proveedores p
-                JOIN productos pr ON p.id = pr.proveedor_id
-                LEFT JOIN compras c ON p.id = c.proveedor_id AND c.estado != 'CANCELADA'
-                WHERE pr.categoria_id = ?
-                AND p.id != ?
-                AND p.activo = 1
-                AND pr.activo = 1
-                GROUP BY p.id, p.nombre, p.telefono, p.email, p.calificacion, p.descuento_porcentaje
-                ORDER BY p.calificacion DESC, productos_similares DESC
-                LIMIT 5
-            """, (product['categoria_id'], product['proveedor_id']))
+            # Por ahora retornar el contacto principal
+            contacts = []
+            if provider.get('contacto_nombre'):
+                contacts.append({
+                    'nombre': provider['contacto_nombre'],
+                    'telefono': provider.get('contacto_telefono'),
+                    'email': provider.get('contacto_email'),
+                    'tipo': 'Principal'
+                })
             
-            return alternatives
+            return contacts
             
         except Exception as e:
-            logger.error(f"Error sugiriendo proveedores alternativos: {e}")
+            self.logger.error(f"Error obteniendo contactos del proveedor: {e}")
             return []
     
-    def get_provider_performance_report(self, provider_id: int, months: int = 12) -> Dict:
-        """Generar reporte de desempeño del proveedor"""
+    def export_providers_data(self, provider_ids: List[int] = None) -> List[Dict]:
+        """Exportar datos de proveedores para backup o transferencia"""
         try:
-            # Período de análisis
-            start_date = datetime.now().replace(day=1)
-            for _ in range(months - 1):
-                if start_date.month == 1:
-                    start_date = start_date.replace(year=start_date.year - 1, month=12)
-                else:
-                    start_date = start_date.replace(month=start_date.month - 1)
-            
-            start_date_str = start_date.strftime('%Y-%m-%d')
-            end_date_str = datetime.now().strftime('%Y-%m-%d')
-            
-            # Métricas de desempeño
-            performance = self.db.execute_single("""
-                SELECT 
-                    COUNT(*) as total_ordenes,
-                    SUM(total) as total_comprado,
-                    AVG(total) as promedio_orden,
-                    SUM(CASE WHEN estado = 'RECIBIDA' THEN 1 ELSE 0 END) as ordenes_completadas,
-                    SUM(CASE WHEN estado = 'CANCELADA' THEN 1 ELSE 0 END) as ordenes_canceladas,
-                    AVG(CASE 
-                        WHEN estado = 'RECIBIDA' AND fecha_vencimiento IS NOT NULL 
-                        THEN JULIANDAY(fecha_compra) - JULIANDAY(fecha_vencimiento)
-                        ELSE NULL 
-                    END) as promedio_dias_retraso
-                FROM compras 
-                WHERE proveedor_id = ? 
-                AND DATE(fecha_compra) BETWEEN ? AND ?
-            """, (provider_id, start_date_str, end_date_str))
-            
-            # Evolución mensual
-            monthly_evolution = self.db.execute_query("""
-                SELECT 
-                    strftime('%Y-%m', fecha_compra) as mes,
-                    COUNT(*) as ordenes,
-                    SUM(total) as total_mes
-                FROM compras 
-                WHERE proveedor_id = ? 
-                AND DATE(fecha_compra) BETWEEN ? AND ?
-                AND estado != 'CANCELADA'
-                GROUP BY strftime('%Y-%m', fecha_compra)
-                ORDER BY mes
-            """, (provider_id, start_date_str, end_date_str))
-            
-            # Productos más comprados
-            top_products = self.db.execute_query("""
-                SELECT 
-                    p.nombre,
-                    SUM(dc.cantidad) as cantidad_total,
-                    SUM(dc.subtotal) as total_gastado,
-                    AVG(dc.precio_unitario) as precio_promedio
-                FROM detalle_compras dc
-                JOIN productos p ON dc.producto_id = p.id
-                JOIN compras c ON dc.compra_id = c.id
-                WHERE c.proveedor_id = ?
-                AND DATE(c.fecha_compra) BETWEEN ? AND ?
-                AND c.estado != 'CANCELADA'
-                GROUP BY p.id, p.nombre
-                ORDER BY total_gastado DESC
-                LIMIT 10
-            """, (provider_id, start_date_str, end_date_str))
-            
-            # Calcular métricas derivadas
-            performance_dict = dict(performance) if performance else {}
-            
-            if performance_dict.get('total_ordenes', 0) > 0:
-                performance_dict['tasa_cumplimiento'] = (
-                    performance_dict.get('ordenes_completadas', 0) / 
-                    performance_dict['total_ordenes'] * 100
-                )
-                performance_dict['tasa_cancelacion'] = (
-                    performance_dict.get('ordenes_canceladas', 0) / 
-                    performance_dict['total_ordenes'] * 100
-                )
+            if provider_ids:
+                placeholders = ','.join(['?' for _ in provider_ids])
+                query = f"SELECT * FROM proveedores WHERE id IN ({placeholders})"
+                params = provider_ids
             else:
-                performance_dict['tasa_cumplimiento'] = 0
-                performance_dict['tasa_cancelacion'] = 0
+                query = "SELECT * FROM proveedores ORDER BY nombre"
+                params = []
             
-            return {
-                'periodo_analisis': {
-                    'inicio': start_date_str,
-                    'fin': end_date_str,
-                    'meses': months
-                },
-                'metricas_generales': performance_dict,
-                'evolucion_mensual': monthly_evolution,
-                'productos_mas_comprados': top_products
-            }
+            return self.db.execute_query(query, params)
             
         except Exception as e:
-            logger.error(f"Error generando reporte de desempeño: {e}")
-            return {}
+            self.logger.error(f"Error exportando datos de proveedores: {e}")
+            return []
     
-    def import_providers_from_csv(self, csv_data: List[Dict]) -> Tuple[bool, str, Dict]:
-        """Importar proveedores desde datos CSV"""
+    def import_providers_data(self, providers_data: List[Dict], overwrite: bool = False) -> Tuple[int, int, List[str]]:
+        """
+        Importar datos de proveedores desde backup
+        
+        Returns:
+            tuple: (importados, actualizados, errores)
+        """
+        imported = 0
+        updated = 0
+        errors = []
+        
         try:
-            results = {
-                'total': len(csv_data),
-                'created': 0,
-                'updated': 0,
-                'errors': []
-            }
-            
-            for i, row in enumerate(csv_data):
+            for provider_data in providers_data:
                 try:
-                    # Verificar si el proveedor ya existe por CUIT o nombre
-                    existing_provider = None
-                    if row.get('cuit_dni'):
-                        existing_provider = self.db.execute_single("""
-                            SELECT id FROM proveedores WHERE cuit_dni = ?
-                        """, (row['cuit_dni'],))
+                    # Verificar si existe por código
+                    existing = self.get_provider_by_code(provider_data.get('codigo', ''))
                     
-                    if not existing_provider and row.get('nombre'):
-                        existing_provider = self.db.execute_single("""
-                            SELECT id FROM proveedores WHERE nombre = ?
-                        """, (row['nombre'],))
-                    
-                    if existing_provider:
-                        # Actualizar proveedor existente
-                        success, message = self.update_provider(existing_provider['id'], row)
-                        if success:
-                            results['updated'] += 1
+                    if existing:
+                        if overwrite:
+                            # Actualizar existente
+                            success, message = self.update_provider(existing['id'], provider_data)
+                            if success:
+                                updated += 1
+                            else:
+                                errors.append(f"Error actualizando {provider_data.get('nombre', 'N/A')}: {message}")
                         else:
-                            results['errors'].append(f"Fila {i+1}: {message}")
+                            errors.append(f"Proveedor ya existe: {provider_data.get('nombre', 'N/A')}")
                     else:
-                        # Crear nuevo proveedor
-                        success, message, provider_id = self.create_provider(row)
+                        # Crear nuevo
+                        success, message, provider_id = self.create_provider(provider_data)
                         if success:
-                            results['created'] += 1
+                            imported += 1
                         else:
-                            results['errors'].append(f"Fila {i+1}: {message}")
+                            errors.append(f"Error creando {provider_data.get('nombre', 'N/A')}: {message}")
                             
                 except Exception as e:
-                    results['errors'].append(f"Fila {i+1}: Error procesando - {str(e)}")
+                    errors.append(f"Error procesando proveedor: {str(e)}")
             
-            success_rate = (results['created'] + results['updated']) / results['total'] * 100
-            
-            logger.info(f"Importación de proveedores completada: {results['created']} creados, {results['updated']} actualizados, {len(results['errors'])} errores")
-            
-            return True, f"Importación completada: {success_rate:.1f}% exitoso", results
+            self.logger.info(f"Importación completada: {imported} importados, {updated} actualizados, {len(errors)} errores")
+            return imported, updated, errors
             
         except Exception as e:
-            logger.error(f"Error en importación de proveedores: {e}")
-            return False, f"Error en importación: {str(e)}", {}
+            self.logger.error(f"Error en importación de proveedores: {e}")
+            return imported, updated, errors + [str(e)]
