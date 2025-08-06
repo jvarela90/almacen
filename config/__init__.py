@@ -2,6 +2,6 @@
 Módulo de configuraciones de AlmacénPro
 """
 
-from .settings import AppSettings
+from .settings import Settings
 
-__all__ = ['AppSettings']
+__all__ = ['Settings']

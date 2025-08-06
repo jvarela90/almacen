@@ -20,6 +20,9 @@ class BackupManager:
     """Gestor principal de backups del sistema"""
     
     def __init__(self, database_path: str):
+        # ✅ MOVER ESTO AL PRINCIPIO
+        self.logger = logging.getLogger(__name__)
+        
         self.database_path = Path(database_path)
         self.backup_directory = Path("backups")
         self.config_file = Path("backup_config.json")
@@ -45,11 +48,10 @@ class BackupManager:
         # Crear directorio de backups
         self.backup_directory.mkdir(exist_ok=True)
         
+        # ✅ AHORA self.logger ya está disponible
         # Iniciar backup automático si está habilitado
         if self.config.get("auto_backup_enabled", True):
             self.start_automatic_backup()
-        
-        self.logger = logging.getLogger(__name__)
     
     def load_config(self) -> Dict:
         """Cargar configuración de backup"""
