@@ -25,8 +25,8 @@ AlmacénPro ha sido completamente refactorizado con una **arquitectura modular p
 ```
 almacen_pro/
 ├── main.py                    # 🚀 Punto de entrada principal
-├── requirements.txt           # 📦 Dependencias
-├── README.md                  # 📖 Esta documentación
+├── requirements.txt           # 📦 Dependencias del proyecto
+├── README.md                  # 📖 Documentación
 ├── config/
 │   ├── __init__.py
 │   └── settings.py           # ⚙️ Configuraciones globales
@@ -48,18 +48,24 @@ almacen_pro/
 │   ├── dialogs/
 │   │   ├── __init__.py
 │   │   ├── login_dialog.py   # 🔐 Diálogo de login
-│   │   ├── backup_dialog.py  # 💾 Gestión de backups
-│   │   └── ...               # Otros diálogos
+│   │   ├── sale_process_dialog.py
+│   │   ├── add_product_dialog.py
+│   │   ├── add_provider_dialog.py
+│   │   ├── receive_purchase_dialog.py
+│   │   └── backup_dialog.py  # 💾 Diálogo de backup
 │   └── widgets/
 │       ├── __init__.py
 │       ├── sales_widget.py   # 🛒 Widget de ventas
-│       ├── dashboard_widget.py # 📈 Dashboard ejecutivo
-│       └── ...               # Otros widgets
+│       ├── stock_widget.py   # 📦 Widget de stock
+│       ├── purchases_widget.py # 🛍️ Widget de compras
+│       ├── reports_widget.py # 📊 Widget de reportes
+│       └── dashboard_widget.py # 📈 Dashboard ejecutivo
 └── utils/
     ├── __init__.py
-    ├── backup_manager.py     # 💾 Sistema de backup
-    ├── notifications.py     # 🔔 Notificaciones
+    ├── backup_manager.py     # 💾 Sistema de backup automático
+    ├── notifications.py     # 🔔 Sistema de notificaciones
     └── helpers.py            # 🛠️ Funciones auxiliares
+
 ```
 
 ---
@@ -350,5 +356,6 @@ Si el sistema te resulta útil:
 - 🐛 **Reporta errores** para mejorar la calidad
 - 📝 **Contribuye** con documentación o código
 
-**¡Gracias por usar AlmacénPro!** 🎉#   a l m a c e n  
+**¡Gracias por usar AlmacénPro!** 🎉#   a l m a c e n 
+ 
  
