@@ -31,12 +31,12 @@ class LoginDialog(QDialog):
     def init_ui(self):
         """Inicializar interfaz de usuario"""
         self.setWindowTitle("AlmacénPro - Iniciar Sesión")
-        self.setFixedSize(450, 350)
+        self.setFixedSize(800, 600)
         self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
         
         # Layout principal
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(20)
+        main_layout.setSpacing(15)
         main_layout.setContentsMargins(30, 30, 30, 30)
         
         # Logo y título
@@ -107,7 +107,7 @@ class LoginDialog(QDialog):
         """Crear formulario de login"""
         form_widget = QWidget()
         form_layout = QVBoxLayout(form_widget)
-        form_layout.setSpacing(15)
+        form_layout.setSpacing(20)
         
         # Campo de usuario
         username_layout = QVBoxLayout()
@@ -119,6 +119,7 @@ class LoginDialog(QDialog):
         self.username_input.setObjectName("username_input")
         self.username_input.setPlaceholderText("Ingrese su nombre de usuario")
         self.username_input.setMaxLength(50)
+        self.username_input.setFixedHeight(40)
         username_layout.addWidget(self.username_input)
         
         form_layout.addLayout(username_layout)
@@ -137,6 +138,7 @@ class LoginDialog(QDialog):
         self.password_input.setPlaceholderText("Ingrese su contraseña")
         self.password_input.setEchoMode(QLineEdit.Password)
         self.password_input.setMaxLength(100)
+        self.password_input.setFixedHeight(40)
         password_container.addWidget(self.password_input)
         
         # Botón para mostrar/ocultar contraseña
@@ -180,12 +182,13 @@ class LoginDialog(QDialog):
         """Crear botones de acción"""
         buttons_widget = QWidget()
         buttons_layout = QHBoxLayout(buttons_widget)
-        buttons_layout.setSpacing(10)
+        buttons_layout.setSpacing(15)
         
         # Botón cancelar
         self.cancel_btn = QPushButton("Cancelar")
         self.cancel_btn.setObjectName("cancel_btn")
-        self.cancel_btn.setMinimumHeight(35)
+        self.cancel_btn.setFixedHeight(45)
+        self.cancel_btn.setFixedWidth(120)
         self.cancel_btn.clicked.connect(self.reject)
         buttons_layout.addWidget(self.cancel_btn)
         
@@ -194,7 +197,8 @@ class LoginDialog(QDialog):
         # Botón login
         self.login_btn = QPushButton("Iniciar Sesión")
         self.login_btn.setObjectName("login_btn")
-        self.login_btn.setMinimumHeight(35)
+        self.login_btn.setFixedHeight(45)
+        self.login_btn.setFixedWidth(140)
         self.login_btn.setDefault(True)
         self.login_btn.clicked.connect(self.attempt_login)
         buttons_layout.addWidget(self.login_btn)
