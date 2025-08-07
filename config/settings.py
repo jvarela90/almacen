@@ -19,7 +19,7 @@ class Settings:
     DEFAULT_SETTINGS = {
         # Base de datos
         'database': {
-            'path': 'almacen_pro.db',
+            'path': 'data/almacen_pro.db',  # Unificado en carpeta data
             'backup_on_startup': True,
             'optimize_on_startup': True,
             'enable_foreign_keys': True
@@ -214,6 +214,20 @@ class Settings:
     def get_database_config(self) -> Dict[str, Any]:
         """Obtener configuración de base de datos"""
         return self.get('database', {})
+    
+    def get_database_path(self) -> str:
+        """Obtener ruta completa de la base de datos"""
+        db_path = self.get('database.path', 'data/almacen_pro.db')
+        
+        # Si es una ruta relativa, hacerla absoluta desde el directorio base
+        if not Path(db_path).is_absolute():
+            base_dir = Path(__file__).parent.parent  # Directorio raíz del proyecto
+            db_path = base_dir / db_path
+        
+        # Crear directorio si no existe
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        return str(db_path)
     
     def get_ui_config(self) -> Dict[str, Any]:
         """Obtener configuración de interfaz"""

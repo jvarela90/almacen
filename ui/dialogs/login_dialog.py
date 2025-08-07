@@ -31,7 +31,8 @@ class LoginDialog(QDialog):
     def init_ui(self):
         """Inicializar interfaz de usuario"""
         self.setWindowTitle("AlmacénPro - Iniciar Sesión")
-        self.setFixedSize(800, 600)
+        # Tamaño más apropiado para login
+        self.setFixedSize(450, 500)
         self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
         
         # Layout principal

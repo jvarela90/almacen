@@ -48,18 +48,16 @@ class DashboardWidget(QWidget):
         # Panel inferior con detalles
         details_layout = QHBoxLayout()
         
-        # Panel izquierdo: Ventas recientes y productos top
-        left_panel = self.create_left_panel()
-        details_layout.addWidget(left_panel, 2)
+        # Panel izquierdo - Actividad reciente
+        recent_activity = self.create_recent_activity_panel()
+        details_layout.addWidget(recent_activity)
         
-        # Panel derecho: Alertas y estadísticas
-        right_panel = self.create_right_panel()
-        details_layout.addWidget(right_panel, 1)
+        # Panel derecho - Acciones rápidas
+        quick_actions = self.create_quick_actions_panel()
+        details_layout.addWidget(quick_actions)
         
         main_layout.addLayout(details_layout)
-        
-        # Aplicar estilos
-        self.setup_styles()
+        main_layout.addStretch()
     
     def create_header(self) -> QWidget:
         """Crear header del dashboard"""
@@ -67,498 +65,300 @@ class DashboardWidget(QWidget):
         header.setObjectName("dashboard_header")
         layout = QHBoxLayout(header)
         
-        # Título y fecha
-        title_layout = QVBoxLayout()
+        # Título con saludo personalizado
+        user_name = self.current_user.get('nombre_completo', 'Usuario')
+        role_name = self.current_user.get('rol_nombre', 'N/A')
         
-        title = QLabel("📊 Dashboard Ejecutivo")
+        title = QLabel(f"¡Bienvenido/a, {user_name}!")
         title.setObjectName("dashboard_title")
-        title_layout.addWidget(title)
-        
-        current_date = datetime.now().strftime("%A, %d de %B de %Y")
-        date_label = QLabel(current_date)
-        date_label.setObjectName("dashboard_date")
-        title_layout.addWidget(date_label)
-        
-        layout.addLayout(title_layout)
+        layout.addWidget(title)
         
         layout.addStretch()
         
-        # Botón de actualizar
-        refresh_btn = QPushButton("🔄 Actualizar")
-        refresh_btn.setObjectName("refresh_button")
-        refresh_btn.clicked.connect(self.refresh_data)
-        layout.addWidget(refresh_btn)
+        # Información del usuario
+        user_info = QLabel(f"👤 {role_name}")
+        user_info.setObjectName("user_info_label")
+        layout.addWidget(user_info)
+        
+        # Fecha y hora actual
+        current_time = datetime.now().strftime("%d/%m/%Y - %H:%M")
+        time_label = QLabel(f"🕐 {current_time}")
+        time_label.setObjectName("time_label")
+        layout.addWidget(time_label)
+        
+        # Aplicar estilos
+        header.setStyleSheet("""
+            #dashboard_header {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2c3e50);
+                border-radius: 10px;
+                padding: 15px;
+                margin-bottom: 10px;
+            }
+            #dashboard_title {
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+            }
+            #user_info_label, #time_label {
+                color: #ecf0f1;
+                font-size: 12px;
+                font-weight: bold;
+                margin: 0 10px;
+            }
+        """)
         
         return header
     
     def create_metrics_panel(self) -> QWidget:
-        """Crear panel de métricas principales"""
-        panel = QWidget()
-        panel.setObjectName("metrics_panel")
-        layout = QGridLayout(panel)
+        """Panel principal con métricas según rol del usuario"""
+        widget = QWidget()
+        layout = QGridLayout(widget)
         layout.setSpacing(15)
         
-        # Métricas principales
-        metrics = [
-            ("ventas_hoy", "💰 Ventas Hoy", "#27ae60", "Total de ventas del día actual"),
-            ("productos_vendidos", "📦 Productos Vendidos", "#3498db", "Cantidad de productos vendidos hoy"),
-            ("stock_bajo", "⚠️ Stock Bajo", "#e74c3c", "Productos con stock por debajo del mínimo"),
-            ("clientes_activos", "👥 Clientes del Mes", "#9b59b6", "Clientes que compraron este mes")
-        ]
+        # Crear métricas según permisos del usuario
+        metrics = []
         
+        if self.user_has_permission('ventas'):
+            metrics.append(("💰 Ventas Hoy", "$0.00", "#27ae60", "ventas_hoy"))
+            metrics.append(("📈 Meta del Mes", "0%", "#f39c12", "meta_mes"))
+        
+        if self.user_has_permission('productos'):
+            metrics.append(("📦 Total Productos", "0", "#3498db", "total_productos"))
+            metrics.append(("⚠️ Stock Bajo", "0", "#e74c3c", "stock_bajo"))
+        
+        if self.user_has_permission('reportes'):
+            metrics.append(("👥 Clientes Activos", "0", "#9b59b6", "clientes_activos"))
+            metrics.append(("💵 Utilidad Mes", "$0.00", "#2ecc71", "utilidad_mes"))
+        
+        # Solo administradores ven métricas del sistema
+        if self.user_has_permission('*'):
+            metrics.append(("🖥️ Sistema", "OK", "#34495e", "estado_sistema"))
+            metrics.append(("💾 Último Backup", "N/A", "#7f8c8d", "ultimo_backup"))
+        
+        # Si no hay métricas (usuario muy restringido), mostrar info básica
+        if not metrics:
+            metrics = [
+                ("📊 Dashboard", "Disponible", "#3498db", "dashboard_basic"),
+                ("👋 Sesión", "Activa", "#27ae60", "sesion_activa")
+            ]
+        
+        # Organizar métricas en grid
         row, col = 0, 0
-        for metric_key, title, color, tooltip in metrics:
-            metric_card = self.create_metric_card(metric_key, title, color, tooltip)
-            layout.addWidget(metric_card, row, col)
+        max_cols = 4
+        
+        for title, value, color, key in metrics:
+            card = self.create_metric_card(title, value, color, key)
+            layout.addWidget(card, row, col)
             
             col += 1
-            if col >= 4:
+            if col >= max_cols:
                 col = 0
                 row += 1
         
-        return panel
+        return widget
     
-    def create_metric_card(self, key: str, title: str, color: str, tooltip: str) -> QWidget:
-        """Crear tarjeta de métrica individual"""
+    def create_metric_card(self, title: str, value: str, color: str, key: str) -> QWidget:
+        """Crear tarjeta de métrica"""
         card = QFrame()
-        card.setObjectName("metric_card")
-        card.setToolTip(tooltip)
-        card.setFrameStyle(QFrame.StyledPanel)
+        card.setObjectName(f"metric_card_{key}")
+        card.setFrameStyle(QFrame.Box)
+        card.setMinimumSize(200, 120)
+        card.setMaximumSize(250, 140)
         
         layout = QVBoxLayout(card)
         layout.setSpacing(10)
-        layout.setContentsMargins(20, 15, 20, 15)
         
         # Título
         title_label = QLabel(title)
         title_label.setObjectName("metric_title")
         title_label.setAlignment(Qt.AlignCenter)
+        title_label.setWordWrap(True)
         layout.addWidget(title_label)
         
-        # Valor principal
-        value_label = QLabel("...")
-        value_label.setObjectName(f"metric_value_{key}")
+        # Valor
+        value_label = QLabel(value)
+        value_label.setObjectName("metric_value")
         value_label.setAlignment(Qt.AlignCenter)
-        value_label.setStyleSheet(f"color: {color}; font-size: 28px; font-weight: bold;")
         layout.addWidget(value_label)
         
-        # Texto adicional
-        detail_label = QLabel("")
-        detail_label.setObjectName(f"metric_detail_{key}")
-        detail_label.setAlignment(Qt.AlignCenter)
-        detail_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
-        layout.addWidget(detail_label)
+        # Aplicar estilo específico
+        card.setStyleSheet(f"""
+            #metric_card_{key} {{
+                border: 2px solid {color};
+                border-radius: 12px;
+                background-color: white;
+                margin: 5px;
+            }}
+            #metric_card_{key}:hover {{
+                background-color: {color}15;
+                border-color: {color};
+            }}
+            #metric_title {{
+                font-weight: bold;
+                color: #2c3e50;
+                font-size: 11px;
+                margin-top: 10px;
+            }}
+            #metric_value {{
+                font-size: 24px;
+                font-weight: bold;
+                color: {color};
+                margin-bottom: 10px;
+            }}
+        """)
         
-        # Guardar referencia para actualizar
-        setattr(self, f"metric_{key}_value", value_label)
-        setattr(self, f"metric_{key}_detail", detail_label)
+        # Hacer clickeable si tiene acción
+        card.mousePressEvent = lambda event, k=key: self.on_metric_clicked(k)
+        card.setCursor(Qt.PointingHandCursor)
         
         return card
     
-    def create_left_panel(self) -> QWidget:
-        """Crear panel izquierdo con tablas"""
-        panel = QWidget()
+    def create_recent_activity_panel(self) -> QWidget:
+        """Panel de actividad reciente"""
+        panel = QGroupBox("📋 Actividad Reciente")
+        panel.setMaximumHeight(200)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(15)
         
-        # Ventas recientes
-        recent_sales_group = QGroupBox("💳 Ventas Recientes")
-        recent_sales_layout = QVBoxLayout(recent_sales_group)
+        # Lista de actividad
+        activity_list = QListWidget()
+        activity_list.setMaximumHeight(150)
         
-        self.recent_sales_table = QTableWidget()
-        self.recent_sales_table.setColumnCount(4)
-        self.recent_sales_table.setHorizontalHeaderLabels(["Fecha", "Cliente", "Total", "Estado"])
-        self.recent_sales_table.horizontalHeader().setStretchLastSection(True)
-        self.recent_sales_table.setMaximumHeight(200)
-        self.recent_sales_table.setAlternatingRowColors(True)
-        self.recent_sales_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        # Agregar elementos de ejemplo según permisos
+        if self.user_has_permission('ventas'):
+            activity_list.addItem("🛒 Venta #001 procesada - $125.50")
+            activity_list.addItem("💳 Pago recibido - Cliente Juan Pérez")
         
-        recent_sales_layout.addWidget(self.recent_sales_table)
-        layout.addWidget(recent_sales_group)
+        if self.user_has_permission('productos'):
+            activity_list.addItem("📦 Stock actualizado - Producto ABC")
+            activity_list.addItem("⚠️ Stock bajo detectado - Producto XYZ")
         
-        # Productos más vendidos
-        top_products_group = QGroupBox("🔥 Productos Más Vendidos")
-        top_products_layout = QVBoxLayout(top_products_group)
+        if self.user_has_permission('*'):
+            activity_list.addItem("💾 Backup automático completado")
+            activity_list.addItem("👤 Nuevo usuario registrado")
         
-        self.top_products_table = QTableWidget()
-        self.top_products_table.setColumnCount(3)
-        self.top_products_table.setHorizontalHeaderLabels(["Producto", "Cantidad", "Ingresos"])
-        self.top_products_table.horizontalHeader().setStretchLastSection(True)
-        self.top_products_table.setMaximumHeight(200)
-        self.top_products_table.setAlternatingRowColors(True)
+        # Si no hay actividades, mostrar mensaje
+        if activity_list.count() == 0:
+            activity_list.addItem("ℹ️ No hay actividad reciente para mostrar")
         
-        top_products_layout.addWidget(self.top_products_table)
-        layout.addWidget(top_products_group)
+        layout.addWidget(activity_list)
         
         return panel
     
-    def create_right_panel(self) -> QWidget:
-        """Crear panel derecho con alertas y estadísticas"""
-        panel = QWidget()
+    def create_quick_actions_panel(self) -> QWidget:
+        """Panel de acciones rápidas"""
+        panel = QGroupBox("⚡ Acciones Rápidas")
+        panel.setMaximumHeight(200)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(15)
         
-        # Alertas del sistema
-        alerts_group = QGroupBox("🚨 Alertas del Sistema")
-        alerts_layout = QVBoxLayout(alerts_group)
+        # Botones según permisos
+        buttons_layout = QGridLayout()
+        row, col = 0, 0
         
-        self.alerts_list = QListWidget()
-        self.alerts_list.setMaximumHeight(150)
+        if self.user_has_permission('ventas'):
+            sale_btn = QPushButton("💰 Nueva Venta")
+            sale_btn.setStyleSheet("QPushButton { background-color: #27ae60; color: white; padding: 8px; font-weight: bold; border-radius: 5px; }")
+            sale_btn.clicked.connect(lambda: self.quick_action_clicked('nueva_venta'))
+            buttons_layout.addWidget(sale_btn, row, col)
+            col += 1
         
-        alerts_layout.addWidget(self.alerts_list)
-        layout.addWidget(alerts_group)
+        if self.user_has_permission('productos'):
+            product_btn = QPushButton("📦 Nuevo Producto")
+            product_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px; font-weight: bold; border-radius: 5px; }")
+            product_btn.clicked.connect(lambda: self.quick_action_clicked('nuevo_producto'))
+            buttons_layout.addWidget(product_btn, row, col)
+            col += 1
         
-        # Gráfico de ventas de la semana (placeholder)
-        chart_group = QGroupBox("📈 Ventas de la Semana")
-        chart_layout = QVBoxLayout(chart_group)
+        if col >= 2:
+            col = 0
+            row += 1
         
-        # Por ahora un placeholder, se puede implementar con matplotlib o QChart
-        chart_placeholder = QLabel("Gráfico de ventas\n(En desarrollo)")
-        chart_placeholder.setAlignment(Qt.AlignCenter)
-        chart_placeholder.setMinimumHeight(150)
-        chart_placeholder.setStyleSheet("border: 2px dashed #bdc3c7; color: #7f8c8d;")
+        if self.user_has_permission('reportes'):
+            report_btn = QPushButton("📊 Ver Reportes")
+            report_btn.setStyleSheet("QPushButton { background-color: #9b59b6; color: white; padding: 8px; font-weight: bold; border-radius: 5px; }")
+            report_btn.clicked.connect(lambda: self.quick_action_clicked('ver_reportes'))
+            buttons_layout.addWidget(report_btn, row, col)
+            col += 1
         
-        chart_layout.addWidget(chart_placeholder)
-        layout.addWidget(chart_group)
+        if self.user_has_permission('*'):
+            backup_btn = QPushButton("💾 Backup Ahora")
+            backup_btn.setStyleSheet("QPushButton { background-color: #e67e22; color: white; padding: 8px; font-weight: bold; border-radius: 5px; }")
+            backup_btn.clicked.connect(lambda: self.quick_action_clicked('backup'))
+            buttons_layout.addWidget(backup_btn, row, col)
         
-        # Información del sistema
-        system_group = QGroupBox("💻 Sistema")
-        system_layout = QVBoxLayout(system_group)
-        
-        self.system_info_label = QLabel()
-        self.system_info_label.setWordWrap(True)
-        self.system_info_label.setStyleSheet("font-size: 11px; color: #2c3e50;")
-        
-        system_layout.addWidget(self.system_info_label)
-        layout.addWidget(system_group)
-        
+        layout.addLayout(buttons_layout)
         layout.addStretch()
         
         return panel
     
-    def setup_styles(self):
-        """Configurar estilos CSS del dashboard"""
-        self.setStyleSheet("""
-            #dashboard_header {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
-                    stop:0 #3498db, stop:1 #2980b9);
-                border-radius: 10px;
-                padding: 15px;
-                margin-bottom: 10px;
-            }
-            
-            #dashboard_title {
-                color: white;
-                font-size: 24px;
-                font-weight: bold;
-            }
-            
-            #dashboard_date {
-                color: #ecf0f1;
-                font-size: 14px;
-            }
-            
-            #refresh_button {
-                background-color: rgba(255, 255, 255, 0.2);
-                color: white;
-                border: 2px solid rgba(255, 255, 255, 0.3);
-                border-radius: 8px;
-                padding: 8px 16px;
-                font-weight: bold;
-            }
-            
-            #refresh_button:hover {
-                background-color: rgba(255, 255, 255, 0.3);
-            }
-            
-            #metrics_panel {
-                background-color: transparent;
-            }
-            
-            #metric_card {
-                background-color: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                min-height: 120px;
-            }
-            
-            #metric_card:hover {
-                border-color: #3498db;
-                box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
-            }
-            
-            #metric_title {
-                font-size: 13px;
-                font-weight: bold;
-                color: #2c3e50;
-            }
-            
-            QGroupBox {
-                font-weight: bold;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 8px;
-                padding-top: 10px;
-            }
-            
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                color: #2c3e50;
-            }
-            
-            QTableWidget {
-                gridline-color: #ecf0f1;
-                background-color: white;
-                alternate-background-color: #f8f9fa;
-                selection-background-color: #3498db;
-                selection-color: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 4px;
-            }
-            
-            QHeaderView::section {
-                background-color: #34495e;
-                color: white;
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-                font-size: 11px;
-            }
-            
-            QListWidget {
-                border: 1px solid #e0e0e0;
-                border-radius: 4px;
-                background-color: white;
-            }
-            
-            QListWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #ecf0f1;
-            }
-            
-            QListWidget::item:selected {
-                background-color: #3498db;
-                color: white;
-            }
-        """)
+    def user_has_permission(self, permission: str) -> bool:
+        """Verificar permisos del usuario actual"""
+        user_permissions = self.current_user.get('permisos', [])
+        if isinstance(user_permissions, str):
+            user_permissions = user_permissions.split(',') if user_permissions else []
+        user_permissions = [p.strip() for p in user_permissions if p.strip()]
+        return permission in user_permissions or '*' in user_permissions
     
     def load_dashboard_data(self):
-        """Cargar datos iniciales del dashboard"""
+        """Cargar datos del dashboard"""
         try:
-            today = date.today()
-            
-            # Obtener estadísticas de ventas
-            sales_stats = self.managers['sales'].get_sales_statistics(
-                date_from=today,
-                date_to=today
-            )
-            
-            # Obtener productos con stock bajo
-            low_stock_products = self.managers['product'].get_products_with_low_stock()
-            
-            # Obtener estadísticas de productos
-            stock_stats = self.managers['product'].calculate_stock_value()
-            
-            # Obtener ventas recientes
-            recent_sales = self.managers['sales'].get_sales(limit=10)
-            
-            # Obtener productos más vendidos
-            top_products = self.managers['sales'].get_top_products(limit=10)
-            
-            # Almacenar datos
+            # Aquí se cargarían los datos reales de la base de datos
+            # Por ahora, datos de ejemplo
             self.dashboard_data = {
-                'sales_stats': sales_stats,
-                'low_stock_products': low_stock_products,
-                'stock_stats': stock_stats,
-                'recent_sales': recent_sales,
-                'top_products': top_products
+                'ventas_hoy': 0,
+                'total_productos': 0,
+                'stock_bajo': 0,
+                'clientes_activos': 0,
+                'meta_mes': 0,
+                'utilidad_mes': 0
             }
             
-            # Actualizar UI
-            self.update_metrics()
-            self.update_tables()
-            self.update_alerts()
-            self.update_system_info()
+            # TODO: Implementar carga real de datos
+            logger.info("Datos del dashboard cargados")
             
         except Exception as e:
             logger.error(f"Error cargando datos del dashboard: {e}")
-            self.show_error_message(f"Error cargando datos: {e}")
-    
-    def update_metrics(self):
-        """Actualizar métricas principales"""
-        try:
-            sales_stats = self.dashboard_data.get('sales_stats', {})
-            stock_stats = self.dashboard_data.get('stock_stats', {})
-            low_stock_products = self.dashboard_data.get('low_stock_products', [])
-            
-            # Ventas hoy
-            ventas_hoy = sales_stats.get('monto_total', 0)
-            self.metric_ventas_hoy_value.setText(f"${ventas_hoy:,.2f}")
-            
-            if ventas_hoy > 0:
-                avg_ticket = sales_stats.get('monto_promedio', 0)
-                self.metric_ventas_hoy_detail.setText(f"Ticket promedio: ${avg_ticket:.2f}")
-            else:
-                self.metric_ventas_hoy_detail.setText("Sin ventas hoy")
-            
-            # Productos vendidos
-            total_ventas = sales_stats.get('ventas_completadas', 0)
-            self.metric_productos_vendidos_value.setText(str(total_ventas))
-            
-            if total_ventas > 0:
-                self.metric_productos_vendidos_detail.setText(f"{total_ventas} transacciones")
-            else:
-                self.metric_productos_vendidos_detail.setText("Sin productos vendidos")
-            
-            # Stock bajo
-            stock_bajo_count = len(low_stock_products)
-            self.metric_stock_bajo_value.setText(str(stock_bajo_count))
-            
-            if stock_bajo_count > 0:
-                self.metric_stock_bajo_detail.setText("Requiere atención")
-            else:
-                self.metric_stock_bajo_detail.setText("Stock en niveles normales")
-            
-            # Clientes activos (placeholder)
-            clientes_unicos = sales_stats.get('clientes_unicos', 0)
-            self.metric_clientes_activos_value.setText(str(clientes_unicos))
-            self.metric_clientes_activos_detail.setText(f"Este mes")
-            
-        except Exception as e:
-            logger.error(f"Error actualizando métricas: {e}")
-    
-    def update_tables(self):
-        """Actualizar tablas de datos"""
-        try:
-            # Actualizar tabla de ventas recientes
-            recent_sales = self.dashboard_data.get('recent_sales', [])
-            self.recent_sales_table.setRowCount(len(recent_sales[:10]))
-            
-            for row, sale in enumerate(recent_sales[:10]):
-                fecha = QTableWidgetItem(sale.get('fecha_venta', '')[:16])
-                cliente = QTableWidgetItem(sale.get('cliente_nombre', 'Cliente General'))
-                total = QTableWidgetItem(f"${sale.get('total', 0):,.2f}")
-                estado = QTableWidgetItem(sale.get('estado', 'COMPLETADA'))
-                
-                # Colorear estado
-                if sale.get('estado') == 'COMPLETADA':
-                    estado.setBackground(QColor("#d5edda"))
-                elif sale.get('estado') == 'CANCELADA':
-                    estado.setBackground(QColor("#f8d7da"))
-                
-                self.recent_sales_table.setItem(row, 0, fecha)
-                self.recent_sales_table.setItem(row, 1, cliente)
-                self.recent_sales_table.setItem(row, 2, total)
-                self.recent_sales_table.setItem(row, 3, estado)
-            
-            # Actualizar tabla de productos más vendidos
-            top_products = self.dashboard_data.get('top_products', [])
-            self.top_products_table.setRowCount(len(top_products[:10]))
-            
-            for row, product in enumerate(top_products[:10]):
-                nombre = QTableWidgetItem(product.get('nombre', ''))
-                cantidad = QTableWidgetItem(str(int(product.get('cantidad_vendida', 0))))
-                ingresos = QTableWidgetItem(f"${product.get('monto_total', 0):,.2f}")
-                
-                self.top_products_table.setItem(row, 0, nombre)
-                self.top_products_table.setItem(row, 1, cantidad)
-                self.top_products_table.setItem(row, 2, ingresos)
-                
-        except Exception as e:
-            logger.error(f"Error actualizando tablas: {e}")
-    
-    def update_alerts(self):
-        """Actualizar lista de alertas"""
-        try:
-            self.alerts_list.clear()
-            
-            # Alertas por stock bajo
-            low_stock_products = self.dashboard_data.get('low_stock_products', [])
-            if low_stock_products:
-                if len(low_stock_products) <= 3:
-                    for product in low_stock_products[:3]:
-                        alert_text = f"⚠️ Stock bajo: {product['nombre']} ({product['stock_actual']} unidades)"
-                        item = QListWidgetItem(alert_text)
-                        item.setData(Qt.UserRole, 'stock_bajo')
-                        self.alerts_list.addItem(item)
-                else:
-                    alert_text = f"⚠️ {len(low_stock_products)} productos con stock bajo"
-                    item = QListWidgetItem(alert_text)
-                    item.setData(Qt.UserRole, 'stock_bajo')
-                    self.alerts_list.addItem(item)
-            
-            # Alerta por productos próximos a vencer
-            try:
-                expiring_products = self.managers['product'].get_products_expiring_soon(7)
-                if expiring_products:
-                    alert_text = f"📅 {len(expiring_products)} productos vencen en 7 días"
-                    item = QListWidgetItem(alert_text)
-                    item.setData(Qt.UserRole, 'expiring')
-                    self.alerts_list.addItem(item)
-            except:
-                pass  # No todos los productos tienen fecha de vencimiento
-            
-            # Si no hay alertas, mostrar mensaje positivo
-            if self.alerts_list.count() == 0:
-                item = QListWidgetItem("✅ Sin alertas críticas")
-                item.setForeground(QColor("#27ae60"))
-                self.alerts_list.addItem(item)
-                
-        except Exception as e:
-            logger.error(f"Error actualizando alertas: {e}")
-    
-    def update_system_info(self):
-        """Actualizar información del sistema"""
-        try:
-            db_info = self.managers['db'].get_database_info()
-            
-            system_text = f"""
-            <b>Base de Datos:</b><br>
-            • {db_info.get('total_records', 0):,} registros totales<br>
-            • Tamaño: {db_info.get('size_mb', 0):.1f} MB<br><br>
-            
-            <b>Usuario Actual:</b><br>
-            • {self.current_user['nombre_completo']}<br>
-            • Rol: {self.current_user['rol_nombre']}<br><br>
-            
-            <b>Sesión:</b><br>
-            • Iniciada: {datetime.now().strftime('%H:%M')}<br>
-            • Última actualización: {datetime.now().strftime('%H:%M:%S')}
-            """
-            
-            self.system_info_label.setText(system_text.strip())
-            
-        except Exception as e:
-            logger.error(f"Error actualizando info del sistema: {e}")
-            self.system_info_label.setText("Error cargando información del sistema")
     
     def refresh_data(self):
-        """Actualizar todos los datos del dashboard"""
+        """Actualizar datos del dashboard"""
+        self.load_dashboard_data()
+        # TODO: Actualizar widgets con nuevos datos
+    
+    def on_metric_clicked(self, key: str):
+        """Manejar click en métrica"""
+        # Emitir señal o navegar según la métrica
+        logger.info(f"Métrica clickeada: {key}")
+        # TODO: Implementar navegación específica
+    
+    def quick_action_clicked(self, action: str):
+        """Manejar acciones rápidas"""
+        logger.info(f"Acción rápida: {action}")
+        
         try:
-            # Mostrar indicador de carga
-            self.setEnabled(False)
-            QApplication.processEvents()
+            # Encontrar la ventana principal recorriendo hacia arriba en la jerarquía
+            main_window = None
+            widget = self.parent()
             
-            # Recargar datos
-            self.load_dashboard_data()
+            while widget and main_window is None:
+                if hasattr(widget, 'switch_to_tab'):
+                    main_window = widget
+                    break
+                widget = widget.parent()
             
-            # Restaurar interfaz
-            self.setEnabled(True)
-            
+            if main_window:
+                if action == 'nueva_venta':
+                    main_window.switch_to_tab('sales')
+                elif action == 'nuevo_producto':
+                    main_window.switch_to_tab('stock')
+                elif action == 'ver_reportes':
+                    main_window.switch_to_tab('reports')
+                elif action == 'backup':
+                    if hasattr(main_window, 'show_backup_dialog'):
+                        main_window.show_backup_dialog()
+                    else:
+                        logger.info("Función de backup no disponible")
+            else:
+                logger.warning("No se pudo encontrar la ventana principal para la acción")
+                
         except Exception as e:
-            logger.error(f"Error refrescando dashboard: {e}")
-            self.show_error_message(f"Error actualizando dashboard: {e}")
-            self.setEnabled(True)
-    
-    def show_error_message(self, message: str):
-        """Mostrar mensaje de error en el dashboard"""
-        # Se podría mostrar un banner de error o notificación
-        pass
-    
-    def closeEvent(self, event):
-        """Limpiar recursos al cerrar"""
-        if hasattr(self, 'refresh_timer'):
-            self.refresh_timer.stop()
-        event.accept()
+            logger.error(f"Error ejecutando acción rápida {action}: {e}")

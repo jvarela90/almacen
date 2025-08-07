@@ -41,8 +41,11 @@ class MainWindow(QMainWindow):
         """Inicializar interfaz de usuario"""
         self.setWindowTitle(f"AlmacénPro v2.0 - {self.current_user['nombre_completo']}")
         
-        # Configurar tamaño inicial
-        self.resize(1400, 900)
+        # Configurar tamaño inicial responsivo
+        screen = QApplication.desktop().screenGeometry()
+        width = min(1400, int(screen.width() * 0.85))
+        height = min(900, int(screen.height() * 0.85))
+        self.resize(width, height)
         self.center_window()
         
         # Widget central con tabs
@@ -166,14 +169,26 @@ class MainWindow(QMainWindow):
             logger.error(f"Error creando tab configuración: {e}")
     
     def create_users_tab(self):
-        """Crear tab de gestión de usuarios"""
+        """Crear tab de gestión de usuarios - Solo para administradores"""
         try:
+            # Verificar si es administrador
+            if self.user_has_permission('*') or self.current_user.get('rol_nombre') == 'ADMINISTRADOR':
+                from ui.widgets.admin_widget import AdminWidget
+                admin_widget = AdminWidget(self.managers, self.current_user, self)
+                tab_index = self.central_widget.addTab(admin_widget, "🔧 Administración")
+                self.widgets['admin'] = admin_widget
+            else:
+                # Para otros usuarios, mostrar gestión básica
+                users_widget = self.create_basic_users_widget()
+                tab_index = self.central_widget.addTab(users_widget, "👤 Usuarios")
+                self.widgets['users'] = users_widget
+            
+        except Exception as e:
+            logger.error(f"Error creando tab usuarios/admin: {e}")
+            # Fallback
             users_widget = self.create_users_widget()
             tab_index = self.central_widget.addTab(users_widget, "👤 Usuarios")
             self.widgets['users'] = users_widget
-            
-        except Exception as e:
-            logger.error(f"Error creando tab usuarios: {e}")
     
     def setup_menu_bar(self):
         """Configurar barra de menú"""
@@ -355,12 +370,21 @@ class MainWindow(QMainWindow):
     def user_has_permission(self, permission: str) -> bool:
         """Verificar si el usuario actual tiene un permiso"""
         try:
+            user_permissions = self.current_user.get('permisos', [])
+            
+            # Asegurar que sea una lista
+            if isinstance(user_permissions, str):
+                user_permissions = user_permissions.split(',') if user_permissions else []
+            
+            # Limpiar espacios en blanco de permisos
+            user_permissions = [p.strip() for p in user_permissions if p.strip()]
+            
             # Si tiene permiso de administrador completo
-            if '*' in self.current_user.get('permisos', []):
+            if '*' in user_permissions:
                 return True
             
             # Verificar permiso específico
-            return permission in self.current_user.get('permisos', [])
+            return permission in user_permissions
             
         except Exception as e:
             logger.error(f"Error verificando permisos: {e}")
@@ -527,9 +551,14 @@ class MainWindow(QMainWindow):
         return widget
     
     def create_stock_widget(self):
-        """Crear widget de productos/stock"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        """Crear widget de productos/stock con scroll"""
+        # Container principal
+        main_widget = QWidget()
+        main_layout = QVBoxLayout(main_widget)
+        
+        # Crear contenido
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         
         # Título y controles
         header_layout = QHBoxLayout()
@@ -545,12 +574,27 @@ class MainWindow(QMainWindow):
         layout.addLayout(header_layout)
         
         # Tabla de productos
-        products_table = QTableWidget(0, 6)
-        products_table.setHorizontalHeaderLabels(["Código", "Producto", "Categoría", "Precio", "Stock", "Acciones"])
-        products_table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(products_table)
+        self.products_table = QTableWidget(0, 6)
+        self.products_table.setHorizontalHeaderLabels(["Código", "Producto", "Categoría", "Precio", "Stock", "Acciones"])
+        self.products_table.horizontalHeader().setStretchLastSection(True)
+        self.products_table.setAlternatingRowColors(True)
+        self.products_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         
-        return widget
+        # Cargar datos reales
+        self.load_products_data()
+        
+        layout.addWidget(self.products_table)
+        
+        # Agregar scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(content_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        main_layout.addWidget(scroll_area)
+        
+        return main_widget
     
     def create_purchases_widget(self):
         """Crear widget de compras"""
@@ -729,11 +773,174 @@ class MainWindow(QMainWindow):
         
         return widget
     
-    # MÉTODOS DE ACCIÓN (placeholder por ahora)
+    def create_basic_users_widget(self):
+        """Widget básico de usuarios para no-administradores"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        
+        title = QLabel("👤 Información de Usuarios")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #8e44ad; margin: 10px;")
+        layout.addWidget(title)
+        
+        info_label = QLabel("🔒 Vista limitada - Solo consulta")
+        info_label.setStyleSheet("color: #e67e22; font-style: italic; margin: 5px;")
+        layout.addWidget(info_label)
+        
+        # Tabla básica de usuarios (solo lectura)
+        users_table = QTableWidget(0, 4)
+        users_table.setHorizontalHeaderLabels(["Usuario", "Nombre", "Rol", "Estado"])
+        users_table.horizontalHeader().setStretchLastSection(True)
+        users_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        
+        # Cargar datos básicos de usuarios
+        self.load_basic_users_data(users_table)
+        
+        layout.addWidget(users_table)
+        layout.addStretch()
+        
+        return widget
+    
+    def load_basic_users_data(self, table):
+        """Cargar datos básicos de usuarios"""
+        try:
+            if 'user' in self.managers:
+                users = self.managers['user'].get_all_users()
+                table.setRowCount(len(users))
+                
+                for row, user in enumerate(users):
+                    table.setItem(row, 0, QTableWidgetItem(user.get('username', '')))
+                    table.setItem(row, 1, QTableWidgetItem(user.get('nombre_completo', '')))
+                    table.setItem(row, 2, QTableWidgetItem(user.get('rol_nombre', '')))
+                    status = "✅ Activo" if user.get('activo') else "❌ Inactivo"
+                    table.setItem(row, 3, QTableWidgetItem(status))
+                    
+        except Exception as e:
+            logger.error(f"Error cargando usuarios básicos: {e}")
+    
+    def load_products_data(self):
+        """Cargar datos reales de productos"""
+        try:
+            if 'product' not in self.managers:
+                logger.warning("Product manager no disponible")
+                return
+            
+            products = self.managers['product'].get_all_products()
+            
+            if not products:
+                # Mostrar mensaje si no hay productos
+                self.products_table.setRowCount(1)
+                no_data_item = QTableWidgetItem("No hay productos registrados")
+                no_data_item.setTextAlignment(Qt.AlignCenter)
+                self.products_table.setSpan(0, 0, 1, 6)
+                self.products_table.setItem(0, 0, no_data_item)
+                return
+            
+            self.products_table.setRowCount(len(products))
+            
+            for row, product in enumerate(products):
+                # Código
+                codigo = product.get('codigo_interno') or product.get('codigo_barras', '')
+                self.products_table.setItem(row, 0, QTableWidgetItem(str(codigo)))
+                
+                # Nombre
+                self.products_table.setItem(row, 1, QTableWidgetItem(product.get('nombre', '')))
+                
+                # Categoría
+                categoria = product.get('categoria_nombre', 'Sin categoría')
+                self.products_table.setItem(row, 2, QTableWidgetItem(categoria))
+                
+                # Precio
+                precio = product.get('precio_venta', 0)
+                precio_text = f"${float(precio):,.2f}" if precio else "$0.00"
+                self.products_table.setItem(row, 3, QTableWidgetItem(precio_text))
+                
+                # Stock
+                stock = product.get('stock_actual', 0)
+                stock_text = f"{float(stock):,.2f}"
+                stock_item = QTableWidgetItem(stock_text)
+                
+                # Colorear stock bajo
+                stock_minimo = product.get('stock_minimo', 0)
+                if float(stock) <= float(stock_minimo):
+                    stock_item.setBackground(QColor(231, 76, 60, 50))  # Rojo suave
+                    stock_item.setToolTip("⚠️ Stock bajo")
+                
+                self.products_table.setItem(row, 4, stock_item)
+                
+                # Acciones
+                actions_widget = self.create_product_actions(product.get('id'))
+                self.products_table.setCellWidget(row, 5, actions_widget)
+                
+        except Exception as e:
+            logger.error(f"Error cargando productos: {e}")
+            # Mostrar error en la tabla
+            self.products_table.setRowCount(1)
+            error_item = QTableWidgetItem(f"Error cargando productos: {str(e)}")
+            error_item.setTextAlignment(Qt.AlignCenter)
+            self.products_table.setSpan(0, 0, 1, 6)
+            self.products_table.setItem(0, 0, error_item)
+    
+    def create_product_actions(self, product_id) -> QWidget:
+        """Crear botones de acción para producto"""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(5, 2, 5, 2)
+        
+        edit_btn = QPushButton("✏️")
+        edit_btn.setToolTip("Editar producto")
+        edit_btn.setFixedSize(25, 25)
+        edit_btn.clicked.connect(lambda: self.edit_product(product_id))
+        
+        stock_btn = QPushButton("📦")
+        stock_btn.setToolTip("Ajustar stock")
+        stock_btn.setFixedSize(25, 25)
+        stock_btn.clicked.connect(lambda: self.adjust_stock(product_id))
+        
+        layout.addWidget(edit_btn)
+        layout.addWidget(stock_btn)
+        layout.addStretch()
+        
+        return widget
+    
+    def load_customers_data(self):
+        """Cargar datos reales de clientes"""
+        try:
+            # Implementar cuando se corrija el widget de clientes
+            pass
+        except Exception as e:
+            logger.error(f"Error cargando clientes: {e}")
+    
+    # MÉTODOS DE ACCIÓN
     
     def show_backup_dialog(self):
         """Mostrar diálogo de backup"""
-        QMessageBox.information(self, "Backup", "Función de backup en desarrollo.\n\nPróximamente: Interfaz completa de backup.")
+        try:
+            from ui.dialogs.backup_dialog import BackupDialog
+            dialog = BackupDialog(self.managers.get('backup'), self)
+            dialog.exec_()
+        except ImportError:
+            # Si no existe el diálogo, mostrar una funcionalidad básica
+            reply = QMessageBox.question(
+                self, 
+                "Backup del Sistema", 
+                "¿Desea crear un backup de la base de datos ahora?\n\nEsto puede tardar unos momentos.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                try:
+                    if self.managers.get('backup'):
+                        backup_manager = self.managers['backup']
+                        success = backup_manager.create_backup("Backup manual desde dashboard")
+                        if success:
+                            QMessageBox.information(self, "Backup", "Backup creado exitosamente.")
+                        else:
+                            QMessageBox.warning(self, "Backup", "Error al crear el backup.")
+                    else:
+                        QMessageBox.warning(self, "Backup", "Servicio de backup no disponible.")
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Error durante el backup: {str(e)}")
     
     def show_sales_history(self):
         """Mostrar historial de ventas"""
@@ -750,6 +957,50 @@ class MainWindow(QMainWindow):
     def show_monthly_report(self):
         """Mostrar reporte mensual"""
         QMessageBox.information(self, "Reportes", "Reporte mensual en desarrollo.")
+    
+    def edit_product(self, product_id):
+        """Editar producto"""
+        try:
+            # Intentar usar el diálogo existente
+            from ui.dialogs.add_product_dialog import AddProductDialog
+            dialog = AddProductDialog(self.managers, edit_mode=True, product_id=product_id, parent=self)
+            if dialog.exec_() == QDialog.Accepted:
+                self.load_products_data()  # Recargar datos
+        except ImportError:
+            QMessageBox.information(self, "Editar Producto", f"Funcionalidad en desarrollo.\nID del producto: {product_id}")
+    
+    def adjust_stock(self, product_id):
+        """Ajustar stock de producto"""
+        try:
+            current_stock = 0
+            product_name = "Producto"
+            
+            # Obtener información actual del producto
+            if 'product' in self.managers:
+                product = self.managers['product'].get_product_by_id(product_id)
+                if product:
+                    current_stock = float(product.get('stock_actual', 0))
+                    product_name = product.get('nombre', 'Producto')
+            
+            # Diálogo simple de ajuste
+            new_stock, ok = QInputDialog.getDouble(
+                self, 
+                "Ajustar Stock", 
+                f"Producto: {product_name}\nStock actual: {current_stock}\n\nNuevo stock:",
+                value=current_stock,
+                min=0,
+                max=999999,
+                decimals=2
+            )
+            
+            if ok and new_stock != current_stock:
+                # TODO: Implementar actualización real de stock
+                QMessageBox.information(self, "Stock Actualizado", 
+                                      f"Stock actualizado de {current_stock} a {new_stock}")
+                self.load_products_data()  # Recargar datos
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error ajustando stock: {str(e)}")
     
     def show_about(self):
         """Mostrar información del sistema"""

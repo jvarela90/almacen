@@ -8,7 +8,8 @@
             "database": "almacen_pro",
             "username": "",
             "password": ""
-        }
+        },
+        "path": "data/almacen_pro.db"
     },
     "backup": {
         "enabled": true,
@@ -41,7 +42,7 @@
         "include_logo": false
     },
     "ui": {
-        "theme": "light",
+        "theme": "default",
         "language": "es",
         "font_size": 9,
         "window_maximized": true,
@@ -91,7 +92,9 @@
         "session_timeout_minutes": 480,
         "password_min_length": 6,
         "lock_after_attempts": 5,
-        "audit_log": true
+        "audit_log": true,
+        "session_timeout": 60,
+        "max_login_attempts": 3
     },
     "reports": {
         "default_export_format": "pdf",

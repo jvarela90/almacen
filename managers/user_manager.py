@@ -524,23 +524,35 @@ class UserManager:
         try:
             for role_name, role_data in self.DEFAULT_ROLES.items():
                 existing_role = self.db.execute_single("""
-                    SELECT id FROM roles WHERE nombre = ?
+                    SELECT id, permisos FROM roles WHERE nombre = ?
                 """, (role_name,))
                 
                 if not existing_role:
+                    # Crear rol nuevo
                     permisos_str = ','.join(role_data['permisos'])
                     self.db.execute_insert("""
                         INSERT INTO roles (nombre, descripcion, permisos)
                         VALUES (?, ?, ?)
                     """, (role_name, role_data['descripcion'], permisos_str))
                     self.logger.info(f"Rol por defecto creado: {role_name}")
+                else:
+                    # Verificar y actualizar permisos si es necesario
+                    current_permisos = existing_role.get('permisos', '')
+                    expected_permisos = ','.join(role_data['permisos'])
+                    
+                    if current_permisos != expected_permisos:
+                        self.db.execute_update("""
+                            UPDATE roles SET permisos = ?, descripcion = ? WHERE nombre = ?
+                        """, (expected_permisos, role_data['descripcion'], role_name))
+                        self.logger.info(f"Rol actualizado: {role_name}")
                     
         except Exception as e:
-            self.logger.error(f"Error creando roles por defecto: {e}")
+            self.logger.error(f"Error creando/actualizando roles por defecto: {e}")
     
     def _ensure_admin_user(self):
-        """Asegurar que existe el usuario administrador"""
+        """Asegurar que existe el usuario administrador y usuarios de prueba"""
         try:
+            # Usuario Administrador
             admin_user = self.db.execute_single("""
                 SELECT id FROM usuarios WHERE username = 'admin'
             """)
@@ -560,9 +572,53 @@ class UserManager:
                 """, ('admin', password_hash, 'Administrador del Sistema', admin_role_id, True))
                 
                 self.logger.info("Usuario administrador por defecto creado (admin/admin123)")
+            
+            # Usuario Vendedor de prueba
+            vendedor_user = self.db.execute_single("""
+                SELECT id FROM usuarios WHERE username = 'vendedor'
+            """)
+            
+            if not vendedor_user:
+                vendedor_role = self.db.execute_single("""
+                    SELECT id FROM roles WHERE nombre = 'VENDEDOR'
+                """)
+                
+                vendedor_role_id = vendedor_role['id'] if vendedor_role else None
+                
+                if vendedor_role_id:
+                    password_hash = self._hash_password('vendedor123')
+                    
+                    self.db.execute_insert("""
+                        INSERT INTO usuarios (username, password_hash, nombre_completo, rol_id, activo)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, ('vendedor', password_hash, 'Juan Vendedor', vendedor_role_id, True))
+                    
+                    self.logger.info("Usuario vendedor de prueba creado (vendedor/vendedor123)")
+            
+            # Usuario Gerente de prueba  
+            gerente_user = self.db.execute_single("""
+                SELECT id FROM usuarios WHERE username = 'gerente'
+            """)
+            
+            if not gerente_user:
+                gerente_role = self.db.execute_single("""
+                    SELECT id FROM roles WHERE nombre = 'GERENTE'
+                """)
+                
+                gerente_role_id = gerente_role['id'] if gerente_role else None
+                
+                if gerente_role_id:
+                    password_hash = self._hash_password('gerente123')
+                    
+                    self.db.execute_insert("""
+                        INSERT INTO usuarios (username, password_hash, nombre_completo, rol_id, activo)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, ('gerente', password_hash, 'María Gerente', gerente_role_id, True))
+                    
+                    self.logger.info("Usuario gerente de prueba creado (gerente/gerente123)")
                 
         except Exception as e:
-            self.logger.error(f"Error creando usuario administrador: {e}")
+            self.logger.error(f"Error creando usuarios por defecto: {e}")
     
     def _get_default_role_id(self) -> Optional[int]:
         """Obtener ID del rol por defecto (VENDEDOR)"""

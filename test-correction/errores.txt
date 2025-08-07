@@ -1,0 +1,88 @@
+PS F:\almacen> & F:/almacen/venv/Scripts/Activate.ps1
+(venv) PS F:\almacen> & F:/almacen/venv/Scripts/python.exe f:/almacen/main.py
+2025-08-07 10:02:01,260 - database.manager - INFO - Todas las tablas creadas exitosamente
+2025-08-07 10:02:01,260 - database.manager - WARNING - Error creando índice: no such column: numero_documento
+2025-08-07 10:02:01,260 - database.manager - INFO - Índices creados exitosamente
+2025-08-07 10:02:01,260 - database.manager - INFO - Triggers creados exitosamente
+2025-08-07 10:02:01,260 - database.manager - INFO - Datos por defecto insertados
+2025-08-07 10:02:01,276 - database.manager - INFO - Base de datos optimizada
+2025-08-07 10:02:01,277 - database.manager - INFO - Base de datos configurada exitosamente        
+2025-08-07 10:02:01,293 - utils.backup_manager - INFO - Backup automático iniciado (cada 24 horas)
+2025-08-07 10:02:01,297 - __main__ - INFO - Inicialización de componentes completada exitosamente
+2025-08-07 10:02:07,610 - managers.user_manager - INFO - Usuario autenticado exitosamente: admin
+2025-08-07 10:02:08,611 - __main__ - INFO - Usuario autenticado: admin
+2025-08-07 10:02:08,774 - __main__ - INFO - Ventana principal mostrada exitosamente
+2025-08-07 10:02:16,125 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: dashboard_basic
+2025-08-07 10:02:17,444 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: sesion_activa
+2025-08-07 10:02:24,125 - __main__ - INFO - Cerrando sesión de usuario: admin
+2025-08-07 10:02:32,212 - managers.user_manager - INFO - Usuario autenticado exitosamente: gerente
+2025-08-07 10:02:33,234 - __main__ - INFO - Usuario autenticado: gerente
+2025-08-07 10:02:33,257 - ui.widgets.dashboard_widget - INFO - Datos del dashboard cargados
+2025-08-07 10:02:33,405 - __main__ - INFO - Ventana principal mostrada exitosamente
+2025-08-07 10:02:41,097 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: ventas_hoy
+2025-08-07 10:02:44,692 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: meta_mes
+2025-08-07 10:02:45,495 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: total_productos
+2025-08-07 10:02:46,345 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: stock_bajo
+2025-08-07 10:02:47,495 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: utilidad_mes
+2025-08-07 10:02:48,161 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: clientes_activos
+2025-08-07 10:03:35,362 - __main__ - INFO - Cerrando sesión de usuario: gerente
+2025-08-07 10:03:42,477 - managers.user_manager - INFO - Usuario autenticado exitosamente: vendedor
+2025-08-07 10:03:43,483 - __main__ - INFO - Usuario autenticado: vendedor
+2025-08-07 10:03:43,502 - ui.widgets.dashboard_widget - INFO - Datos del dashboard cargados
+2025-08-07 10:03:43,637 - __main__ - INFO - Ventana principal mostrada exitosamente
+(venv) PS F:\almacen> & F:/almacen/venv/Scripts/python.exe f:/almacen/main.py
+2025-08-07 10:32:23,226 - database.manager - INFO - Todas las tablas creadas exitosamente
+2025-08-07 10:32:23,226 - database.manager - WARNING - Error creando índice: no such column: numero_documento
+2025-08-07 10:32:23,226 - database.manager - INFO - Índices creados exitosamente
+2025-08-07 10:32:23,226 - database.manager - INFO - Triggers creados exitosamente
+2025-08-07 10:32:23,226 - database.manager - INFO - Datos por defecto insertados
+2025-08-07 10:32:23,245 - database.manager - INFO - Base de datos optimizada
+2025-08-07 10:32:23,246 - database.manager - INFO - Base de datos configurada exitosamente
+2025-08-07 10:32:23,264 - utils.backup_manager - INFO - Backup automático iniciado (cada 24 horas)
+2025-08-07 10:32:23,264 - __main__ - INFO - Inicialización de componentes completada exitosamente
+2025-08-07 10:32:31,325 - managers.user_manager - INFO - Usuario autenticado exitosamente: admin
+2025-08-07 10:32:32,329 - __main__ - INFO - Usuario autenticado: admin
+2025-08-07 10:32:32,404 - ui.widgets.dashboard_widget - INFO - Datos del dashboard cargados
+2025-08-07 10:32:32,579 - __main__ - INFO - Ventana principal mostrada exitosamente
+2025-08-07 10:32:34,860 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: dashboard_basic
+2025-08-07 10:32:36,811 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: sesion_activa
+2025-08-07 10:32:50,194 - __main__ - INFO - Cerrando sesión de usuario: admin
+2025-08-07 10:32:57,194 - managers.user_manager - INFO - Usuario autenticado exitosamente: gerente
+2025-08-07 10:32:58,229 - __main__ - INFO - Usuario autenticado: gerente
+2025-08-07 10:32:58,253 - ui.widgets.dashboard_widget - INFO - Datos del dashboard cargados
+2025-08-07 10:32:58,461 - __main__ - INFO - Ventana principal mostrada exitosamente
+2025-08-07 10:33:31,010 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: ventas_hoy
+2025-08-07 10:33:31,748 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: clientes_activos
+2025-08-07 10:33:32,378 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: meta_mes
+2025-08-07 10:33:32,844 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: utilidad_mes
+2025-08-07 10:33:33,365 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: total_productos
+2025-08-07 10:33:33,863 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: stock_bajo
+2025-08-07 10:33:34,797 - ui.widgets.dashboard_widget - INFO - Acción rápida: nueva_venta
+2025-08-07 10:33:38,010 - ui.widgets.dashboard_widget - INFO - Acción rápida: nuevo_producto
+Traceback (most recent call last):
+  File "f:\almacen\ui\main_window.py", line 892, in <lambda>
+    edit_btn.clicked.connect(lambda: self.edit_product(product_id))
+  File "f:\almacen\ui\main_window.py", line 966, in edit_product
+    dialog = AddProductDialog(self.managers, edit_mode=True, product_id=product_id, parent=self)
+TypeError: AddProductDialog.__init__() got an unexpected keyword argument 'edit_mode'
+(venv) PS F:\almacen> & F:/almacen/venv/Scripts/python.exe f:/almacen/main.py
+2025-08-07 10:34:18,291 - database.manager - INFO - Todas las tablas creadas exitosamente
+2025-08-07 10:34:18,292 - database.manager - WARNING - Error creando índice: no such column: numero_documento
+2025-08-07 10:34:18,292 - database.manager - INFO - Índices creados exitosamente
+2025-08-07 10:34:18,293 - database.manager - INFO - Triggers creados exitosamente
+2025-08-07 10:34:18,294 - database.manager - INFO - Datos por defecto insertados
+2025-08-07 10:34:18,306 - database.manager - INFO - Base de datos optimizada
+2025-08-07 10:34:18,308 - database.manager - INFO - Base de datos configurada exitosamente
+2025-08-07 10:34:18,326 - utils.backup_manager - INFO - Backup automático iniciado (cada 24 horas)
+2025-08-07 10:34:18,332 - __main__ - INFO - Inicialización de componentes completada exitosamente
+2025-08-07 10:34:28,144 - managers.user_manager - INFO - Usuario autenticado exitosamente: gerente
+2025-08-07 10:34:29,151 - __main__ - INFO - Usuario autenticado: gerente
+2025-08-07 10:34:29,245 - ui.widgets.dashboard_widget - INFO - Datos del dashboard cargados
+2025-08-07 10:34:29,616 - __main__ - INFO - Ventana principal mostrada exitosamente
+2025-08-07 10:37:10,144 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: ventas_hoy
+2025-08-07 10:37:10,847 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: clientes_activos
+2025-08-07 10:37:11,898 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: utilidad_mes
+2025-08-07 10:37:12,282 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: meta_mes
+2025-08-07 10:37:12,794 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: total_productos
+2025-08-07 10:37:13,347 - ui.widgets.dashboard_widget - INFO - Métrica clickeada: stock_bajo
+2025-08-07 10:37:14,029 - ui.widgets.dashboard_widget - INFO - Acción rápida: nuevo_producto
