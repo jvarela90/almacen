@@ -21,41 +21,57 @@ class ProductManager:
     def search_products(self, search_term: str, limit: int = 50) -> List[Dict]:
         """Buscar productos por código de barras, nombre o código interno"""
         try:
-            if not search_term.strip():
+            search_term = search_term.strip() if search_term else ""
+            
+            if not search_term:
+                # Si no hay término de búsqueda, devolver todos los productos activos
+                query = """
+                    SELECT p.*, c.nombre as categoria_nombre, pr.nombre as proveedor_nombre
+                    FROM productos p
+                    LEFT JOIN categorias c ON p.categoria_id = c.id
+                    LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
+                    WHERE p.activo = 1
+                    ORDER BY p.nombre
+                    LIMIT ?
+                """
+                results = self.db.execute_query(query, (limit,))
+                if results:
+                    return [dict(row) for row in results]
                 return []
-            
-            search_term = search_term.strip()
-            
-            query = """
-                SELECT p.*, c.nombre as categoria_nombre, pr.nombre as proveedor_nombre
-                FROM productos p
-                LEFT JOIN categorias c ON p.categoria_id = c.id
-                LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
-                WHERE (p.codigo_barras LIKE ? OR p.nombre LIKE ? 
-                       OR p.codigo_interno LIKE ?)
-                AND p.activo = 1
-                ORDER BY 
-                    CASE 
-                        WHEN p.codigo_barras = ? THEN 1
-                        WHEN p.codigo_barras LIKE ? THEN 2
-                        WHEN p.nombre LIKE ? THEN 3
-                        ELSE 4
-                    END,
-                    p.nombre
-                LIMIT ?
-            """
-            
-            search_pattern = f"%{search_term}%"
-            exact_pattern = search_term
-            starts_pattern = f"{search_term}%"
-            
-            params = (
-                search_pattern, search_pattern, search_pattern,  # WHERE clause
-                exact_pattern, starts_pattern, starts_pattern,   # ORDER BY clause
-                limit
-            )
-            
-            return self.db.execute_query(query, params)
+            else:
+                # Búsqueda con término específico
+                query = """
+                    SELECT p.*, c.nombre as categoria_nombre, pr.nombre as proveedor_nombre
+                    FROM productos p
+                    LEFT JOIN categorias c ON p.categoria_id = c.id
+                    LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
+                    WHERE (p.codigo_barras LIKE ? OR p.nombre LIKE ? 
+                           OR p.codigo_interno LIKE ?)
+                    AND p.activo = 1
+                    ORDER BY 
+                        CASE 
+                            WHEN p.codigo_barras = ? THEN 1
+                            WHEN p.codigo_barras LIKE ? THEN 2
+                            WHEN p.nombre LIKE ? THEN 3
+                            ELSE 4
+                        END,
+                        p.nombre
+                    LIMIT ?
+                """
+                
+                search_pattern = f"%{search_term}%"
+                exact_pattern = search_term
+                starts_pattern = f"{search_term}%"
+                
+                params = (
+                    search_pattern, search_pattern, search_pattern,  # WHERE clause
+                    exact_pattern, starts_pattern, starts_pattern,   # ORDER BY clause
+                    limit
+                )
+                results = self.db.execute_query(query, params)
+                if results:
+                    return [dict(row) for row in results]
+                return []
             
         except Exception as e:
             self.logger.error(f"Error buscando productos: {e}")
@@ -203,8 +219,7 @@ class ProductManager:
                 'precio_compra', 'precio_venta', 'precio_mayorista', 'margen_ganancia',
                 'stock_minimo', 'stock_maximo', 'unidad_medida', 'proveedor_id',
                 'ubicacion', 'imagen_url', 'iva_porcentaje', 'es_produccion_propia',
-                'peso', 'vencimiento', 'lote', 'permite_venta_sin_stock', 'es_pesable',
-                'codigo_plu', 'activo'
+                'peso', 'vencimiento', 'lote', 'activo'
             ]
             
             for field, value in product_data.items():
@@ -251,7 +266,7 @@ class ProductManager:
                 final_stock = current_stock + new_quantity
                 movement_quantity = new_quantity
             elif movement_type == 'SALIDA':
-                if current_stock < new_quantity and not product.get('permite_venta_sin_stock', False):
+                if current_stock < new_quantity:
                     return False, f"Stock insuficiente. Disponible: {current_stock}"
                 final_stock = current_stock - new_quantity
                 movement_quantity = -new_quantity
@@ -265,12 +280,12 @@ class ProductManager:
             self.db.begin_transaction()
             
             try:
-                # Actualizar stock del producto
-                success = self.db.execute_update("""
-                    UPDATE productos 
-                    SET stock_actual = ?, actualizado_en = CURRENT_TIMESTAMP 
-                    WHERE id = ?
-                """, (final_stock, product_id))
+                # Para evitar problemas con triggers, usar método simple
+                # que solo actualiza sin validaciones complejas
+                success = self.db.execute_update(
+                    "UPDATE productos SET stock_actual = ? WHERE id = ?", 
+                    (final_stock, product_id)
+                )
                 
                 if not success:
                     raise Exception("Error actualizando stock del producto")

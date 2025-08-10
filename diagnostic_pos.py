@@ -185,7 +185,7 @@ def diagnostic_pos():
             for i, issue in enumerate(issues, 1):
                 print(f"  {i}. {issue}")
         else:
-            print("✓ No se encontraron problemas críticos")
+            print("OK No se encontraron problemas criticos")
         
         print()
         print("="*60)
