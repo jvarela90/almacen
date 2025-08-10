@@ -1,6 +1,6 @@
 """
-Modelos de datos para AlmacénPro v2.0
-Definición de estructuras de datos y validaciones
+Modelos de datos para AlmacenPro v2.0
+Definicion de estructuras de datos y validaciones
 """
 
 from dataclasses import dataclass, field
@@ -109,7 +109,7 @@ class Product:
     stock_maximo: Optional[Decimal] = None
     unidad_medida: str = "UN"
     
-    # Información adicional
+    # Informaciï¿½n adicional
     producto_tipo: ProductType = ProductType.PHYSICAL
     peso: Optional[Decimal] = None
     dimensiones: Optional[str] = None
@@ -132,13 +132,13 @@ class Product:
     proveedor_id: Optional[int] = None
     proveedor_nombre: Optional[str] = None
     
-    # Auditoría
+    # Auditorï¿½a
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None
     
     def __post_init__(self):
-        """Validaciones post-inicialización"""
+        """Validaciones post-inicializaciï¿½n"""
         if self.barcode and not self.codigo_barras:
             self.codigo_barras = self.barcode
         elif self.codigo_barras and not self.barcode:
@@ -146,7 +146,7 @@ class Product:
     
     @property
     def stock_bajo(self) -> bool:
-        """Verificar si el stock está bajo"""
+        """Verificar si el stock estï¿½ bajo"""
         return self.stock_actual <= self.stock_minimo
     
     @property
@@ -207,14 +207,14 @@ class Customer:
     activo: bool = True
     es_vip: bool = False
     
-    # Auditoría
+    # Auditorï¿½a
     fecha_registro: Optional[date] = None
     ultima_compra: Optional[date] = None
     total_compras: Decimal = field(default_factory=lambda: Decimal('0.00'))
     created_at: Optional[datetime] = None
     
     def __post_init__(self):
-        """Completar campos automáticamente"""
+        """Completar campos automï¿½ticamente"""
         if not self.nombre_completo and self.nombre:
             if self.apellido:
                 self.nombre_completo = f"{self.nombre} {self.apellido}"
@@ -273,7 +273,7 @@ class Sale:
     # Items
     items: List['SaleItem'] = field(default_factory=list)
     
-    # Auditoría
+    # Auditorï¿½a
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
@@ -353,7 +353,7 @@ class SaleItem:
 
 @dataclass
 class Category:
-    """Modelo de categoría"""
+    """Modelo de categorï¿½a"""
     id: Optional[int] = None
     nombre: str = ""
     descripcion: Optional[str] = None
@@ -434,7 +434,7 @@ class SystemLog:
             'error_message': self.error_message
         }
 
-# Funciones de utilidad para conversión de datos
+# Funciones de utilidad para conversiï¿½n de datos
 def row_to_user(row) -> User:
     """Convertir fila de base de datos a User"""
     if not row:

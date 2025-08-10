@@ -1,0 +1,28 @@
+{
+    "backups": [
+        {
+            "name": "backup_manual_20250809_235650_Backup de prueba del sistema",
+            "path": "backups\\backup_manual_20250809_235650_Backup de prueba del sistema.zip",
+            "size_bytes": 1410,
+            "created_at": "2025-08-09T23:56:50.425390",
+            "type": "manual",
+            "files_included": [
+                "database.db",
+                "config/config.json"
+            ],
+            "verified": true
+        },
+        {
+            "name": "backup_manual_20250810_002155_Backup de prueba del sistema",
+            "path": "backups\\backup_manual_20250810_002155_Backup de prueba del sistema.zip",
+            "size_bytes": 1410,
+            "created_at": "2025-08-10T00:21:55.289089",
+            "type": "manual",
+            "files_included": [
+                "database.db",
+                "config/config.json"
+            ],
+            "verified": true
+        }
+    ]
+}

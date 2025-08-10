@@ -91,15 +91,24 @@ class ProductManager:
             self.logger.error(f"Error obteniendo producto por ID: {e}")
             return None
     
-    def create_product(self, product_data: Dict) -> Tuple[bool, str, int]:
-        """Crear nuevo producto"""
+    def create_product(self, product_data: Dict) -> int:
+        """Crear nuevo producto - Compatible con GUI y esquema real"""
         try:
-            # Validaciones básicas
-            if not product_data.get('nombre'):
-                return False, "El nombre del producto es obligatorio", 0
+            # Mapear campos de GUI a esquema real para compatibilidad
+            nombre = product_data.get('name') or product_data.get('nombre')
+            codigo_barras = product_data.get('barcode') or product_data.get('codigo_barras')
+            codigo_interno = product_data.get('sku') or product_data.get('codigo_interno')
+            precio_venta = product_data.get('sale_price') or product_data.get('precio_venta')
+            precio_compra = product_data.get('cost_price') or product_data.get('precio_compra', 0)
+            stock_actual = product_data.get('stock') or product_data.get('stock_actual', 0)
+            stock_minimo = product_data.get('minimum_stock') or product_data.get('stock_minimo', 0)
             
-            if product_data.get('precio_venta', 0) <= 0:
-                return False, "El precio de venta debe ser mayor a cero", 0
+            # Validaciones básicas
+            if not nombre:
+                raise ValueError("El nombre del producto es obligatorio")
+            
+            if not precio_venta or precio_venta <= 0:
+                raise ValueError("El precio de venta debe ser mayor a cero")
             
             # Verificar código de barras único (si se proporciona)
             if product_data.get('codigo_barras'):

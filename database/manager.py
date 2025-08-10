@@ -17,7 +17,13 @@ logger = logging.getLogger(__name__)
 class DatabaseManager:
     """Gestor principal de base de datos con soporte completo SQLite"""
     
-    def __init__(self, db_path: str = "almacen_pro.db"):
+    def __init__(self, db_path: str = None):
+        # Import here to avoid circular imports
+        from config.settings import settings
+        
+        if db_path is None:
+            db_path = settings.get_database_path()
+        
         self.db_path = Path(db_path)
         self.connection = None
         self.cursor = None
@@ -191,7 +197,7 @@ class DatabaseManager:
                 )
             ''',
             
-            # Productos
+            # Productos  
             'productos': '''
                 CREATE TABLE IF NOT EXISTS productos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

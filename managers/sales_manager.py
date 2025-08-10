@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 class SalesManager:
     """Gestor principal para ventas y facturación"""
     
-    def __init__(self, db_manager, product_manager):
+    def __init__(self, db_manager, product_manager, financial_manager=None):
         self.db = db_manager
         self.product_manager = product_manager
+        self.financial_manager = financial_manager
         self.logger = logging.getLogger(__name__)
         
         # Estados válidos de venta
@@ -69,27 +70,28 @@ class SalesManager:
                 if abs(total_pagos - total) > 0.01:  # Tolerancia para redondeo
                     raise Exception(f"Los pagos ({total_pagos}) no coinciden con el total ({total})")
                 
-                # Crear venta
+                # Crear venta (usando columnas que existen en la tabla)
                 sale_id = self.db.execute_insert("""
                     INSERT INTO ventas (
-                        numero_factura, tipo_comprobante, cliente_id, usuario_id,
-                        fecha_venta, subtotal, descuento_porcentaje, descuento_importe,
-                        impuestos_importe, total, estado, observaciones, caja_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        numero_factura, cliente_id, vendedor_id, usuario_id,
+                        fecha_venta, subtotal, descuento, impuestos, total, 
+                        estado, notas, caja_id, tipo_venta, metodo_pago
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     self.generate_invoice_number(),
-                    sale_data.get('tipo_comprobante', 'TICKET'),
                     sale_data.get('cliente_id'),
+                    user_id,  # vendedor_id = usuario_id
                     user_id,
                     sale_data.get('fecha_venta', datetime.now()),
                     subtotal,
-                    sale_data.get('descuento_porcentaje', 0),
                     descuento_total,
                     impuestos_total,
                     total,
                     'ACTIVA',
-                    sale_data.get('observaciones'),
-                    sale_data.get('caja_id')
+                    sale_data.get('observaciones', ''),
+                    sale_data.get('caja_id', 1),  # Caja por defecto
+                    sale_data.get('tipo_comprobante', 'TICKET'),
+                    payments[0]['metodo_pago'] if payments else 'EFECTIVO'
                 ))
                 
                 if not sale_id:
@@ -108,24 +110,15 @@ class SalesManager:
                     detail_id = self.db.execute_insert("""
                         INSERT INTO detalle_ventas (
                             venta_id, producto_id, cantidad, precio_unitario,
-                            descuento_porcentaje, descuento_importe, subtotal,
-                            impuesto_porcentaje, impuesto_importe, total,
-                            costo_unitario, lote, fecha_vencimiento
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            descuento_porcentaje, subtotal
+                        ) VALUES (?, ?, ?, ?, ?, ?)
                     """, (
                         sale_id,
                         item['producto_id'],
                         item['cantidad'],
                         item['precio_unitario'],
                         item.get('descuento_porcentaje', 0),
-                        item_descuento,
-                        item_subtotal,
-                        item.get('impuesto_porcentaje', product.get('iva_porcentaje', 21)),
-                        item_impuesto,
-                        item_total,
-                        product.get('precio_compra', 0),
-                        item.get('lote'),
-                        item.get('fecha_vencimiento')
+                        item_subtotal
                     ))
                     
                     if not detail_id:
@@ -165,6 +158,14 @@ class SalesManager:
                     
                     if not payment_id:
                         raise Exception(f"Error registrando pago {payment['metodo_pago']}")
+                    
+                    # Registrar movimiento de caja si es efectivo y hay sesión activa
+                    if payment['metodo_pago'] == 'EFECTIVO' and self.financial_manager and sale_data.get('caja_id'):
+                        session = self.financial_manager.get_current_session(sale_data['caja_id'])
+                        if session:
+                            self.financial_manager.record_sale_payment(
+                                session['id'], sale_id, payment['importe'], payment['metodo_pago']
+                            )
                 
                 # Actualizar cuenta corriente si es cliente con crédito
                 if sale_data.get('cliente_id') and any(p['metodo_pago'] == 'CUENTA_CORRIENTE' for p in payments):
@@ -673,6 +674,110 @@ class SalesManager:
         except Exception as e:
             self.logger.error(f"Error obteniendo resumen diario: {e}")
             return {'fecha': target_date.isoformat(), 'error': str(e)}
+    
+    def get_sales_by_date(self, target_date: date) -> List[Dict]:
+        """Obtener ventas por fecha específica"""
+        try:
+            query = """
+                SELECT v.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido,
+                       u.nombre_completo as usuario_nombre
+                FROM ventas v
+                LEFT JOIN clientes c ON v.cliente_id = c.id
+                LEFT JOIN usuarios u ON v.usuario_id = u.id
+                WHERE DATE(v.fecha_venta) = ? 
+                ORDER BY v.fecha_venta DESC
+            """
+            
+            sales = self.db.execute_query(query, (target_date,))
+            
+            if not sales:
+                return []
+            
+            result = []
+            for sale in sales:
+                sale_dict = dict(sale)
+                
+                # Obtener items de la venta
+                items_query = """
+                    SELECT dv.*, p.nombre as producto_nombre
+                    FROM detalle_ventas dv
+                    INNER JOIN productos p ON dv.producto_id = p.id
+                    WHERE dv.venta_id = ?
+                    ORDER BY dv.id
+                """
+                
+                items = self.db.execute_query(items_query, (sale['id'],))
+                sale_dict['items'] = [dict(item) for item in items] if items else []
+                
+                # Obtener pagos de la venta
+                payments_query = """
+                    SELECT * FROM pagos_venta 
+                    WHERE venta_id = ?
+                    ORDER BY id
+                """
+                
+                payments = self.db.execute_query(payments_query, (sale['id'],))
+                sale_dict['payments'] = [dict(payment) for payment in payments] if payments else []
+                
+                result.append(sale_dict)
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo ventas por fecha {target_date}: {e}")
+            return []
+    
+    def get_sales_by_date_range(self, date_from: date, date_to: date) -> List[Dict]:
+        """Obtener ventas en un rango de fechas"""
+        try:
+            query = """
+                SELECT v.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido,
+                       u.nombre_completo as usuario_nombre
+                FROM ventas v
+                LEFT JOIN clientes c ON v.cliente_id = c.id
+                LEFT JOIN usuarios u ON v.usuario_id = u.id
+                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
+                ORDER BY v.fecha_venta DESC
+            """
+            
+            sales = self.db.execute_query(query, (date_from, date_to))
+            
+            if not sales:
+                return []
+            
+            result = []
+            for sale in sales:
+                sale_dict = dict(sale)
+                
+                # Obtener items de la venta
+                items_query = """
+                    SELECT dv.*, p.nombre as producto_nombre
+                    FROM detalle_ventas dv
+                    INNER JOIN productos p ON dv.producto_id = p.id
+                    WHERE dv.venta_id = ?
+                    ORDER BY dv.id
+                """
+                
+                items = self.db.execute_query(items_query, (sale['id'],))
+                sale_dict['items'] = [dict(item) for item in items] if items else []
+                
+                # Obtener pagos de la venta
+                payments_query = """
+                    SELECT * FROM pagos_venta 
+                    WHERE venta_id = ?
+                    ORDER BY id
+                """
+                
+                payments = self.db.execute_query(payments_query, (sale['id'],))
+                sale_dict['payments'] = [dict(payment) for payment in payments] if payments else []
+                
+                result.append(sale_dict)
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo ventas por rango de fechas {date_from} - {date_to}: {e}")
+            return []
     
     def _empty_statistics(self) -> Dict:
         """Retornar estadísticas vacías"""

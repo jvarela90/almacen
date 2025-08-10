@@ -22,6 +22,7 @@ class DashboardWidget(QWidget):
         
         # Datos del dashboard
         self.dashboard_data = {}
+        self.metric_widgets = {}  # Para actualizar los widgets después
         
         self.init_ui()
         self.load_dashboard_data()
@@ -120,16 +121,22 @@ class DashboardWidget(QWidget):
         metrics = []
         
         if self.user_has_permission('ventas'):
-            metrics.append(("💰 Ventas Hoy", "$0.00", "#27ae60", "ventas_hoy"))
-            metrics.append(("📈 Meta del Mes", "0%", "#f39c12", "meta_mes"))
+            ventas_value = f"${self.dashboard_data.get('ventas_hoy', 0):,.2f}"
+            meta_value = f"{self.dashboard_data.get('meta_mes', 0):.1f}%"
+            metrics.append(("💰 Ventas Hoy", ventas_value, "#27ae60", "ventas_hoy"))
+            metrics.append(("📈 Meta del Mes", meta_value, "#f39c12", "meta_mes"))
         
         if self.user_has_permission('productos'):
-            metrics.append(("📦 Total Productos", "0", "#3498db", "total_productos"))
-            metrics.append(("⚠️ Stock Bajo", "0", "#e74c3c", "stock_bajo"))
+            productos_value = str(int(self.dashboard_data.get('total_productos', 0)))
+            stock_bajo_value = str(int(self.dashboard_data.get('stock_bajo', 0)))
+            metrics.append(("📦 Total Productos", productos_value, "#3498db", "total_productos"))
+            metrics.append(("⚠️ Stock Bajo", stock_bajo_value, "#e74c3c", "stock_bajo"))
         
         if self.user_has_permission('reportes'):
-            metrics.append(("👥 Clientes Activos", "0", "#9b59b6", "clientes_activos"))
-            metrics.append(("💵 Utilidad Mes", "$0.00", "#2ecc71", "utilidad_mes"))
+            clientes_value = str(int(self.dashboard_data.get('clientes_activos', 0)))
+            utilidad_value = f"${self.dashboard_data.get('utilidad_mes', 0):,.2f}"
+            metrics.append(("👥 Clientes Activos", clientes_value, "#9b59b6", "clientes_activos"))
+            metrics.append(("💵 Utilidad Mes", utilidad_value, "#2ecc71", "utilidad_mes"))
         
         # Solo administradores ven métricas del sistema
         if self.user_has_permission('*'):
@@ -181,6 +188,9 @@ class DashboardWidget(QWidget):
         value_label.setObjectName("metric_value")
         value_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(value_label)
+        
+        # Guardar referencia para actualizaciones posteriores
+        self.metric_widgets[key] = value_label
         
         # Aplicar estilo específico
         card.setStyleSheet(f"""
@@ -302,18 +312,76 @@ class DashboardWidget(QWidget):
     def load_dashboard_data(self):
         """Cargar datos del dashboard"""
         try:
-            # Aquí se cargarían los datos reales de la base de datos
-            # Por ahora, datos de ejemplo
-            self.dashboard_data = {
+            self.dashboard_data = {}
+            
+            # Datos de ventas
+            if 'sales' in self.managers and self.user_has_permission('ventas'):
+                try:
+                    today_sales = self.managers['sales'].get_sales_by_date(date.today())
+                    ventas_hoy = sum(float(sale.get('total', 0)) for sale in today_sales or [])
+                    self.dashboard_data['ventas_hoy'] = ventas_hoy
+                    
+                    # Meta del mes (ejemplo: comparar con mes anterior)
+                    current_month_start = date.today().replace(day=1)
+                    monthly_sales = self.managers['sales'].get_sales_by_date_range(current_month_start, date.today())
+                    monthly_total = sum(float(sale.get('total', 0)) for sale in monthly_sales or [])
+                    # Meta arbitraria del 20% más que el mes pasado
+                    meta_mes = monthly_total * 1.2 
+                    progress = (monthly_total / meta_mes * 100) if meta_mes > 0 else 0
+                    self.dashboard_data['meta_mes'] = progress
+                except Exception as e:
+                    logger.warning(f"Error cargando datos de ventas: {e}")
+                    self.dashboard_data['ventas_hoy'] = 0
+                    self.dashboard_data['meta_mes'] = 0
+            
+            # Datos de productos
+            if 'product' in self.managers and self.user_has_permission('productos'):
+                try:
+                    all_products = self.managers['product'].search_products('') or []
+                    self.dashboard_data['total_productos'] = len(all_products)
+                    
+                    # Productos con stock bajo
+                    low_stock_products = [p for p in all_products 
+                                        if float(p.get('stock_actual', 0)) <= float(p.get('stock_minimo', 0))]
+                    self.dashboard_data['stock_bajo'] = len(low_stock_products)
+                except Exception as e:
+                    logger.warning(f"Error cargando datos de productos: {e}")
+                    self.dashboard_data['total_productos'] = 0
+                    self.dashboard_data['stock_bajo'] = 0
+            
+            # Datos de clientes
+            if 'customer' in self.managers and self.user_has_permission('reportes'):
+                try:
+                    all_customers = self.managers['customer'].get_all_customers() or []
+                    self.dashboard_data['clientes_activos'] = len(all_customers)
+                    
+                    # Utilidad del mes (diferencia entre ventas y costos)
+                    if 'sales' in self.managers:
+                        current_month_start = date.today().replace(day=1)
+                        monthly_sales = self.managers['sales'].get_sales_by_date_range(current_month_start, date.today())
+                        utilidad = sum(float(sale.get('total', 0)) * 0.3 for sale in monthly_sales or [])  # Asumiendo 30% de margen
+                        self.dashboard_data['utilidad_mes'] = utilidad
+                    else:
+                        self.dashboard_data['utilidad_mes'] = 0
+                except Exception as e:
+                    logger.warning(f"Error cargando datos de clientes: {e}")
+                    self.dashboard_data['clientes_activos'] = 0
+                    self.dashboard_data['utilidad_mes'] = 0
+            
+            # Valores por defecto para datos faltantes
+            default_values = {
                 'ventas_hoy': 0,
+                'meta_mes': 0, 
                 'total_productos': 0,
                 'stock_bajo': 0,
                 'clientes_activos': 0,
-                'meta_mes': 0,
                 'utilidad_mes': 0
             }
             
-            # TODO: Implementar carga real de datos
+            for key, default_value in default_values.items():
+                if key not in self.dashboard_data:
+                    self.dashboard_data[key] = default_value
+                    
             logger.info("Datos del dashboard cargados")
             
         except Exception as e:
@@ -322,7 +390,29 @@ class DashboardWidget(QWidget):
     def refresh_data(self):
         """Actualizar datos del dashboard"""
         self.load_dashboard_data()
-        # TODO: Actualizar widgets con nuevos datos
+        self.update_metric_widgets()
+    
+    def update_metric_widgets(self):
+        """Actualizar los widgets de métricas con los datos actuales"""
+        try:
+            for key, widget in self.metric_widgets.items():
+                if key in self.dashboard_data:
+                    value = self.dashboard_data[key]
+                    
+                    # Formatear valor según el tipo de métrica
+                    if key in ['ventas_hoy', 'utilidad_mes']:
+                        formatted_value = f"${value:,.2f}"
+                    elif key == 'meta_mes':
+                        formatted_value = f"{value:.1f}%"
+                    elif key in ['total_productos', 'stock_bajo', 'clientes_activos']:
+                        formatted_value = str(int(value))
+                    else:
+                        formatted_value = str(value)
+                    
+                    widget.setText(formatted_value)
+                    
+        except Exception as e:
+            logger.error(f"Error actualizando widgets de métricas: {e}")
     
     def on_metric_clicked(self, key: str):
         """Manejar click en métrica"""

@@ -20,11 +20,14 @@ class SalesWidget(QWidget):
     product_added = pyqtSignal(dict)
     cart_updated = pyqtSignal()
     
-    def __init__(self, sales_manager, product_manager, user_manager, parent=None):
+    def __init__(self, managers, current_user, parent=None):
         super().__init__(parent)
-        self.sales_manager = sales_manager
-        self.product_manager = product_manager
-        self.user_manager = user_manager
+        self.managers = managers
+        self.current_user = current_user
+        self.sales_manager = managers.get('sales')
+        self.product_manager = managers.get('product')
+        self.financial_manager = managers.get('financial')
+        self.customer_manager = managers.get('customer')
         
         # Estado del carrito de compras
         self.cart_items = []
@@ -80,7 +83,7 @@ class SalesWidget(QWidget):
         header_layout.addStretch()
         
         # Información del usuario
-        user_info = QLabel(f"Cajero: {self.user_manager.current_user.get('nombre_completo', 'Usuario')}")
+        user_info = QLabel(f"Cajero: {self.current_user.get('nombre_completo', 'Usuario')}")
         user_info.setObjectName("user_info")
         header_layout.addWidget(user_info)
         
@@ -542,21 +545,77 @@ class SalesWidget(QWidget):
             self.clear_cart()
     
     def select_customer(self):
-        """Seleccionar cliente"""
-        # Por ahora un diálogo simple
-        customer_name, ok = QInputDialog.getText(
-            self, 
-            "Seleccionar Cliente", 
-            "Nombre del cliente:",
-            text="Cliente General"
-        )
+        """Seleccionar cliente con diálogo avanzado"""
+        try:
+            from ui.dialogs.customer_selector_dialog import CustomerSelectorDialog
+            
+            dialog = CustomerSelectorDialog(self.customer_manager, self)
+            
+            if dialog.exec_() == QDialog.Accepted:
+                customer = dialog.get_selected_customer()
+                if customer:
+                    self.current_customer = customer
+                    
+                    # Actualizar label del cliente
+                    customer_text = f"{customer.get('nombre', '')} {customer.get('apellido', '')}"
+                    if customer.get('id'):
+                        saldo = float(customer.get('saldo_cuenta_corriente', 0))
+                        if saldo > 0:
+                            customer_text += f" (DEBE: ${saldo:,.2f})"
+                        elif saldo < 0:
+                            customer_text += f" (SALDO: ${abs(saldo):,.2f})"
+                    
+                    self.customer_label.setText(customer_text)
+                    
+                    # Aplicar descuento del cliente si tiene
+                    if customer.get('descuento_porcentaje', 0) > 0:
+                        descuento = float(customer.get('descuento_porcentaje', 0))
+                        
+                        reply = QMessageBox.question(
+                            self,
+                            "Descuento de Cliente",
+                            f"¿Aplicar descuento del {descuento}% para este cliente?",
+                            QMessageBox.Yes | QMessageBox.No,
+                            QMessageBox.Yes
+                        )
+                        
+                        if reply == QMessageBox.Yes:
+                            self.apply_customer_discount(descuento)
+                    
+        except Exception as e:
+            logger.error(f"Error abriendo selector de cliente: {e}")
+            # Fallback al método simple
+            customer_name, ok = QInputDialog.getText(
+                self, 
+                "Seleccionar Cliente", 
+                "Nombre del cliente:",
+                text="Cliente General"
+            )
+            
+            if ok and customer_name.strip():
+                self.current_customer = {
+                    'id': None,
+                    'nombre': customer_name.strip(),
+                    'apellido': ''
+                }
+                self.customer_label.setText(customer_name.strip())
+    
+    def apply_customer_discount(self, discount_percentage: float):
+        """Aplicar descuento del cliente a todos los items"""
+        if not self.cart_items:
+            return
         
-        if ok and customer_name.strip():
-            self.current_customer = {
-                'id': None,
-                'nombre': customer_name.strip()
-            }
-            self.customer_label.setText(customer_name.strip())
+        for item in self.cart_items:
+            item['descuento_porcentaje'] = discount_percentage
+        
+        self.update_cart_display()
+        self.calculate_totals()
+        
+        QMessageBox.information(
+            self, 
+            "Descuento Aplicado", 
+            f"Se aplicó un descuento del {discount_percentage}% a todos los productos"
+        )
     
     def apply_discount(self):
         """Aplicar descuento"""
@@ -591,8 +650,8 @@ class SalesWidget(QWidget):
             return
         
         try:
-            # Mostrar diálogo de pago
-            payment_dialog = PaymentDialog(self.total_amount, self)
+            # Mostrar diálogo de pago con información del cliente
+            payment_dialog = PaymentDialog(self.total_amount, self.current_customer, self)
             
             if payment_dialog.exec_() == QDialog.Accepted:
                 payment_info = payment_dialog.get_payment_info()
@@ -639,7 +698,7 @@ class SalesWidget(QWidget):
             # Crear venta
             success, message, sale_id = self.sales_manager.create_sale(
                 sale_data, sale_items, payments, 
-                self.user_manager.current_user['id']
+                self.current_user['id']
             )
             
             if success:
@@ -872,22 +931,65 @@ class SalesWidget(QWidget):
 
 
 class PaymentDialog(QDialog):
-    """Diálogo para procesar pago"""
+    """Diálogo para procesar pago con soporte para cuenta corriente"""
     
-    def __init__(self, total_amount: float, parent=None):
+    def __init__(self, total_amount: float, current_customer: dict = None, parent=None):
         super().__init__(parent)
         self.total_amount = total_amount
+        self.current_customer = current_customer or {}
         self.payment_info = {}
         
         self.setWindowTitle("Procesar Pago")
         self.setModal(True)
-        self.resize(400, 300)
+        self.resize(500, 400)
         
         self.init_ui()
+        self.update_payment_options()
     
     def init_ui(self):
         """Inicializar interfaz"""
         layout = QVBoxLayout(self)
+        
+        # Información del cliente
+        if self.current_customer.get('id'):
+            customer_group = QGroupBox("Cliente")
+            customer_layout = QVBoxLayout(customer_group)
+            
+            customer_name = f"{self.current_customer.get('nombre', '')} {self.current_customer.get('apellido', '')}"
+            customer_info = QLabel(customer_name)
+            customer_info.setStyleSheet("font-weight: bold; font-size: 14px;")
+            customer_layout.addWidget(customer_info)
+            
+            # Mostrar saldo de cuenta corriente
+            saldo = float(self.current_customer.get('saldo_cuenta_corriente', 0))
+            limite = float(self.current_customer.get('limite_credito', 0))
+            
+            if saldo > 0:
+                saldo_info = QLabel(f"Saldo actual: DEBE ${saldo:,.2f}")
+                saldo_info.setStyleSheet("color: #e74c3c; font-weight: bold;")
+            elif saldo < 0:
+                saldo_info = QLabel(f"Saldo actual: A FAVOR ${abs(saldo):,.2f}")
+                saldo_info.setStyleSheet("color: #27ae60; font-weight: bold;")
+            else:
+                saldo_info = QLabel("Saldo actual: $0.00")
+            
+            customer_layout.addWidget(saldo_info)
+            
+            if limite > 0:
+                limite_info = QLabel(f"Límite de crédito: ${limite:,.2f}")
+                customer_layout.addWidget(limite_info)
+                
+                # Calcular crédito disponible
+                credito_disponible = limite - max(0, saldo)
+                if credito_disponible >= self.total_amount:
+                    credito_info = QLabel(f"Crédito disponible: ${credito_disponible:,.2f}")
+                    credito_info.setStyleSheet("color: #27ae60;")
+                else:
+                    credito_info = QLabel(f"Crédito disponible: ${credito_disponible:,.2f} (INSUFICIENTE)")
+                    credito_info.setStyleSheet("color: #e74c3c; font-weight: bold;")
+                customer_layout.addWidget(credito_info)
+            
+            layout.addWidget(customer_group)
         
         # Total a pagar
         total_label = QLabel(f"TOTAL A PAGAR: ${self.total_amount:.2f}")
@@ -900,17 +1002,21 @@ class PaymentDialog(QDialog):
         method_layout = QVBoxLayout(method_group)
         
         self.method_combo = QComboBox()
-        self.method_combo.addItems([
-            "EFECTIVO", "TARJETA_DEBITO", "TARJETA_CREDITO", 
-            "TRANSFERENCIA", "CUENTA_CORRIENTE"
-        ])
+        payment_methods = ["EFECTIVO", "TARJETA_DEBITO", "TARJETA_CREDITO", "TRANSFERENCIA"]
+        
+        # Agregar cuenta corriente solo si el cliente tiene límite
+        if self.current_customer.get('id') and float(self.current_customer.get('limite_credito', 0)) > 0:
+            payment_methods.append("CUENTA_CORRIENTE")
+        
+        self.method_combo.addItems(payment_methods)
+        self.method_combo.currentTextChanged.connect(self.on_payment_method_changed)
         method_layout.addWidget(self.method_combo)
         
         layout.addWidget(method_group)
         
-        # Monto recibido
-        amount_group = QGroupBox("Monto Recibido")
-        amount_layout = QVBoxLayout(amount_group)
+        # Monto recibido (solo para métodos que requieren cambio)
+        self.amount_group = QGroupBox("Monto Recibido")
+        amount_layout = QVBoxLayout(self.amount_group)
         
         self.amount_input = QDoubleSpinBox()
         self.amount_input.setMaximum(999999.99)
@@ -919,12 +1025,34 @@ class PaymentDialog(QDialog):
         self.amount_input.valueChanged.connect(self.calculate_change)
         amount_layout.addWidget(self.amount_input)
         
-        layout.addWidget(amount_group)
+        layout.addWidget(self.amount_group)
         
         # Cambio
         self.change_label = QLabel("Cambio: $0.00")
         self.change_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #e74c3c;")
         layout.addWidget(self.change_label)
+        
+        # Referencia (para transferencias y tarjetas)
+        self.reference_group = QGroupBox("Referencia/Comprobante")
+        reference_layout = QVBoxLayout(self.reference_group)
+        
+        self.reference_input = QLineEdit()
+        self.reference_input.setPlaceholderText("Número de comprobante, transferencia, etc.")
+        reference_layout.addWidget(self.reference_input)
+        
+        layout.addWidget(self.reference_group)
+        self.reference_group.hide()
+        
+        # Observaciones
+        obs_group = QGroupBox("Observaciones")
+        obs_layout = QVBoxLayout(obs_group)
+        
+        self.notes_input = QTextEdit()
+        self.notes_input.setMaximumHeight(60)
+        self.notes_input.setPlaceholderText("Observaciones adicionales...")
+        obs_layout.addWidget(self.notes_input)
+        
+        layout.addWidget(obs_group)
         
         # Botones
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -932,11 +1060,48 @@ class PaymentDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         
-        # Calcular cambio inicial
+        # Configuración inicial
         self.calculate_change()
+    
+    def update_payment_options(self):
+        """Actualizar opciones de pago según el cliente"""
+        pass
+    
+    def on_payment_method_changed(self, method):
+        """Manejar cambio de método de pago"""
+        if method == "EFECTIVO":
+            self.amount_group.show()
+            self.change_label.show()
+            self.reference_group.hide()
+        elif method in ["TARJETA_DEBITO", "TARJETA_CREDITO", "TRANSFERENCIA"]:
+            self.amount_group.hide()
+            self.change_label.hide()
+            self.reference_group.show()
+        elif method == "CUENTA_CORRIENTE":
+            self.amount_group.hide()
+            self.change_label.hide()
+            self.reference_group.hide()
+            
+            # Verificar límite de crédito
+            if self.current_customer.get('id'):
+                saldo_actual = float(self.current_customer.get('saldo_cuenta_corriente', 0))
+                limite = float(self.current_customer.get('limite_credito', 0))
+                credito_disponible = limite - max(0, saldo_actual)
+                
+                if credito_disponible < self.total_amount:
+                    QMessageBox.warning(
+                        self,
+                        "Crédito Insuficiente",
+                        f"El cliente no tiene suficiente crédito disponible.\n"
+                        f"Crédito disponible: ${credito_disponible:,.2f}\n"
+                        f"Total de la venta: ${self.total_amount:,.2f}"
+                    )
     
     def calculate_change(self):
         """Calcular cambio"""
+        if not self.amount_group.isVisible():
+            return
+            
         received = self.amount_input.value()
         change = received - self.total_amount
         
@@ -949,17 +1114,49 @@ class PaymentDialog(QDialog):
     
     def accept(self):
         """Aceptar pago"""
-        received = self.amount_input.value()
+        method = self.method_combo.currentText()
         
-        if received < self.total_amount:
-            QMessageBox.warning(self, "Error", "El monto recibido es insuficiente")
-            return
+        # Validaciones según método de pago
+        if method == "EFECTIVO":
+            received = self.amount_input.value()
+            if received < self.total_amount:
+                QMessageBox.warning(self, "Error", "El monto recibido es insuficiente")
+                return
+            amount = received
+            change = received - self.total_amount
+        elif method == "CUENTA_CORRIENTE":
+            if not self.current_customer.get('id'):
+                QMessageBox.warning(self, "Error", "Debe seleccionar un cliente registrado para usar cuenta corriente")
+                return
+            
+            # Verificar límite de crédito nuevamente
+            saldo_actual = float(self.current_customer.get('saldo_cuenta_corriente', 0))
+            limite = float(self.current_customer.get('limite_credito', 0))
+            credito_disponible = limite - max(0, saldo_actual)
+            
+            if credito_disponible < self.total_amount:
+                QMessageBox.warning(
+                    self,
+                    "Crédito Insuficiente",
+                    f"El cliente no tiene suficiente crédito disponible.\n"
+                    f"Crédito disponible: ${credito_disponible:,.2f}\n"
+                    f"Total de la venta: ${self.total_amount:,.2f}"
+                )
+                return
+            
+            amount = self.total_amount
+            change = 0
+        else:
+            amount = self.total_amount
+            change = 0
         
         self.payment_info = {
-            'method': self.method_combo.currentText(),
-            'amount': received,
-            'change': received - self.total_amount,
-            'total': self.total_amount
+            'method': method,
+            'amount': amount,
+            'change': change,
+            'total': self.total_amount,
+            'reference': self.reference_input.text().strip(),
+            'notes': self.notes_input.toPlainText().strip()
         }
         
         super().accept()

@@ -11,6 +11,7 @@ from PyQt5.QtGui import *
 
 # Imports de widgets personalizados
 from ui.widgets.dashboard_widget import DashboardWidget
+from ui.widgets.sales_widget import SalesWidget
 
 logger = logging.getLogger(__name__)
 
@@ -500,6 +501,15 @@ class MainWindow(QMainWindow):
     
     def create_sales_widget(self):
         """Crear widget de ventas funcional"""
+        try:
+            return SalesWidget(self.managers, self.current_user)
+        except Exception as e:
+            logger.error(f"Error creando SalesWidget: {e}")
+            # Fallback a widget básico
+            return self.create_basic_sales_widget()
+    
+    def create_basic_sales_widget(self):
+        """Crear widget básico de ventas como fallback"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
@@ -507,6 +517,11 @@ class MainWindow(QMainWindow):
         title = QLabel("💰 Punto de Venta")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #27ae60; margin: 10px;")
         layout.addWidget(title)
+        
+        # Mensaje de estado
+        status_label = QLabel("Sistema POS - Funcionalidad básica disponible")
+        status_label.setStyleSheet("color: #7f8c8d; font-style: italic; margin: 10px;")
+        layout.addWidget(status_label)
         
         # Área de trabajo
         work_area = QHBoxLayout()

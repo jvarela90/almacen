@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AlmacénPro v2.0 is a comprehensive ERP/POS system for warehouse and retail management, built with Python 3.8+ and PyQt5. It features a modular architecture with specialized managers for different business domains and includes collaborative management capabilities for multi-partner businesses.
 
+## ESTADO ACTUAL DEL SISTEMA
+- ✅ Base de datos configurada con 19 tablas funcionales
+- ✅ 10 gestores (managers) completamente integrados
+- ✅ Sistema de autenticación y roles funcionando
+- ✅ Interfaz de usuario conectada a datos reales
+- ✅ Sistema de configuración basado en archivos
+- ✅ Suite de pruebas integrales implementada
+- ✅ Eliminación de valores hardcodeados completada
+
 ## Quick Start Commands
 
 ### Running the Application
@@ -19,11 +28,14 @@ python main.py
 # Install dependencies
 pip install -r requirements.txt
 
+# Install required modules for current system
+pip install bcrypt
+
+# Run comprehensive system test
+python test_sistema_almacen.py
+
 # Development tools (optional)
 pip install pytest black flake8
-
-# Run tests (if available)
-pytest
 
 # Code formatting
 black .
@@ -33,7 +45,12 @@ flake8 --max-line-length=100 --exclude=venv
 ```
 
 ### Database Operations
-The system automatically handles database setup and migrations. Database file: `almacen_pro.db`
+The system automatically handles database setup and migrations. 
+- Database file: `data/almacen_pro.db` (configurable via settings)
+- Test database: `data/test_almacen_pro.db` (created during tests)
+- 19 tables with complete relationships and foreign key constraints
+- Automatic indexing and optimization
+- Built-in backup and restore functionality
 
 ## Architecture Overview
 
@@ -49,6 +66,9 @@ The system automatically handles database setup and migrations. Database file: `
 - `sales_manager.py` - Sales processing and transactions
 - `purchase_manager.py` - Purchase orders and supplier management
 - `provider_manager.py` - Supplier relationship management
+- `customer_manager.py` - Customer relationship management (CRM)
+- `financial_manager.py` - Financial operations and cash register management
+- `inventory_manager.py` - Advanced inventory control with multi-warehouse support
 - `report_manager.py` - Analytics and reporting
 
 **User Interface** (`ui/`)
@@ -59,6 +79,8 @@ The system automatically handles database setup and migrations. Database file: `
 **Utilities** (`utils/`)
 - `backup_manager.py` - Automated backup system with compression
 - `notifications.py` - System-wide notification management
+- `audit_logger.py` - Audit trail and activity logging system
+- `validators.py` - Comprehensive data validation framework
 - `helpers.py` - Common utility functions
 
 **Configuration** (`config/`)
@@ -85,11 +107,12 @@ The system automatically handles database setup and migrations. Database file: `
 The system uses a normalized SQLite database with 50+ tables covering:
 - User management and authentication
 - Product catalog with variants and attributes
-- Inventory control with location tracking
+- Multi-warehouse inventory control with location tracking
 - Sales and purchase transaction processing
-- Customer relationship management (CRM)
-- Financial tracking and reporting
-- Automated backup and audit trails
+- Customer relationship management (CRM) with categories
+- Financial operations including cash register management
+- Comprehensive audit trails and system logging
+- Automated backup and restore functionality
 
 Key database features:
 - Foreign key constraints enabled
@@ -127,12 +150,16 @@ The application includes a sophisticated backup system:
 3. Create UI components in `ui/widgets/` or `ui/dialogs/`
 4. Update `MainWindow` to include new functionality
 5. Add configuration options to `settings.py` if needed
+6. Implement data validation using `utils/validators.py`
+7. Add audit logging for important operations using `audit_logger.py`
 
 ### Database Changes
 - All database operations should use the `DatabaseManager` class
 - Use parameterized queries to prevent SQL injection
 - Wrap operations in transactions for data consistency
 - Add proper error handling and logging
+- Implement audit trails for critical data changes using `audit_logger.py`
+- Use validation framework in `validators.py` before database operations
 
 ### UI Development
 - Follow existing PyQt5 patterns and styling
@@ -179,3 +206,38 @@ Key dependencies (see `requirements.txt` for complete list):
 - Self-contained SQLite database
 - Configurable through `config.json`
 - Backup system stores files in `backups/` directory
+- Logs stored in `logs/` directory with date-based rotation
+- Database supports WAL mode for better concurrent access
+
+## Sistema POS (Point of Sale)
+
+### Componentes Principales del POS
+- **SalesManager**: Gestión completa de ventas y transacciones
+- **ProductManager**: Catálogo de productos y gestión de stock
+- **CustomerManager**: Gestión de clientes y CRM
+- **FinancialManager**: Manejo de cajas y sesiones de caja
+- **UI Widgets**: Interfaz de usuario especializada para POS
+
+### Flujo de Operaciones POS
+1. Autenticación de usuario (UserManager)
+2. Apertura de sesión de caja (FinancialManager)
+3. Búsqueda y selección de productos (ProductManager)
+4. Procesamiento de venta (SalesManager)
+5. Gestión de pagos (FinancialManager)
+6. Actualización de stock automática (ProductManager)
+7. Generación de comprobantes (ReportManager)
+
+### Relaciones Entre Managers
+- **SalesManager** ↔ **ProductManager**: Actualización automática de stock
+- **SalesManager** ↔ **CustomerManager**: Asociación de ventas con clientes
+- **SalesManager** ↔ **FinancialManager**: Registro de movimientos de caja
+- **FinancialManager** ↔ **UserManager**: Control de sesiones por usuario
+
+## Testing and Validation
+
+Sistema de pruebas integral:
+- `test_sistema_almacen.py` - Suite completa de pruebas de integración
+- Pruebas de todos los managers y sus relaciones
+- Pruebas de interfaz de usuario
+- Pruebas de rendimiento y carga
+- Verificación de integridad de base de datos

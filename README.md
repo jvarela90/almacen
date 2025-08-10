@@ -834,8 +834,8 @@ Al ejecutar por primera vez, el sistema automáticamente:
 
 ### **Enlaces del Proyecto**
 - **🌐 Sitio Web**: [www.almacenpro.com](http://www.almacenpro.com)
-- **📦 GitHub**: [github.com/usuario/almacen-pro](https://github.com/usuario/almacen-pro)
-- **📧 Email**: contacto@almacenpro.com
+- **📦 GitHub**: [github.com/jvarela90/almacen](https://github.com/jvarela90/almacen)
+- **📧 Email**: julian.varela90@almacenpro.com
 - **💬 Discord**: Servidor de la comunidad AlmacénPro
 
 ### **Redes Sociales**

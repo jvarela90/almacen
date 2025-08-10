@@ -29,6 +29,9 @@ from managers.product_manager import ProductManager
 from managers.sales_manager import SalesManager
 from managers.purchase_manager import PurchaseManager
 from managers.provider_manager import ProviderManager
+from managers.customer_manager import CustomerManager
+from managers.financial_manager import FinancialManager
+from managers.inventory_manager import InventoryManager
 from managers.report_manager import ReportManager
 from utils.backup_manager import BackupManager
 from utils.notifications import NotificationManager
@@ -88,14 +91,23 @@ class InitializationThread(QThread):
             self.progress_updated.emit(40, "Cargando gestores de productos...")
             managers['product'] = ProductManager(db_manager)
             
-            self.progress_updated.emit(55, "Cargando gestores de ventas...")
-            managers['sales'] = SalesManager(db_manager, managers['product'])
+            self.progress_updated.emit(45, "Cargando gestión financiera...")
+            managers['financial'] = FinancialManager(db_manager)
             
-            self.progress_updated.emit(70, "Cargando gestores de compras...")
+            self.progress_updated.emit(50, "Cargando gestores de ventas...")
+            managers['sales'] = SalesManager(db_manager, managers['product'], managers['financial'])
+            
+            self.progress_updated.emit(60, "Cargando gestores de compras...")
             managers['purchase'] = PurchaseManager(db_manager, managers['product'])
             
-            self.progress_updated.emit(85, "Cargando proveedores y reportes...")
+            self.progress_updated.emit(70, "Cargando proveedores y clientes...")
             managers['provider'] = ProviderManager(db_manager)
+            managers['customer'] = CustomerManager(db_manager)
+            
+            self.progress_updated.emit(80, "Cargando gestión de inventario...")
+            managers['inventory'] = InventoryManager(db_manager)
+            
+            self.progress_updated.emit(90, "Cargando reportes...")
             managers['report'] = ReportManager(db_manager)
             
             # Paso 3: Utilidades
