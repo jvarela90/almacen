@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-header text-center bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Iniciar Sesión
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">
+                            <i class="bi bi-envelope"></i>
+                            Email
+                        </label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="email" 
+                               name="email" 
+                               required 
+                               placeholder="su.email@ejemplo.com"
+                               autocomplete="email">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <i class="bi bi-key"></i>
+                            Contraseña
+                        </label>
+                        <div class="input-group">
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="password" 
+                                   name="password" 
+                                   required 
+                                   placeholder="Su contraseña"
+                                   autocomplete="current-password">
+                            <button class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="togglePassword">
+                                <i class="bi bi-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember_me" name="remember_me">
+                        <label class="form-check-label" for="remember_me">
+                            Recordar sesión
+                        </label>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            Iniciar Sesión
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="card-footer text-center">
+                <div class="row">
+                    <div class="col-12 mb-2">
+                        <small class="text-muted">¿No tiene cuenta?</small>
+                        <a href="{{ url_for('register') }}" class="text-decoration-none">
+                            Regístrese aquí
+                        </a>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted">¿Olvidó su contraseña?</small>
+                        <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">
+                            Recuperar contraseña
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Información adicional -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-info-circle"></i>
+                    Información importante
+                </h6>
+                <ul class="list-unstyled small">
+                    <li class="mb-1">
+                        <i class="bi bi-shield-check text-success"></i>
+                        Conexión segura y encriptada
+                    </li>
+                    <li class="mb-1">
+                        <i class="bi bi-clock text-primary"></i>
+                        Disponible 24 horas al día
+                    </li>
+                    <li class="mb-1">
+                        <i class="bi bi-phone text-info"></i>
+                        Soporte: (011) 1234-5678
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Recuperar Contraseña -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-key"></i>
+                    Recuperar Contraseña
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="forgotPasswordForm">
+                    <div class="mb-3">
+                        <label for="recovery_email" class="form-label">Email registrado</label>
+                        <input type="email" class="form-control" id="recovery_email" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Nota:</strong> Se enviará un email con instrucciones para restablecer su contraseña.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="sendRecoveryBtn">
+                    <i class="bi bi-send"></i>
+                    Enviar Instrucciones
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle password visibility
+    const togglePassword = document.querySelector('#togglePassword');
+    const password = document.querySelector('#password');
+    const eyeIcon = document.querySelector('#eyeIcon');
+
+    togglePassword.addEventListener('click', function() {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        
+        eyeIcon.classList.toggle('bi-eye');
+        eyeIcon.classList.toggle('bi-eye-slash');
+    });
+    
+    // Auto-focus en el campo email
+    document.getElementById('email').focus();
+    
+    // Manejar recuperación de contraseña
+    document.getElementById('sendRecoveryBtn').addEventListener('click', function() {
+        const email = document.getElementById('recovery_email').value;
+        
+        if (!email) {
+            alert('Por favor ingrese su email');
+            return;
+        }
+        
+        // Simulación de envío (en implementación real hacer AJAX)
+        alert('Se han enviado las instrucciones a su email. Revise su bandeja de entrada.');
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('forgotPasswordModal'));
+        modal.hide();
+    });
+    
+    // Validación en tiempo real
+    const form = document.querySelector('form');
+    const email = document.getElementById('email');
+    const passwordField = document.getElementById('password');
+    
+    // Validar email
+    email.addEventListener('blur', function() {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (this.value && !emailRegex.test(this.value)) {
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+    
+    // Validar contraseña
+    passwordField.addEventListener('input', function() {
+        if (this.value.length > 0 && this.value.length < 6) {
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+    
+    // Manejar envío del formulario
+    form.addEventListener('submit', function(e) {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        // Mostrar estado de carga
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Iniciando sesión...';
+        submitBtn.disabled = true;
+        
+        // El formulario se enviará normalmente, pero si hay error, restaurar el botón
+        setTimeout(() => {
+            if (submitBtn.disabled) {
+                submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión';
+                submitBtn.disabled = false;
+            }
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

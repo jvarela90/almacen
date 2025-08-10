@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Compras - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="bi bi-bag-check"></i>
+                Historial de Compras
+            </h2>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#filtersModal">
+                    <i class="bi bi-funnel"></i>
+                    Filtros
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="exportPurchases()">
+                    <i class="bi bi-download"></i>
+                    Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros aplicados -->
+{% if date_from or date_to %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="alert alert-info d-flex align-items-center">
+            <i class="bi bi-info-circle me-2"></i>
+            <span>
+                Filtros aplicados:
+                {% if date_from %}Desde: {{ date_from }}{% endif %}
+                {% if date_to %}Hasta: {{ date_to }}{% endif %}
+            </span>
+            <a href="{{ url_for('purchases') }}" class="btn btn-sm btn-outline-secondary ms-auto">
+                <i class="bi bi-x"></i>
+                Limpiar filtros
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Estadísticas rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ purchases|length if purchases else 0 }}</h5>
+                <p class="card-text">Compras mostradas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">
+                    {{ purchases|selectattr('estado', 'equalto', 'completada')|list|length if purchases else 0 }}
+                </h5>
+                <p class="card-text">Completadas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    {{ purchases|selectattr('estado', 'equalto', 'pendiente')|list|length if purchases else 0 }}
+                </h5>
+                <p class="card-text">Pendientes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    {% set total = purchases|sum(attribute='total') if purchases else 0 %}
+                    {{ total|currency }}
+                </h5>
+                <p class="card-text">Total período</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de compras -->
+<div class="row">
+    <div class="col-12">
+        {% if purchases %}
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="purchasesTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <a href="#" class="text-decoration-none" onclick="sortTable(0)">
+                                        Fecha <i class="bi bi-arrow-down-up"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="#" class="text-decoration-none" onclick="sortTable(1)">
+                                        N° Comprobante <i class="bi bi-arrow-down-up"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="#" class="text-decoration-none" onclick="sortTable(2)">
+                                        Total <i class="bi bi-arrow-down-up"></i>
+                                    </a>
+                                </th>
+                                <th>Estado</th>
+                                <th>Método Pago</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for purchase in purchases %}
+                            <tr>
+                                <td>
+                                    <strong>{{ purchase.fecha_venta|date }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ purchase.fecha_venta|datetime }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        #{{ purchase.id|string.zfill(6) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong class="text-success">{{ purchase.total|currency }}</strong>
+                                    {% if purchase.descuento and purchase.descuento > 0 %}
+                                    <br>
+                                    <small class="text-info">
+                                        <i class="bi bi-tag"></i>
+                                        Desc: {{ purchase.descuento|currency }}
+                                    </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if purchase.estado == 'completada' else 'warning' if purchase.estado == 'pendiente' else 'danger' }}">
+                                        {{ purchase.estado|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
+                                        {% if purchase.metodo_pago %}
+                                            <i class="bi bi-{{ 'cash' if purchase.metodo_pago == 'efectivo' else 'credit-card' }}"></i>
+                                            {{ purchase.metodo_pago|title }}
+                                        {% else %}
+                                            <i class="bi bi-question-circle"></i>
+                                            No especificado
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('purchase_detail', purchase_id=purchase.id) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('download_invoice', purchase_id=purchase.id) }}" 
+                                           class="btn btn-outline-success">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Paginación -->
+        {% if page and page > 1 %}
+        <nav aria-label="Navegación de compras" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('purchases', page=page-1, date_from=date_from, date_to=date_to) }}">
+                        <i class="bi bi-chevron-left"></i>
+                        Anterior
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">Página {{ page }}</span>
+                </li>
+                
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('purchases', page=page+1, date_from=date_from, date_to=date_to) }}">
+                        Siguiente
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <!-- Sin compras -->
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-bag display-1 text-muted mb-3"></i>
+                <h4 class="text-muted">No se encontraron compras</h4>
+                <p class="text-muted">
+                    {% if date_from or date_to %}
+                        No hay compras en el período seleccionado.
+                        <br>
+                        <a href="{{ url_for('purchases') }}" class="btn btn-outline-primary mt-2">
+                            Ver todas las compras
+                        </a>
+                    {% else %}
+                        Aún no ha realizado compras en nuestro sistema.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Filtros -->
+<div class="modal fade" id="filtersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-funnel"></i>
+                    Filtrar Compras
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="GET" action="{{ url_for('purchases') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="date_from" class="form-label">Fecha desde</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="date_from" 
+                                   name="date_from" 
+                                   value="{{ date_from or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="date_to" class="form-label">Fecha hasta</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="date_to" 
+                                   name="date_to" 
+                                   value="{{ date_to or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="estado" class="form-label">Estado</label>
+                        <select class="form-select" id="estado" name="estado">
+                            <option value="">Todos los estados</option>
+                            <option value="completada">Completada</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="cancelada">Cancelada</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="min_total" class="form-label">Monto mínimo</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="min_total" 
+                               name="min_total" 
+                               step="0.01" 
+                               placeholder="0.00">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="max_total" class="form-label">Monto máximo</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="max_total" 
+                               name="max_total" 
+                               step="0.01" 
+                               placeholder="999999.99">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-warning" onclick="clearFilters()">
+                        <i class="bi bi-x-circle"></i>
+                        Limpiar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i>
+                        Aplicar Filtros
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let sortDirection = {};
+
+function sortTable(columnIndex) {
+    const table = document.getElementById('purchasesTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.rows);
+    
+    // Determinar dirección de ordenamiento
+    if (!sortDirection[columnIndex]) {
+        sortDirection[columnIndex] = 'asc';
+    } else {
+        sortDirection[columnIndex] = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+    }
+    
+    // Ordenar filas
+    rows.sort((a, b) => {
+        let aVal = a.cells[columnIndex].textContent.trim();
+        let bVal = b.cells[columnIndex].textContent.trim();
+        
+        // Tratamiento especial para fechas y números
+        if (columnIndex === 0) {
+            // Fecha
+            aVal = new Date(a.cells[columnIndex].querySelector('strong').textContent);
+            bVal = new Date(b.cells[columnIndex].querySelector('strong').textContent);
+        } else if (columnIndex === 2) {
+            // Total (remover símbolos de moneda)
+            aVal = parseFloat(aVal.replace(/[^0-9.-]/g, ''));
+            bVal = parseFloat(bVal.replace(/[^0-9.-]/g, ''));
+        }
+        
+        if (sortDirection[columnIndex] === 'asc') {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
+    
+    // Reordenar DOM
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Actualizar indicadores visuales
+    table.querySelectorAll('th i').forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up';
+    });
+    
+    const currentIcon = table.querySelector(`th:nth-child(${columnIndex + 1}) i`);
+    currentIcon.className = sortDirection[columnIndex] === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+}
+
+function clearFilters() {
+    document.getElementById('date_from').value = '';
+    document.getElementById('date_to').value = '';
+    document.getElementById('estado').value = '';
+    document.getElementById('min_total').value = '';
+    document.getElementById('max_total').value = '';
+}
+
+function exportPurchases() {
+    // Preparar datos para exportar
+    const purchases = [];
+    const table = document.getElementById('purchasesTable');
+    
+    if (table) {
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            purchases.push({
+                fecha: cells[0].querySelector('strong').textContent,
+                comprobante: cells[1].textContent.trim(),
+                total: cells[2].querySelector('strong').textContent,
+                estado: cells[3].textContent.trim(),
+                metodo_pago: cells[4].textContent.trim()
+            });
+        });
+    }
+    
+    // Crear CSV
+    let csv = 'Fecha,Comprobante,Total,Estado,Método Pago\n';
+    purchases.forEach(purchase => {
+        csv += `"${purchase.fecha}","${purchase.comprobante}","${purchase.total}","${purchase.estado}","${purchase.metodo_pago}"\n`;
+    });
+    
+    // Descargar archivo
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mis_compras_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    // Mostrar mensaje
+    const toast = `
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show" role="alert">
+                <div class="toast-header">
+                    <i class="bi bi-download text-success me-2"></i>
+                    <strong class="me-auto">Exportación</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    Archivo CSV descargado exitosamente
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', toast);
+    
+    // Remover toast después de 3 segundos
+    setTimeout(() => {
+        const toastEl = document.querySelector('.toast-container');
+        if (toastEl) toastEl.remove();
+    }, 3000);
+}
+
+// Configurar fechas por defecto
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar fecha máxima como hoy
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date_to').max = today;
+    
+    // Configurar fecha desde como máximo 1 año atrás
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    document.getElementById('date_from').min = oneYearAgo.toISOString().split('T')[0];
+    
+    // Auto-actualizar cada 30 segundos si hay compras pendientes
+    const hasPendingPurchases = document.querySelector('.badge.bg-warning');
+    if (hasPendingPurchases) {
+        setInterval(() => {
+            // En implementación real, hacer AJAX para actualizar estado
+            console.log('Checking for purchase status updates...');
+        }, 30000);
+    }
+});
+</script>
+{% endblock %}

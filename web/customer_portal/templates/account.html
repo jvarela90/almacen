@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Cuenta - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="bi bi-credit-card"></i>
+                Estado de Cuenta Corriente
+            </h2>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#filtersModal">
+                    <i class="bi bi-funnel"></i>
+                    Filtrar
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="exportStatement()">
+                    <i class="bi bi-download"></i>
+                    Exportar
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="window.print()">
+                    <i class="bi bi-printer"></i>
+                    Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resumen de cuenta -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <div class="text-center">
+                                <i class="bi bi-wallet2 text-primary display-4"></i>
+                                <h4 class="mt-2 mb-1">{{ balance|currency }}</h4>
+                                <p class="text-muted mb-0">Saldo Actual</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 border-start">
+                        <div class="text-center">
+                            <i class="bi bi-graph-up text-success display-4"></i>
+                            <h4 class="mt-2 mb-1 text-success">
+                                {% set total_creditos = movements|selectattr('tipo', 'equalto', 'credito')|sum(attribute='monto') %}
+                                {{ total_creditos|currency }}
+                            </h4>
+                            <p class="text-muted mb-0">Total Créditos</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 border-start">
+                        <div class="text-center">
+                            <i class="bi bi-graph-down text-danger display-4"></i>
+                            <h4 class="mt-2 mb-1 text-danger">
+                                {% set total_debitos = movements|selectattr('tipo', 'equalto', 'debito')|sum(attribute='monto') %}
+                                {{ total_debitos|currency }}
+                            </h4>
+                            <p class="text-muted mb-0">Total Débitos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Estado de Cuenta
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if balance >= 0 %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i>
+                    <strong>Cuenta al Día</strong><br>
+                    Su cuenta no presenta saldos pendientes.
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Saldo Pendiente</strong><br>
+                    Tiene un saldo deudor de {{ balance|abs|currency }}.
+                </div>
+                <div class="d-grid">
+                    <button type="button" 
+                            class="btn btn-outline-primary" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#paymentModal">
+                        <i class="bi bi-credit-card"></i>
+                        Realizar Pago
+                    </button>
+                </div>
+                {% endif %}
+                
+                <hr>
+                
+                <div class="small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Último movimiento:</span>
+                        <strong>
+                            {% if movements %}
+                                {{ movements[0].fecha|date }}
+                            {% else %}
+                                Sin movimientos
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Total movimientos:</span>
+                        <strong>{{ movements|length }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historial de movimientos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list-ul"></i>
+                    Movimientos de Cuenta
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if movements %}
+                <div class="table-responsive">
+                    <table class="table table-hover" id="movementsTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <a href="#" class="text-decoration-none" onclick="sortTable(0)">
+                                        Fecha <i class="bi bi-arrow-down-up"></i>
+                                    </a>
+                                </th>
+                                <th>Descripción</th>
+                                <th>Referencia</th>
+                                <th>
+                                    <a href="#" class="text-decoration-none" onclick="sortTable(3)">
+                                        Débito <i class="bi bi-arrow-down-up"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="#" class="text-decoration-none" onclick="sortTable(4)">
+                                        Crédito <i class="bi bi-arrow-down-up"></i>
+                                    </a>
+                                </th>
+                                <th class="text-end">
+                                    <a href="#" class="text-decoration-none" onclick="sortTable(5)">
+                                        Saldo <i class="bi bi-arrow-down-up"></i>
+                                    </a>
+                                </th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set running_balance = 0 %}
+                            {% for movement in movements %}
+                            {% if movement.tipo == 'debito' %}
+                                {% set running_balance = running_balance - movement.monto %}
+                            {% else %}
+                                {% set running_balance = running_balance + movement.monto %}
+                            {% endif %}
+                            <tr>
+                                <td>
+                                    <strong>{{ movement.fecha|date }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ movement.fecha|datetime }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ movement.descripcion }}</strong>
+                                    {% if movement.detalle %}
+                                    <br>
+                                    <small class="text-muted">{{ movement.detalle }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if movement.referencia %}
+                                    <span class="badge bg-secondary">{{ movement.referencia }}</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if movement.tipo == 'debito' %}
+                                    <span class="text-danger">
+                                        <i class="bi bi-arrow-down"></i>
+                                        {{ movement.monto|currency }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if movement.tipo == 'credito' %}
+                                    <span class="text-success">
+                                        <i class="bi bi-arrow-up"></i>
+                                        {{ movement.monto|currency }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <strong class="{{ 'text-success' if running_balance >= 0 else 'text-danger' }}">
+                                        {{ running_balance|currency }}
+                                    </strong>
+                                </td>
+                                <td>
+                                    {% if movement.comprobante_id %}
+                                    <a href="{{ url_for('purchase_detail', purchase_id=movement.comprobante_id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación (si es necesaria) -->
+                <nav aria-label="Navegación de movimientos" class="mt-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            Mostrando {{ movements|length }} movimientos
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="loadMore()">
+                                <i class="bi bi-arrow-down"></i>
+                                Cargar más
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+                
+                {% else %}
+                <!-- Sin movimientos -->
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-receipt display-1 mb-3"></i>
+                    <h4>No hay movimientos registrados</h4>
+                    <p>Cuando realice compras o pagos, aparecerán aquí los movimientos de su cuenta.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Filtros -->
+<div class="modal fade" id="filtersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-funnel"></i>
+                    Filtrar Movimientos
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="GET" action="{{ url_for('account') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="date_from" class="form-label">Fecha desde</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="date_to" class="form-label">Fecha hasta</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tipo" class="form-label">Tipo de movimiento</label>
+                        <select class="form-select" id="tipo" name="tipo">
+                            <option value="">Todos los movimientos</option>
+                            <option value="debito">Solo débitos</option>
+                            <option value="credito">Solo créditos</option>
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="monto_min" class="form-label">Monto mínimo</label>
+                            <input type="number" class="form-control" id="monto_min" name="monto_min" step="0.01">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="monto_max" class="form-label">Monto máximo</label>
+                            <input type="number" class="form-control" id="monto_max" name="monto_max" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Buscar en descripción</label>
+                        <input type="text" class="form-control" id="descripcion" name="descripcion" placeholder="Texto a buscar...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-warning" onclick="clearFilters()">
+                        <i class="bi bi-x-circle"></i>
+                        Limpiar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i>
+                        Aplicar Filtros
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Pago -->
+{% if balance < 0 %}
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-credit-card"></i>
+                    Realizar Pago
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Saldo pendiente:</strong> {{ balance|abs|currency }}
+                </div>
+                
+                <form id="paymentForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="payment_amount" class="form-label">Monto a pagar</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="payment_amount" 
+                                       name="payment_amount" 
+                                       step="0.01" 
+                                       min="0.01"
+                                       max="{{ balance|abs }}"
+                                       value="{{ balance|abs }}">
+                            </div>
+                            <small class="text-muted">Máximo: {{ balance|abs|currency }}</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="payment_method" class="form-label">Método de pago</label>
+                            <select class="form-select" id="payment_method" name="payment_method" required>
+                                <option value="">Seleccione método</option>
+                                <option value="transferencia">Transferencia bancaria</option>
+                                <option value="tarjeta_credito">Tarjeta de crédito</option>
+                                <option value="tarjeta_debito">Tarjeta de débito</option>
+                                <option value="efectivo">Efectivo (en sucursal)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_reference" class="form-label">Referencia de pago (opcional)</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="payment_reference" 
+                               name="payment_reference" 
+                               placeholder="Número de transacción, cheque, etc.">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_notes" class="form-label">Observaciones</label>
+                        <textarea class="form-control" 
+                                  id="payment_notes" 
+                                  name="payment_notes" 
+                                  rows="2" 
+                                  placeholder="Información adicional..."></textarea>
+                    </div>
+                </form>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Importante:</strong> Una vez enviado el pago, recibirá un email de confirmación. 
+                    El procesamiento puede tomar entre 1-3 días hábiles.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="submitPayment()">
+                    <i class="bi bi-send"></i>
+                    Enviar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let sortDirection = {};
+
+function sortTable(columnIndex) {
+    const table = document.getElementById('movementsTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.rows);
+    
+    if (!sortDirection[columnIndex]) {
+        sortDirection[columnIndex] = 'asc';
+    } else {
+        sortDirection[columnIndex] = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+    }
+    
+    rows.sort((a, b) => {
+        let aVal = a.cells[columnIndex].textContent.trim();
+        let bVal = b.cells[columnIndex].textContent.trim();
+        
+        // Tratamiento especial para fechas y números
+        if (columnIndex === 0) {
+            aVal = new Date(a.cells[columnIndex].querySelector('strong').textContent);
+            bVal = new Date(b.cells[columnIndex].querySelector('strong').textContent);
+        } else if (columnIndex >= 3 && columnIndex <= 5) {
+            // Montos
+            aVal = parseFloat(aVal.replace(/[^0-9.-]/g, '')) || 0;
+            bVal = parseFloat(bVal.replace(/[^0-9.-]/g, '')) || 0;
+        }
+        
+        if (sortDirection[columnIndex] === 'asc') {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
+    
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Actualizar indicadores visuales
+    table.querySelectorAll('th i').forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up';
+    });
+    
+    const currentIcon = table.querySelector(`th:nth-child(${columnIndex + 1}) i`);
+    if (currentIcon) {
+        currentIcon.className = sortDirection[columnIndex] === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+    }
+}
+
+function clearFilters() {
+    document.getElementById('date_from').value = '';
+    document.getElementById('date_to').value = '';
+    document.getElementById('tipo').value = '';
+    document.getElementById('monto_min').value = '';
+    document.getElementById('monto_max').value = '';
+    document.getElementById('descripcion').value = '';
+}
+
+function exportStatement() {
+    const movements = [];
+    const table = document.getElementById('movementsTable');
+    
+    if (table) {
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            movements.push({
+                fecha: cells[0].querySelector('strong').textContent,
+                descripcion: cells[1].querySelector('strong').textContent,
+                referencia: cells[2].textContent.trim(),
+                debito: cells[3].textContent.includes('-') ? '' : cells[3].textContent.trim(),
+                credito: cells[4].textContent.includes('-') ? '' : cells[4].textContent.trim(),
+                saldo: cells[5].textContent.trim()
+            });
+        });
+    }
+    
+    // Crear CSV
+    let csv = 'Fecha,Descripción,Referencia,Débito,Crédito,Saldo\n';
+    movements.forEach(movement => {
+        csv += `"${movement.fecha}","${movement.descripcion}","${movement.referencia}","${movement.debito}","${movement.credito}","${movement.saldo}"\n`;
+    });
+    
+    // Descargar archivo
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `estado_cuenta_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showToast('Estado de cuenta exportado exitosamente', 'success');
+}
+
+function submitPayment() {
+    const form = document.getElementById('paymentForm');
+    const amount = document.getElementById('payment_amount').value;
+    const method = document.getElementById('payment_method').value;
+    
+    if (!amount || !method) {
+        showToast('Complete todos los campos requeridos', 'error');
+        return;
+    }
+    
+    // Validación de monto
+    const maxAmount = parseFloat(document.getElementById('payment_amount').max);
+    if (parseFloat(amount) > maxAmount) {
+        showToast(`El monto no puede ser mayor a ${maxAmount}`, 'error');
+        return;
+    }
+    
+    // Simulación de envío (en implementación real hacer AJAX)
+    showToast('Pago registrado exitosamente. Recibirá confirmación por email.', 'success');
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+    modal.hide();
+    
+    // Simular actualización de página después de 2 segundos
+    setTimeout(() => {
+        window.location.reload();
+    }, 2000);
+}
+
+function loadMore() {
+    // En implementación real, cargar más movimientos via AJAX
+    showToast('Funcionalidad de carga disponible próximamente', 'info');
+}
+
+function showToast(message, type = 'info') {
+    const iconClass = type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-exclamation-circle' : 'bi-info-circle';
+    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    
+    const toast = `
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show" role="alert">
+                <div class="toast-header ${bgClass} text-white">
+                    <i class="${iconClass} me-2"></i>
+                    <strong class="me-auto">Notificación</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toast);
+    
+    setTimeout(() => {
+        const toastEl = document.querySelector('.toast-container');
+        if (toastEl) toastEl.remove();
+    }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar fechas por defecto
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date_to').max = today;
+    
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    document.getElementById('date_from').min = oneYearAgo.toISOString().split('T')[0);
+    
+    // Validación de monto de pago
+    const paymentAmount = document.getElementById('payment_amount');
+    if (paymentAmount) {
+        paymentAmount.addEventListener('input', function() {
+            const max = parseFloat(this.max);
+            const value = parseFloat(this.value);
+            
+            if (value > max) {
+                this.value = max;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

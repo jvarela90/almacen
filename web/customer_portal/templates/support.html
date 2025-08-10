@@ -1,0 +1,662 @@
+{% extends "base.html" %}
+
+{% block title %}Soporte Técnico - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="bi bi-headset"></i>
+                Soporte Técnico
+            </h2>
+            <a href="{{ url_for('support_tickets') }}" class="btn btn-outline-primary">
+                <i class="bi bi-list-ul"></i>
+                Mis Tickets
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Opciones de contacto rápido -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-telephone text-primary display-4 mb-3"></i>
+                <h5 class="card-title">Teléfono</h5>
+                <p class="card-text">Atención inmediata de lunes a viernes de 8:00 a 18:00</p>
+                <a href="tel:+5401112345678" class="btn btn-primary">
+                    <i class="bi bi-telephone"></i>
+                    (011) 1234-5678
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-envelope text-success display-4 mb-3"></i>
+                <h5 class="card-title">Email</h5>
+                <p class="card-text">Respuesta en menos de 24 horas los días hábiles</p>
+                <a href="mailto:soporte@almacenpro.com" class="btn btn-success">
+                    <i class="bi bi-envelope"></i>
+                    soporte@almacenpro.com
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-chat-dots text-info display-4 mb-3"></i>
+                <h5 class="card-title">Ticket Online</h5>
+                <p class="card-text">Sistema de seguimiento para consultas detalladas</p>
+                <button type="button" 
+                        class="btn btn-info" 
+                        onclick="scrollToTicketForm()">
+                    <i class="bi bi-plus-circle"></i>
+                    Crear Ticket
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preguntas frecuentes -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-question-circle"></i>
+                    Preguntas Frecuentes
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="faq1">
+                            <button class="accordion-button collapsed" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse1">
+                                ¿Cómo puedo descargar mis comprobantes de compra?
+                            </button>
+                        </h2>
+                        <div id="collapse1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                <p>Puede descargar sus comprobantes de las siguientes maneras:</p>
+                                <ul>
+                                    <li>Desde "Mis Compras" → Seleccionar la compra → Botón "Descargar PDF"</li>
+                                    <li>Desde el detalle de cada compra, encontrará el botón de descarga</li>
+                                    <li>Los comprobantes están disponibles en formato PDF para su impresión</li>
+                                </ul>
+                                <p>Si tiene problemas con las descargas, contacte al soporte técnico.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="faq2">
+                            <button class="accordion-button collapsed" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse2">
+                                ¿Cómo consulto el estado de mi cuenta corriente?
+                            </button>
+                        </h2>
+                        <div id="collapse2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                <p>Para consultar su estado de cuenta:</p>
+                                <ol>
+                                    <li>Acceda a la sección "Mi Cuenta" desde el menú principal</li>
+                                    <li>Verá su saldo actual y el historial de movimientos</li>
+                                    <li>Puede filtrar por fechas o tipo de movimiento</li>
+                                    <li>También puede exportar su estado de cuenta en formato CSV</li>
+                                </ol>
+                                <p>La información se actualiza en tiempo real.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="faq3">
+                            <button class="accordion-button collapsed" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse3">
+                                ¿Cómo cambio mi contraseña?
+                            </button>
+                        </h2>
+                        <div id="collapse3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                <p>Para cambiar su contraseña:</p>
+                                <ol>
+                                    <li>Vaya a "Mi Perfil" desde el menú de usuario</li>
+                                    <li>En la sección de seguridad, haga clic en "Cambiar Contraseña"</li>
+                                    <li>Ingrese su contraseña actual y la nueva contraseña</li>
+                                    <li>La nueva contraseña debe tener al menos 6 caracteres</li>
+                                </ol>
+                                <p>Por seguridad, se cerrarán todas las sesiones activas al cambiar la contraseña.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="faq4">
+                            <button class="accordion-button collapsed" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse4">
+                                ¿Qué métodos de pago aceptan?
+                            </button>
+                        </h2>
+                        <div id="collapse4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                <p>Aceptamos los siguientes métodos de pago:</p>
+                                <ul>
+                                    <li><strong>Efectivo:</strong> En nuestras sucursales</li>
+                                    <li><strong>Transferencia bancaria:</strong> A nuestras cuentas corrientes</li>
+                                    <li><strong>Tarjeta de débito:</strong> Todas las tarjetas habilitadas</li>
+                                    <li><strong>Tarjeta de crédito:</strong> Visa, MasterCard, American Express</li>
+                                    <li><strong>Mercado Pago:</strong> Disponible para compras online</li>
+                                </ul>
+                                <p>Para pagos de cuenta corriente, puede utilizar el portal para registrar el pago.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="faq5">
+                            <button class="accordion-button collapsed" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse5">
+                                ¿Cómo puedo actualizar mis datos personales?
+                            </button>
+                        </h2>
+                        <div id="collapse5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                <p>Para actualizar sus datos:</p>
+                                <ol>
+                                    <li>Acceda a "Mi Perfil" desde el menú de usuario</li>
+                                    <li>Modifique los campos que necesite actualizar</li>
+                                    <li>Haga clic en "Guardar Cambios"</li>
+                                </ol>
+                                <p><strong>Nota:</strong> Para cambiar el email o documento, debe contactar al soporte técnico por seguridad.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario de ticket -->
+<div class="row" id="ticketForm">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-plus-circle"></i>
+                    Crear Ticket de Soporte
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="supportForm">
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Categoría del problema *</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="">Seleccione una categoría</option>
+                            <option value="acceso">Problemas de acceso al portal</option>
+                            <option value="compras">Consultas sobre compras</option>
+                            <option value="pagos">Problemas con pagos</option>
+                            <option value="cuenta">Estado de cuenta corriente</option>
+                            <option value="facturacion">Facturación y comprobantes</option>
+                            <option value="productos">Consultas sobre productos</option>
+                            <option value="devoluciones">Devoluciones y cambios</option>
+                            <option value="tecnico">Problemas técnicos del portal</option>
+                            <option value="otros">Otros</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">Prioridad *</label>
+                        <select class="form-select" id="priority" name="priority" required>
+                            <option value="low">Baja - No urgente</option>
+                            <option value="medium" selected>Media - Normal</option>
+                            <option value="high">Alta - Urgente</option>
+                            <option value="critical">Crítica - Muy urgente</option>
+                        </select>
+                        <small class="text-muted">
+                            Seleccione la prioridad según la urgencia de su consulta
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="subject" class="form-label">Asunto *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="subject" 
+                               name="subject" 
+                               required 
+                               placeholder="Resumen breve del problema">
+                        <div class="invalid-feedback">
+                            El asunto es requerido y debe tener al menos 5 caracteres
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Descripción detallada *</label>
+                        <textarea class="form-control" 
+                                  id="message" 
+                                  name="message" 
+                                  rows="6" 
+                                  required 
+                                  placeholder="Describa detalladamente su consulta o problema. Incluya:
+- Pasos que siguió
+- Mensajes de error (si los hay)
+- Qué esperaba que sucediera
+- Cualquier información adicional que considere relevante"></textarea>
+                        <div class="invalid-feedback">
+                            La descripción es requerida y debe tener al menos 20 caracteres
+                        </div>
+                        <div class="form-text">
+                            <span id="messageCounter">0</span> caracteres (mínimo 20)
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="order_reference" class="form-label">Número de compra (si aplica)</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="order_reference" 
+                               name="order_reference" 
+                               placeholder="#000123">
+                        <small class="text-muted">
+                            Si su consulta se refiere a una compra específica, ingrese el número
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="urgent_notification" 
+                                   name="urgent_notification">
+                            <label class="form-check-label" for="urgent_notification">
+                                Solicitar notificación urgente por SMS
+                            </label>
+                            <small class="text-muted d-block">
+                                Solo para casos críticos que requieren atención inmediata
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Información importante:</strong>
+                        <ul class="mb-0">
+                            <li>Recibirá un email de confirmación con el número de ticket</li>
+                            <li>Tiempo de respuesta: 24-48 horas hábiles</li>
+                            <li>Para casos urgentes, puede llamar al (011) 1234-5678</li>
+                            <li>Mantendremos registro de toda la comunicación del ticket</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">* Campos obligatorios</small>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary me-2" onclick="resetForm()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                Limpiar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i>
+                                Enviar Ticket
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Consejos para ticket -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i>
+                    Consejos para un mejor soporte
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check text-success"></i>
+                        <strong>Sea específico:</strong> Describa exactamente qué ocurrió
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check text-success"></i>
+                        <strong>Incluya detalles:</strong> Números de compra, fechas, mensajes de error
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check text-success"></i>
+                        <strong>Indique pasos:</strong> Qué hizo antes de que ocurriera el problema
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check text-success"></i>
+                        <strong>Prioridad correcta:</strong> Use "Crítica" solo para casos urgentes
+                    </li>
+                    <li>
+                        <i class="bi bi-check text-success"></i>
+                        <strong>Sea paciente:</strong> Le responderemos en el menor tiempo posible
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Horarios de atención -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-clock"></i>
+                    Horarios de Atención
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h6>Teléfono</h6>
+                        <p class="small text-muted">
+                            Lun-Vie: 8:00-18:00<br>
+                            Sáb: 9:00-13:00<br>
+                            Dom: Cerrado
+                        </p>
+                    </div>
+                    <div class="col-6">
+                        <h6>Tickets/Email</h6>
+                        <p class="small text-muted">
+                            24 horas<br>
+                            7 días<br>
+                            Respuesta en horario laboral
+                        </p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-geo-alt"></i>
+                        Av. Corrientes 1234, CABA<br>
+                        <i class="bi bi-envelope"></i>
+                        soporte@almacenpro.com
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setupFormValidation();
+    setupMessageCounter();
+    setupCategoryHelp();
+});
+
+function setupFormValidation() {
+    const form = document.getElementById('supportForm');
+    const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
+    
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid')) {
+                validateField(this);
+            }
+        });
+    });
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        let isValid = true;
+        inputs.forEach(input => {
+            if (!validateField(input)) {
+                isValid = false;
+            }
+        });
+        
+        if (isValid) {
+            submitTicket();
+        }
+    });
+}
+
+function validateField(field) {
+    let isValid = true;
+    
+    switch(field.id) {
+        case 'subject':
+            isValid = field.value.trim().length >= 5;
+            break;
+        case 'message':
+            isValid = field.value.trim().length >= 20;
+            break;
+        case 'category':
+        case 'priority':
+            isValid = field.value !== '';
+            break;
+    }
+    
+    field.classList.toggle('is-invalid', !isValid);
+    field.classList.toggle('is-valid', isValid && field.value.trim().length > 0);
+    
+    return isValid;
+}
+
+function setupMessageCounter() {
+    const message = document.getElementById('message');
+    const counter = document.getElementById('messageCounter');
+    
+    message.addEventListener('input', function() {
+        const count = this.value.length;
+        counter.textContent = count;
+        
+        if (count < 20) {
+            counter.parentElement.className = 'form-text text-danger';
+        } else if (count < 50) {
+            counter.parentElement.className = 'form-text text-warning';
+        } else {
+            counter.parentElement.className = 'form-text text-success';
+        }
+    });
+}
+
+function setupCategoryHelp() {
+    const category = document.getElementById('category');
+    const priority = document.getElementById('priority');
+    
+    category.addEventListener('change', function() {
+        // Ajustar prioridad sugerida según categoría
+        switch(this.value) {
+            case 'acceso':
+            case 'tecnico':
+                priority.value = 'high';
+                break;
+            case 'productos':
+            case 'otros':
+                priority.value = 'low';
+                break;
+            default:
+                priority.value = 'medium';
+        }
+    });
+}
+
+function scrollToTicketForm() {
+    document.getElementById('ticketForm').scrollIntoView({
+        behavior: 'smooth'
+    });
+    
+    // Enfocar el primer campo del formulario
+    setTimeout(() => {
+        document.getElementById('category').focus();
+    }, 500);
+}
+
+function resetForm() {
+    const form = document.getElementById('supportForm');
+    form.reset();
+    
+    // Limpiar validaciones
+    const inputs = form.querySelectorAll('.is-invalid, .is-valid');
+    inputs.forEach(input => {
+        input.classList.remove('is-invalid', 'is-valid');
+    });
+    
+    // Resetear contador
+    document.getElementById('messageCounter').textContent = '0';
+    document.getElementById('messageCounter').parentElement.className = 'form-text';
+    
+    showToast('Formulario restablecido', 'info');
+}
+
+function submitTicket() {
+    const form = document.getElementById('supportForm');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // Mostrar estado de carga
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+    submitBtn.disabled = true;
+    
+    // Deshabilitar formulario
+    const inputs = form.querySelectorAll('input, textarea, select, button');
+    inputs.forEach(input => input.disabled = true);
+    
+    // Simular envío
+    setTimeout(() => {
+        // Mostrar mensaje de éxito
+        showSuccessModal();
+        
+        // Resetear formulario
+        form.reset();
+        
+        // Rehabilitar formulario
+        inputs.forEach(input => input.disabled = false);
+        
+        // Restaurar botón
+        submitBtn.innerHTML = '<i class="bi bi-send"></i> Enviar Ticket';
+        
+        // Limpiar validaciones
+        const validatedInputs = form.querySelectorAll('.is-invalid, .is-valid');
+        validatedInputs.forEach(input => {
+            input.classList.remove('is-invalid', 'is-valid');
+        });
+        
+    }, 2000);
+}
+
+function showSuccessModal() {
+    const ticketNumber = 'TK' + Date.now().toString().slice(-6);
+    
+    const modal = `
+        <div class="modal fade" id="successModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-check-circle"></i>
+                            Ticket Creado Exitosamente
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-4">
+                            <i class="bi bi-ticket-perforated text-success display-1"></i>
+                        </div>
+                        
+                        <div class="alert alert-success">
+                            <strong>Su ticket ha sido creado:</strong><br>
+                            Número de referencia: <strong>${ticketNumber}</strong>
+                        </div>
+                        
+                        <p><strong>¿Qué sigue ahora?</strong></p>
+                        <ul>
+                            <li>Recibirá un email de confirmación en los próximos minutos</li>
+                            <li>Nuestro equipo revisará su consulta en horario laboral</li>
+                            <li>Le responderemos en un plazo máximo de 48 horas</li>
+                            <li>Puede seguir el estado en "Mis Tickets"</li>
+                        </ul>
+                        
+                        <div class="text-center">
+                            <strong>¿Necesita atención inmediata?</strong><br>
+                            <a href="tel:+5401112345678" class="btn btn-outline-primary mt-2">
+                                <i class="bi bi-telephone"></i>
+                                Llamar al (011) 1234-5678
+                            </a>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ url_for('support_tickets') }}" class="btn btn-primary">
+                            <i class="bi bi-list-ul"></i>
+                            Ver Mis Tickets
+                        </a>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modal);
+    
+    const modalElement = new bootstrap.Modal(document.getElementById('successModal'));
+    modalElement.show();
+    
+    // Remover modal después de cerrarlo
+    document.getElementById('successModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+function showToast(message, type = 'info') {
+    const iconClass = type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-exclamation-circle' : 'bi-info-circle';
+    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    
+    const toast = `
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show" role="alert">
+                <div class="toast-header ${bgClass} text-white">
+                    <i class="${iconClass} me-2"></i>
+                    <strong class="me-auto">Soporte</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toast);
+    
+    setTimeout(() => {
+        const toastEl = document.querySelector('.toast-container');
+        if (toastEl) toastEl.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

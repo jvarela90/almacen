@@ -1,0 +1,671 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Perfil - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-person"></i>
+            Mi Perfil
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Información personal -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-circle"></i>
+                    Información Personal
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="profileForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nombre" class="form-label">Nombre Completo *</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="nombre" 
+                                   name="nombre" 
+                                   value="{{ customer.nombre or '' }}" 
+                                   required>
+                            <div class="invalid-feedback">
+                                El nombre es requerido y debe tener al menos 2 caracteres
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   value="{{ customer.email or '' }}" 
+                                   readonly 
+                                   disabled>
+                            <small class="text-muted">
+                                Para cambiar su email, contacte al soporte técnico
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="telefono" class="form-label">Teléfono</label>
+                            <input type="tel" 
+                                   class="form-control" 
+                                   id="telefono" 
+                                   name="telefono" 
+                                   value="{{ customer.telefono or '' }}" 
+                                   placeholder="(011) 1234-5678">
+                            <div class="invalid-feedback">
+                                Ingrese un teléfono válido
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="documento" class="form-label">Documento</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="documento" 
+                                   value="{{ customer.documento or 'No especificado' }}" 
+                                   readonly 
+                                   disabled>
+                            <small class="text-muted">
+                                Para modificar su documento, contacte al soporte técnico
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <textarea class="form-control" 
+                                  id="direccion" 
+                                  name="direccion" 
+                                  rows="2" 
+                                  placeholder="Ingrese su dirección completa">{{ customer.direccion or '' }}</textarea>
+                        <div class="invalid-feedback">
+                            La dirección no puede exceder 500 caracteres
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="ciudad" class="form-label">Ciudad</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="ciudad" 
+                                   name="ciudad" 
+                                   value="{{ customer.ciudad or '' }}" 
+                                   placeholder="Buenos Aires">
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="provincia" class="form-label">Provincia</label>
+                            <select class="form-select" id="provincia" name="provincia">
+                                <option value="">Seleccione provincia</option>
+                                <option value="Buenos Aires" {{ 'selected' if customer.provincia == 'Buenos Aires' }}>Buenos Aires</option>
+                                <option value="CABA" {{ 'selected' if customer.provincia == 'CABA' }}>Ciudad Autónoma de Buenos Aires</option>
+                                <option value="Catamarca" {{ 'selected' if customer.provincia == 'Catamarca' }}>Catamarca</option>
+                                <option value="Chaco" {{ 'selected' if customer.provincia == 'Chaco' }}>Chaco</option>
+                                <option value="Chubut" {{ 'selected' if customer.provincia == 'Chubut' }}>Chubut</option>
+                                <option value="Córdoba" {{ 'selected' if customer.provincia == 'Córdoba' }}>Córdoba</option>
+                                <option value="Corrientes" {{ 'selected' if customer.provincia == 'Corrientes' }}>Corrientes</option>
+                                <option value="Entre Ríos" {{ 'selected' if customer.provincia == 'Entre Ríos' }}>Entre Ríos</option>
+                                <option value="Formosa" {{ 'selected' if customer.provincia == 'Formosa' }}>Formosa</option>
+                                <option value="Jujuy" {{ 'selected' if customer.provincia == 'Jujuy' }}>Jujuy</option>
+                                <option value="La Pampa" {{ 'selected' if customer.provincia == 'La Pampa' }}>La Pampa</option>
+                                <option value="La Rioja" {{ 'selected' if customer.provincia == 'La Rioja' }}>La Rioja</option>
+                                <option value="Mendoza" {{ 'selected' if customer.provincia == 'Mendoza' }}>Mendoza</option>
+                                <option value="Misiones" {{ 'selected' if customer.provincia == 'Misiones' }}>Misiones</option>
+                                <option value="Neuquén" {{ 'selected' if customer.provincia == 'Neuquén' }}>Neuquén</option>
+                                <option value="Río Negro" {{ 'selected' if customer.provincia == 'Río Negro' }}>Río Negro</option>
+                                <option value="Salta" {{ 'selected' if customer.provincia == 'Salta' }}>Salta</option>
+                                <option value="San Juan" {{ 'selected' if customer.provincia == 'San Juan' }}>San Juan</option>
+                                <option value="San Luis" {{ 'selected' if customer.provincia == 'San Luis' }}>San Luis</option>
+                                <option value="Santa Cruz" {{ 'selected' if customer.provincia == 'Santa Cruz' }}>Santa Cruz</option>
+                                <option value="Santa Fe" {{ 'selected' if customer.provincia == 'Santa Fe' }}>Santa Fe</option>
+                                <option value="Santiago del Estero" {{ 'selected' if customer.provincia == 'Santiago del Estero' }}>Santiago del Estero</option>
+                                <option value="Tierra del Fuego" {{ 'selected' if customer.provincia == 'Tierra del Fuego' }}>Tierra del Fuego</option>
+                                <option value="Tucumán" {{ 'selected' if customer.provincia == 'Tucumán' }}>Tucumán</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="codigo_postal" class="form-label">Código Postal</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="codigo_postal" 
+                                   name="codigo_postal" 
+                                   value="{{ customer.codigo_postal or '' }}" 
+                                   placeholder="1000">
+                            <div class="invalid-feedback">
+                                Ingrese un código postal válido
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <small class="text-muted">* Campos obligatorios</small>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary me-2" onclick="resetForm()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                Restablecer
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i>
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Notificaciones -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-bell"></i>
+                    Preferencias de Notificaciones
+                </h6>
+            </div>
+            <div class="card-body">
+                <form id="notificationForm">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="email_compras" 
+                               name="email_compras" 
+                               {{ 'checked' if customer.notif_compras }}>
+                        <label class="form-check-label" for="email_compras">
+                            <strong>Notificaciones de compras</strong>
+                            <br>
+                            <small class="text-muted">Recibir confirmaciones de compras por email</small>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="email_pagos" 
+                               name="email_pagos" 
+                               {{ 'checked' if customer.notif_pagos }}>
+                        <label class="form-check-label" for="email_pagos">
+                            <strong>Notificaciones de pagos</strong>
+                            <br>
+                            <small class="text-muted">Recibir confirmaciones de pagos y cambios en cuenta corriente</small>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="email_ofertas" 
+                               name="email_ofertas" 
+                               {{ 'checked' if customer.notif_ofertas }}>
+                        <label class="form-check-label" for="email_ofertas">
+                            <strong>Ofertas y promociones</strong>
+                            <br>
+                            <small class="text-muted">Recibir información sobre ofertas especiales y novedades</small>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="sms_importantes" 
+                               name="sms_importantes" 
+                               {{ 'checked' if customer.notif_sms }}>
+                        <label class="form-check-label" for="sms_importantes">
+                            <strong>SMS importantes</strong>
+                            <br>
+                            <small class="text-muted">Recibir SMS para notificaciones críticas (requiere teléfono válido)</small>
+                        </label>
+                    </div>
+                    
+                    <div class="text-end">
+                        <button type="button" class="btn btn-outline-primary" onclick="saveNotifications()">
+                            <i class="bi bi-check-lg"></i>
+                            Guardar Preferencias
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel lateral -->
+    <div class="col-lg-4">
+        <!-- Información de cuenta -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Información de Cuenta
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h5 class="text-primary mb-1">{{ customer.id or 'N/A' }}</h5>
+                        <small class="text-muted">ID Cliente</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-success mb-1">
+                            {% if customer.fecha_registro %}
+                                {{ customer.fecha_registro|date }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </h5>
+                        <small class="text-muted">Cliente desde</small>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Estado:</span>
+                    <span class="badge bg-{{ 'success' if customer.activo else 'danger' }}">
+                        {{ 'Activo' if customer.activo else 'Inactivo' }}
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Portal habilitado:</span>
+                    <span class="badge bg-{{ 'success' if customer.portal_enabled else 'warning' }}">
+                        {{ 'Sí' if customer.portal_enabled else 'No' }}
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Último acceso:</span>
+                    <small class="text-muted">
+                        {% if customer.ultimo_acceso %}
+                            {{ customer.ultimo_acceso|datetime }}
+                        {% else %}
+                            Nunca
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seguridad -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-shield-check"></i>
+                    Seguridad
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('change_password') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-key"></i>
+                        Cambiar Contraseña
+                    </a>
+                    <button type="button" 
+                            class="btn btn-outline-warning" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#sessionsModal">
+                        <i class="bi bi-list-ul"></i>
+                        Ver Sesiones Activas
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-danger" 
+                            onclick="logoutAllSessions()">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Cerrar Todas las Sesiones
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <small>
+                        <strong>Última actividad:</strong><br>
+                        {{ customer.ultima_actividad|datetime if customer.ultima_actividad else 'Sin registro' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i>
+                    Mis Estadísticas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-12 mb-3">
+                        <h4 class="text-success mb-1">{{ customer.total_compras or 0 }}</h4>
+                        <small class="text-muted">Compras realizadas</small>
+                    </div>
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h5 class="text-primary mb-1">{{ customer.total_gastado|currency if customer.total_gastado else '$0.00' }}</h5>
+                        <small class="text-muted">Total gastado</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-info mb-1">{{ customer.promedio_compra|currency if customer.promedio_compra else '$0.00' }}</h5>
+                        <small class="text-muted">Promedio por compra</small>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <small class="text-muted">
+                        {% if customer.categoria %}
+                            <span class="badge bg-secondary">{{ customer.categoria }}</span><br>
+                        {% endif %}
+                        Cliente {{ customer.tipo or 'Regular' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Sesiones Activas -->
+<div class="modal fade" id="sessionsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-list-ul"></i>
+                    Sesiones Activas
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Dispositivo</th>
+                                <th>IP</th>
+                                <th>Último acceso</th>
+                                <th>Estado</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <i class="bi bi-laptop"></i>
+                                    Sesión actual
+                                </td>
+                                <td>{{ request.remote_addr if request.remote_addr else 'N/A' }}</td>
+                                <td>Ahora</td>
+                                <td><span class="badge bg-success">Activa</span></td>
+                                <td>
+                                    <span class="text-muted">Sesión actual</span>
+                                </td>
+                            </tr>
+                            <!-- Aquí se mostrarían otras sesiones si las hubiera -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <small>
+                        Solo se muestra la sesión actual. Para implementación completa, 
+                        se requiere almacenamiento de sesiones en base de datos.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let originalFormData = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Guardar datos originales del formulario
+    saveOriginalData();
+    
+    // Configurar validaciones
+    setupValidations();
+    
+    // Formatear teléfono automáticamente
+    setupPhoneFormatting();
+});
+
+function saveOriginalData() {
+    const form = document.getElementById('profileForm');
+    const formData = new FormData(form);
+    
+    for (let [key, value] of formData.entries()) {
+        originalFormData[key] = value;
+    }
+}
+
+function resetForm() {
+    const form = document.getElementById('profileForm');
+    
+    for (let key in originalFormData) {
+        const field = form.querySelector(`[name="${key}"]`);
+        if (field) {
+            field.value = originalFormData[key];
+            field.classList.remove('is-invalid', 'is-valid');
+        }
+    }
+    
+    showToast('Formulario restablecido', 'info');
+}
+
+function setupValidations() {
+    const form = document.getElementById('profileForm');
+    const inputs = form.querySelectorAll('input, textarea, select');
+    
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid')) {
+                validateField(this);
+            }
+        });
+    });
+    
+    // Validación en envío del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        let isValid = true;
+        inputs.forEach(input => {
+            if (!validateField(input)) {
+                isValid = false;
+            }
+        });
+        
+        if (isValid) {
+            submitProfile();
+        }
+    });
+}
+
+function validateField(field) {
+    let isValid = true;
+    let errorMessage = '';
+    
+    switch(field.id) {
+        case 'nombre':
+            isValid = field.value.trim().length >= 2;
+            errorMessage = 'El nombre debe tener al menos 2 caracteres';
+            break;
+            
+        case 'telefono':
+            if (field.value.trim()) {
+                const phoneRegex = /^[\(\)\d\s\-\+]+$/;
+                isValid = phoneRegex.test(field.value) && field.value.length >= 10;
+                errorMessage = 'Ingrese un teléfono válido';
+            }
+            break;
+            
+        case 'direccion':
+            if (field.value.trim()) {
+                isValid = field.value.length <= 500;
+                errorMessage = 'La dirección no puede exceder 500 caracteres';
+            }
+            break;
+            
+        case 'codigo_postal':
+            if (field.value.trim()) {
+                const cpRegex = /^\d{4}$/;
+                isValid = cpRegex.test(field.value);
+                errorMessage = 'Ingrese un código postal válido (4 dígitos)';
+            }
+            break;
+    }
+    
+    field.classList.toggle('is-invalid', !isValid);
+    field.classList.toggle('is-valid', isValid && field.value.trim().length > 0);
+    
+    const feedback = field.nextElementSibling;
+    if (feedback && feedback.classList.contains('invalid-feedback')) {
+        feedback.textContent = errorMessage;
+    }
+    
+    return isValid;
+}
+
+function setupPhoneFormatting() {
+    const telefono = document.getElementById('telefono');
+    
+    telefono.addEventListener('input', function() {
+        let value = this.value.replace(/\D/g, '');
+        
+        if (value.length >= 10) {
+            if (value.length === 10) {
+                value = `(${value.substring(0,3)}) ${value.substring(3,7)}-${value.substring(7)}`;
+            } else if (value.length === 11) {
+                value = `${value.substring(0,2)}-${value.substring(2,6)}-${value.substring(6)}`;
+            }
+        }
+        
+        this.value = value;
+    });
+}
+
+function submitProfile() {
+    const form = document.getElementById('profileForm');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // Mostrar estado de carga
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+    submitBtn.disabled = true;
+    
+    // Simular envío (en implementación real usar AJAX)
+    setTimeout(() => {
+        // Restaurar botón
+        submitBtn.innerHTML = '<i class="bi bi-check-lg"></i> Guardar Cambios';
+        submitBtn.disabled = false;
+        
+        // Mostrar mensaje de éxito
+        showToast('Perfil actualizado exitosamente', 'success');
+        
+        // Actualizar datos originales
+        saveOriginalData();
+        
+        // En implementación real, hacer POST al servidor
+        // form.submit();
+    }, 1500);
+}
+
+function saveNotifications() {
+    const form = document.getElementById('notificationForm');
+    const submitBtn = form.querySelector('button');
+    
+    // Mostrar estado de carga
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+    submitBtn.disabled = true;
+    
+    // Simular envío
+    setTimeout(() => {
+        // Restaurar botón
+        submitBtn.innerHTML = '<i class="bi bi-check-lg"></i> Guardar Preferencias';
+        submitBtn.disabled = false;
+        
+        showToast('Preferencias de notificaciones actualizadas', 'success');
+    }, 1000);
+}
+
+function logoutAllSessions() {
+    if (confirm('¿Está seguro que desea cerrar todas las sesiones? Deberá iniciar sesión nuevamente.')) {
+        showToast('Cerrando todas las sesiones...', 'info');
+        
+        // En implementación real, hacer AJAX para cerrar sesiones
+        setTimeout(() => {
+            window.location.href = '{{ url_for("logout") }}';
+        }, 2000);
+    }
+}
+
+function showToast(message, type = 'info') {
+    const iconClass = type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-exclamation-circle' : 'bi-info-circle';
+    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    
+    const toast = `
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show" role="alert">
+                <div class="toast-header ${bgClass} text-white">
+                    <i class="${iconClass} me-2"></i>
+                    <strong class="me-auto">Perfil</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toast);
+    
+    setTimeout(() => {
+        const toastEl = document.querySelector('.toast-container');
+        if (toastEl) toastEl.remove();
+    }, 5000);
+}
+
+// Detectar cambios no guardados
+window.addEventListener('beforeunload', function(e) {
+    const form = document.getElementById('profileForm');
+    const currentData = new FormData(form);
+    let hasChanges = false;
+    
+    for (let [key, value] of currentData.entries()) {
+        if (originalFormData[key] !== value) {
+            hasChanges = true;
+            break;
+        }
+    }
+    
+    if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = 'Tiene cambios sin guardar. ¿Está seguro que desea salir?';
+    }
+});
+</script>
+{% endblock %}

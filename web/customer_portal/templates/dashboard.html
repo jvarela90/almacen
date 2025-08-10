@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-house-door"></i>
+            Bienvenido, {{ current_user.nombre }}
+        </h2>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Total Compras</h6>
+                        <h4 class="mb-0">{{ stats.total_purchases or 0 }}</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-bag-check display-6"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Total Gastado</h6>
+                        <h4 class="mb-0">{{ stats.total_spent or '$0.00' }}</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-currency-dollar display-6"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Última Compra</h6>
+                        <h6 class="mb-0">{{ stats.last_purchase_date or 'Sin compras' }}</h6>
+                        <small>{{ stats.last_purchase_amount or '$0.00' }}</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-clock-history display-6"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white {% if stats.balance_status == 'positive' %}bg-success{% else %}bg-warning{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Estado Cuenta</h6>
+                        <h4 class="mb-0">{{ stats.account_balance or '$0.00' }}</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-credit-card display-6"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Últimas Compras -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bag-check"></i>
+                    Últimas Compras
+                </h5>
+                <a href="{{ url_for('purchases') }}" class="btn btn-outline-primary btn-sm">
+                    Ver Todas <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_purchases %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for purchase in recent_purchases %}
+                            <tr>
+                                <td>{{ purchase.fecha_venta|date }}</td>
+                                <td><strong>{{ purchase.total|currency }}</strong></td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if purchase.estado == 'completada' else 'warning' }}">
+                                        {{ purchase.estado|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('purchase_detail', purchase_id=purchase.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-bag display-4 mb-3"></i>
+                    <p>No tiene compras registradas aún.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panel de Acciones -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tools"></i>
+                    Acciones Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('purchases') }}" class="btn btn-primary">
+                        <i class="bi bi-bag-check"></i>
+                        Ver Mis Compras
+                    </a>
+                    <a href="{{ url_for('account') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-credit-card"></i>
+                        Estado de Cuenta
+                    </a>
+                    <a href="{{ url_for('support') }}" class="btn btn-outline-success">
+                        <i class="bi bi-question-circle"></i>
+                        Crear Ticket de Soporte
+                    </a>
+                    <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-person"></i>
+                        Actualizar Perfil
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notificaciones -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-bell"></i>
+                    Notificaciones
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Bienvenido al Portal!</strong><br>
+                    Aquí puede consultar sus compras, estado de cuenta y solicitar soporte.
+                </div>
+                
+                {% if stats.balance_status == 'negative' %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Estado de Cuenta:</strong><br>
+                    Tiene un saldo pendiente de {{ stats.account_balance }}.
+                    <a href="{{ url_for('account') }}" class="alert-link">Ver detalles</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico de Compras (placeholder) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i>
+                    Resumen de Actividad
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-graph-up display-4 mb-3"></i>
+                    <p>Gráficos de actividad disponibles próximamente</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-actualizar estadísticas cada 5 minutos
+setInterval(function() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Actualizar estadísticas en tiempo real
+            console.log('Stats updated:', data);
+        })
+        .catch(error => console.log('Error updating stats:', error));
+}, 300000); // 5 minutos
+
+// Mostrar mensaje de bienvenida si es primera visita
+document.addEventListener('DOMContentLoaded', function() {
+    if (!localStorage.getItem('portal_visited')) {
+        localStorage.setItem('portal_visited', 'true');
+        
+        // Mostrar tour o mensaje de bienvenida
+        setTimeout(function() {
+            if (!document.querySelector('.alert')) {
+                const welcomeAlert = document.createElement('div');
+                welcomeAlert.className = 'alert alert-success alert-dismissible fade show';
+                welcomeAlert.innerHTML = `
+                    <i class="bi bi-check-circle"></i>
+                    ¡Bienvenido al Portal de Clientes! Explore todas las funcionalidades disponibles.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('main').insertBefore(welcomeAlert, document.querySelector('main').firstChild);
+            }
+        }, 1000);
+    }
+});
+</script>
+{% endblock %}

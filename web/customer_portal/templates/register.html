@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}Registrarse - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header text-center bg-success text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-person-plus"></i>
+                    Crear Nueva Cuenta
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="registerForm">
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label for="nombre" class="form-label">
+                                <i class="bi bi-person"></i>
+                                Nombre Completo *
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="nombre" 
+                                   name="nombre" 
+                                   required 
+                                   placeholder="Su nombre completo"
+                                   autocomplete="name">
+                            <div class="invalid-feedback">
+                                El nombre debe tener al menos 2 caracteres
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <label for="email" class="form-label">
+                                <i class="bi bi-envelope"></i>
+                                Email *
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   required 
+                                   placeholder="su.email@ejemplo.com"
+                                   autocomplete="email">
+                            <div class="invalid-feedback">
+                                Ingrese un email válido
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <label for="telefono" class="form-label">
+                                <i class="bi bi-telephone"></i>
+                                Teléfono
+                            </label>
+                            <input type="tel" 
+                                   class="form-control" 
+                                   id="telefono" 
+                                   name="telefono" 
+                                   placeholder="(011) 1234-5678"
+                                   autocomplete="tel">
+                            <small class="text-muted">Formato: (011) 1234-5678 o 11-1234-5678</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">
+                                <i class="bi bi-key"></i>
+                                Contraseña *
+                            </label>
+                            <div class="input-group">
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="password" 
+                                       name="password" 
+                                       required 
+                                       placeholder="Mínimo 6 caracteres"
+                                       autocomplete="new-password">
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        id="togglePassword">
+                                    <i class="bi bi-eye" id="eyeIcon"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback">
+                                La contraseña debe tener al menos 6 caracteres
+                            </div>
+                            
+                            <!-- Indicador de fortaleza de contraseña -->
+                            <div class="mt-2">
+                                <div class="password-strength">
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar" 
+                                             role="progressbar" 
+                                             id="passwordStrength" 
+                                             style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted" id="strengthText">Ingrese una contraseña</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="confirm_password" class="form-label">
+                                <i class="bi bi-key-fill"></i>
+                                Confirmar Contraseña *
+                            </label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="confirm_password" 
+                                   name="confirm_password" 
+                                   required 
+                                   placeholder="Repita la contraseña"
+                                   autocomplete="new-password">
+                            <div class="invalid-feedback">
+                                Las contraseñas no coinciden
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Términos y condiciones -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="terms" 
+                                   name="terms" 
+                                   required>
+                            <label class="form-check-label" for="terms">
+                                Acepto los 
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">
+                                    Términos y Condiciones
+                                </a> 
+                                y la 
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">
+                                    Política de Privacidad
+                                </a> *
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Newsletter -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="newsletter" 
+                                   name="newsletter">
+                            <label class="form-check-label" for="newsletter">
+                                Deseo recibir noticias y ofertas por email
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-person-plus"></i>
+                            Crear Cuenta
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="card-footer text-center">
+                <small class="text-muted">¿Ya tiene una cuenta?</small>
+                <a href="{{ url_for('login') }}" class="text-decoration-none">
+                    Inicie sesión aquí
+                </a>
+            </div>
+        </div>
+        
+        <!-- Información de seguridad -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-shield-check"></i>
+                    Su información está protegida
+                </h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled small">
+                            <li class="mb-1">
+                                <i class="bi bi-check text-success"></i>
+                                Conexión SSL encriptada
+                            </li>
+                            <li class="mb-1">
+                                <i class="bi bi-check text-success"></i>
+                                Datos no compartidos con terceros
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled small">
+                            <li class="mb-1">
+                                <i class="bi bi-check text-success"></i>
+                                Contraseñas hasheadas
+                            </li>
+                            <li class="mb-1">
+                                <i class="bi bi-check text-success"></i>
+                                Cumplimiento GDPR
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Términos y Condiciones -->
+<div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Términos y Condiciones</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>1. Uso del Portal</h6>
+                <p>Al registrarse en este portal, usted acepta usar el servicio de manera responsable y conforme a las leyes aplicables.</p>
+                
+                <h6>2. Cuenta de Usuario</h6>
+                <p>Es responsable de mantener la confidencialidad de su contraseña y de todas las actividades que ocurran en su cuenta.</p>
+                
+                <h6>3. Información Personal</h6>
+                <p>Nos comprometemos a proteger su información personal conforme a nuestra Política de Privacidad.</p>
+                
+                <h6>4. Disponibilidad del Servicio</h6>
+                <p>Haremos nuestro mejor esfuerzo para mantener el portal disponible, pero pueden ocurrir interrupciones por mantenimiento o causas técnicas.</p>
+                
+                <h6>5. Modificaciones</h6>
+                <p>Nos reservamos el derecho de modificar estos términos en cualquier momento, notificando a los usuarios con antelación.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Política de Privacidad -->
+<div class="modal fade" id="privacyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Política de Privacidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Recopilación de Información</h6>
+                <p>Recopilamos únicamente la información necesaria para brindarle un mejor servicio: nombre, email, teléfono e historial de compras.</p>
+                
+                <h6>Uso de la Información</h6>
+                <p>Su información se utiliza para:</p>
+                <ul>
+                    <li>Procesar sus compras y consultas</li>
+                    <li>Mantener un historial de transacciones</li>
+                    <li>Brindar soporte técnico</li>
+                    <li>Enviar comunicaciones importantes (si lo autoriza)</li>
+                </ul>
+                
+                <h6>Protección de Datos</h6>
+                <p>Implementamos medidas de seguridad técnicas y organizativas para proteger sus datos personales contra acceso no autorizado.</p>
+                
+                <h6>Derechos del Usuario</h6>
+                <p>Usted tiene derecho a acceder, rectificar, cancelar u oponerse al tratamiento de sus datos personales contactándonos.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registerForm');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const togglePassword = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const strengthBar = document.getElementById('passwordStrength');
+    const strengthText = document.getElementById('strengthText');
+    
+    // Toggle password visibility
+    togglePassword.addEventListener('click', function() {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        confirmPassword.setAttribute('type', type);
+        
+        eyeIcon.classList.toggle('bi-eye');
+        eyeIcon.classList.toggle('bi-eye-slash');
+    });
+    
+    // Password strength indicator
+    password.addEventListener('input', function() {
+        const value = this.value;
+        let strength = 0;
+        let feedback = '';
+        
+        if (value.length >= 6) strength += 20;
+        if (value.length >= 8) strength += 20;
+        if (/[a-z]/.test(value)) strength += 20;
+        if (/[A-Z]/.test(value)) strength += 20;
+        if (/[0-9]/.test(value)) strength += 20;
+        
+        strengthBar.style.width = strength + '%';
+        
+        if (strength < 40) {
+            strengthBar.className = 'progress-bar bg-danger';
+            feedback = 'Débil';
+        } else if (strength < 80) {
+            strengthBar.className = 'progress-bar bg-warning';
+            feedback = 'Media';
+        } else {
+            strengthBar.className = 'progress-bar bg-success';
+            feedback = 'Fuerte';
+        }
+        
+        strengthText.textContent = value.length > 0 ? `Fortaleza: ${feedback}` : 'Ingrese una contraseña';
+    });
+    
+    // Real-time validation
+    const inputs = form.querySelectorAll('input[required]');
+    inputs.forEach(input => {
+        input.addEventListener('blur', validateField);
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid')) {
+                validateField.call(this);
+            }
+        });
+    });
+    
+    function validateField() {
+        const field = this;
+        let isValid = true;
+        
+        switch(field.id) {
+            case 'nombre':
+                isValid = field.value.length >= 2;
+                break;
+            case 'email':
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                isValid = emailRegex.test(field.value);
+                break;
+            case 'password':
+                isValid = field.value.length >= 6;
+                break;
+            case 'confirm_password':
+                isValid = field.value === password.value;
+                break;
+        }
+        
+        field.classList.toggle('is-invalid', !isValid);
+        field.classList.toggle('is-valid', isValid && field.value.length > 0);
+        
+        return isValid;
+    }
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate all fields
+        let allValid = true;
+        inputs.forEach(input => {
+            if (!validateField.call(input)) {
+                allValid = false;
+            }
+        });
+        
+        // Check terms acceptance
+        const terms = document.getElementById('terms');
+        if (!terms.checked) {
+            alert('Debe aceptar los Términos y Condiciones para continuar');
+            allValid = false;
+        }
+        
+        if (allValid) {
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creando cuenta...';
+            submitBtn.disabled = true;
+            
+            // Submit form
+            form.submit();
+        }
+    });
+    
+    // Phone formatting
+    const telefono = document.getElementById('telefono');
+    telefono.addEventListener('input', function() {
+        let value = this.value.replace(/\D/g, ''); // Remove non-digits
+        
+        if (value.length >= 10) {
+            if (value.length === 10) {
+                // Format as (011) 1234-5678
+                value = `(${value.substring(0,3)}) ${value.substring(3,7)}-${value.substring(7)}`;
+            } else if (value.length === 11) {
+                // Format as 11-1234-5678
+                value = `${value.substring(0,2)}-${value.substring(2,6)}-${value.substring(6)}`;
+            }
+        }
+        
+        this.value = value;
+    });
+});
+</script>
+{% endblock %}

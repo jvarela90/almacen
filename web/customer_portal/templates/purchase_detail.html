@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Compra - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>
+                    <i class="bi bi-receipt"></i>
+                    Detalle de Compra
+                </h2>
+                <p class="text-muted mb-0">
+                    Comprobante #{{ purchase.id|string.zfill(6) }}
+                </p>
+            </div>
+            <div class="btn-group">
+                <a href="{{ url_for('purchases') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Volver
+                </a>
+                <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bi bi-printer"></i>
+                    Imprimir
+                </button>
+                <a href="{{ url_for('download_invoice', purchase_id=purchase.id) }}" class="btn btn-outline-success">
+                    <i class="bi bi-download"></i>
+                    Descargar PDF
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Información de la compra -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Información General
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Fecha:</strong></td>
+                                <td>{{ purchase.fecha_venta|datetime }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Estado:</strong></td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if purchase.estado == 'completada' else 'warning' if purchase.estado == 'pendiente' else 'danger' }} fs-6">
+                                        {{ purchase.estado|title }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Método de Pago:</strong></td>
+                                <td>
+                                    {% if purchase.metodo_pago %}
+                                        <i class="bi bi-{{ 'cash' if purchase.metodo_pago == 'efectivo' else 'credit-card' }}"></i>
+                                        {{ purchase.metodo_pago|title }}
+                                    {% else %}
+                                        <span class="text-muted">No especificado</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Usuario:</strong></td>
+                                <td>{{ purchase.usuario_nombre or 'Sistema' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sucursal:</strong></td>
+                                <td>{{ purchase.sucursal or 'Principal' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Observaciones:</strong></td>
+                                <td>{{ purchase.observaciones or 'Sin observaciones' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items de la compra -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bag-check"></i>
+                    Productos Comprados
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if purchase_items %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Código</th>
+                                <th class="text-end">Cantidad</th>
+                                <th class="text-end">Precio Unit.</th>
+                                <th class="text-end">Descuento</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in purchase_items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.producto_nombre }}</strong>
+                                    {% if item.producto_descripcion %}
+                                    <br>
+                                    <small class="text-muted">{{ item.producto_descripcion }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <code>{{ item.producto_codigo or 'N/A' }}</code>
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge bg-secondary">{{ item.cantidad }}</span>
+                                    {% if item.unidad_medida %}
+                                    <small class="text-muted d-block">{{ item.unidad_medida }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ item.precio_unitario|currency }}</td>
+                                <td class="text-end">
+                                    {% if item.descuento and item.descuento > 0 %}
+                                    <span class="text-success">
+                                        {{ item.descuento|currency }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">$0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ item.subtotal|currency }}</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active">
+                                <th colspan="5" class="text-end">Subtotal:</th>
+                                <th class="text-end">{{ purchase.subtotal|currency }}</th>
+                            </tr>
+                            {% if purchase.descuento and purchase.descuento > 0 %}
+                            <tr class="table-success">
+                                <th colspan="5" class="text-end">Descuento:</th>
+                                <th class="text-end text-success">-{{ purchase.descuento|currency }}</th>
+                            </tr>
+                            {% endif %}
+                            {% if purchase.impuestos and purchase.impuestos > 0 %}
+                            <tr class="table-warning">
+                                <th colspan="5" class="text-end">Impuestos:</th>
+                                <th class="text-end">{{ purchase.impuestos|currency }}</th>
+                            </tr>
+                            {% endif %}
+                            <tr class="table-primary">
+                                <th colspan="5" class="text-end fs-5">TOTAL:</th>
+                                <th class="text-end fs-4">
+                                    <strong>{{ purchase.total|currency }}</strong>
+                                </th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-box display-4 mb-3"></i>
+                    <p>No se encontraron detalles de productos para esta compra.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Historial de estados -->
+        {% if purchase.historial_estados %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i>
+                    Historial de Estados
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for estado in purchase.historial_estados %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-{{ 'success' if estado.estado == 'completada' else 'warning' if estado.estado == 'pendiente' else 'primary' }}"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">{{ estado.estado|title }}</h6>
+                            <p class="text-muted mb-1">{{ estado.fecha|datetime }}</p>
+                            {% if estado.observaciones %}
+                            <small class="text-muted">{{ estado.observaciones }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Panel lateral -->
+    <div class="col-lg-4">
+        <!-- Resumen -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-calculator"></i>
+                    Resumen
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Items:</span>
+                    <strong>{{ purchase_items|length if purchase_items else 0 }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Cantidad total:</span>
+                    <strong>
+                        {% set total_qty = purchase_items|sum(attribute='cantidad') if purchase_items else 0 %}
+                        {{ total_qty }}
+                    </strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Subtotal:</span>
+                    <span>{{ purchase.subtotal|currency }}</span>
+                </div>
+                {% if purchase.descuento and purchase.descuento > 0 %}
+                <div class="d-flex justify-content-between mb-2 text-success">
+                    <span>Descuento:</span>
+                    <span>-{{ purchase.descuento|currency }}</span>
+                </div>
+                {% endif %}
+                {% if purchase.impuestos and purchase.impuestos > 0 %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Impuestos:</span>
+                    <span>{{ purchase.impuestos|currency }}</span>
+                </div>
+                {% endif %}
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Total:</strong>
+                    <strong class="text-primary">{{ purchase.total|currency }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-tools"></i>
+                    Acciones
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('download_invoice', purchase_id=purchase.id) }}" 
+                       class="btn btn-outline-success">
+                        <i class="bi bi-download"></i>
+                        Descargar Comprobante
+                    </a>
+                    <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                        <i class="bi bi-printer"></i>
+                        Imprimir
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-info" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#shareModal">
+                        <i class="bi bi-share"></i>
+                        Compartir
+                    </button>
+                    {% if purchase.estado == 'pendiente' %}
+                    <button type="button" 
+                            class="btn btn-outline-warning" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#supportModal">
+                        <i class="bi bi-question-circle"></i>
+                        Consultar Estado
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Información de contacto -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-headset"></i>
+                    ¿Necesita ayuda?
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-3">
+                    Si tiene alguna consulta sobre esta compra, no dude en contactarnos.
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('support') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-chat-dots"></i>
+                        Crear Ticket de Soporte
+                    </a>
+                    <a href="tel:+5401112345678" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-telephone"></i>
+                        (011) 1234-5678
+                    </a>
+                    <a href="mailto:soporte@almacenpro.com" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-envelope"></i>
+                        soporte@almacenpro.com
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Compartir -->
+<div class="modal fade" id="shareModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-share"></i>
+                    Compartir Compra
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="shareUrl" class="form-label">URL de la compra:</label>
+                    <div class="input-group">
+                        <input type="text" 
+                               class="form-control" 
+                               id="shareUrl" 
+                               value="{{ request.url }}" 
+                               readonly>
+                        <button class="btn btn-outline-secondary" 
+                                type="button" 
+                                onclick="copyToClipboard('shareUrl')">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button type="button" class="btn btn-primary me-2" onclick="shareViaEmail()">
+                        <i class="bi bi-envelope"></i>
+                        Email
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="shareViaWhatsApp()">
+                        <i class="bi bi-whatsapp"></i>
+                        WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Soporte -->
+{% if purchase.estado == 'pendiente' %}
+<div class="modal fade" id="supportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-question-circle"></i>
+                    Consultar Estado
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="consultaAsunto" class="form-label">Motivo de la consulta</label>
+                        <select class="form-select" id="consultaAsunto">
+                            <option value="">Seleccione un motivo</option>
+                            <option value="estado">Consultar estado de compra</option>
+                            <option value="demora">Demora en procesamiento</option>
+                            <option value="cancelacion">Solicitar cancelación</option>
+                            <option value="otro">Otro motivo</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="consultaMensaje" class="form-label">Mensaje</label>
+                        <textarea class="form-control" 
+                                  id="consultaMensaje" 
+                                  rows="3" 
+                                  placeholder="Describa su consulta..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitConsulta()">
+                    <i class="bi bi-send"></i>
+                    Enviar Consulta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    
+    // Mostrar mensaje de éxito
+    showToast('URL copiada al portapapeles', 'success');
+}
+
+function shareViaEmail() {
+    const subject = encodeURIComponent(`Compra #{{ purchase.id|string.zfill(6) }} - {{ company_name }}`);
+    const body = encodeURIComponent(`Hola,\n\nTe comparto el detalle de mi compra:\n\nComprobante: #{{ purchase.id|string.zfill(6) }}\nFecha: {{ purchase.fecha_venta|date }}\nTotal: {{ purchase.total|currency }}\n\nPuedes ver los detalles aquí: ${window.location.href}\n\nSaludos!`);
+    
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+}
+
+function shareViaWhatsApp() {
+    const message = encodeURIComponent(`Compra #{{ purchase.id|string.zfill(6) }} - {{ purchase.total|currency }}\n${window.location.href}`);
+    window.open(`https://wa.me/?text=${message}`);
+}
+
+function submitConsulta() {
+    const asunto = document.getElementById('consultaAsunto').value;
+    const mensaje = document.getElementById('consultaMensaje').value;
+    
+    if (!asunto || !mensaje) {
+        showToast('Complete todos los campos', 'error');
+        return;
+    }
+    
+    // En implementación real, enviar via AJAX
+    showToast('Consulta enviada exitosamente. Le responderemos pronto.', 'success');
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('supportModal'));
+    modal.hide();
+}
+
+function showToast(message, type = 'info') {
+    const iconClass = type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-exclamation-circle' : 'bi-info-circle';
+    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    
+    const toast = `
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast show" role="alert">
+                <div class="toast-header ${bgClass} text-white">
+                    <i class="${iconClass} me-2"></i>
+                    <strong class="me-auto">Notificación</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toast);
+    
+    setTimeout(() => {
+        const toastEl = document.querySelector('.toast-container');
+        if (toastEl) toastEl.remove();
+    }, 5000);
+}
+
+// Estilos CSS para timeline
+document.head.insertAdjacentHTML('beforeend', `
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 20px;
+    width: 2px;
+    height: calc(100% - 10px);
+    background-color: #dee2e6;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+@media print {
+    .btn, .modal, .card-header .bi, nav, footer {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+    
+    .card-body {
+        padding: 15px !important;
+    }
+}
+</style>
+`);
+
+// Auto-actualizar estado si está pendiente
+document.addEventListener('DOMContentLoaded', function() {
+    {% if purchase.estado == 'pendiente' %}
+    setInterval(() => {
+        // En implementación real, hacer AJAX para verificar cambios de estado
+        console.log('Checking purchase status...');
+    }, 60000); // Cada minuto
+    {% endif %}
+});
+</script>
+{% endblock %}

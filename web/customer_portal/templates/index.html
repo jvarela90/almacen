@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Bienvenido - Portal de Clientes{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Hero Section -->
+        <div class="jumbotron bg-primary text-white rounded p-5 mb-5">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="display-4">
+                            <i class="bi bi-shop"></i>
+                            Portal de Clientes
+                        </h1>
+                        <p class="lead">
+                            Acceda a su información de compras, estado de cuenta y soporte técnico las 24 horas.
+                        </p>
+                        <p>
+                            Gestione su cuenta de forma segura y eficiente desde cualquier dispositivo.
+                        </p>
+                        <hr class="my-4">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <a class="btn btn-light btn-lg" href="{{ url_for('login') }}" role="button">
+                                    <i class="bi bi-box-arrow-in-right"></i>
+                                    Iniciar Sesión
+                                </a>
+                            </div>
+                            <div class="col-sm-6">
+                                <a class="btn btn-outline-light btn-lg" href="{{ url_for('register') }}" role="button">
+                                    <i class="bi bi-person-plus"></i>
+                                    Registrarse
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="bi bi-person-circle display-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="text-center mb-4">¿Qué puede hacer en el portal?</h2>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-bag-check text-primary display-4 mb-3"></i>
+                        <h5 class="card-title">Historial de Compras</h5>
+                        <p class="card-text">
+                            Consulte todas sus compras, descarque comprobantes y revise detalles de cada transacción.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-credit-card text-success display-4 mb-3"></i>
+                        <h5 class="card-title">Estado de Cuenta</h5>
+                        <p class="card-text">
+                            Revise su cuenta corriente, pagos realizados y saldo actual en tiempo real.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-headset text-info display-4 mb-3"></i>
+                        <h5 class="card-title">Soporte Técnico</h5>
+                        <p class="card-text">
+                            Cree tickets de soporte, consulte el estado de sus solicitudes y reciba ayuda especializada.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benefits Section -->
+        <div class="row bg-light rounded p-4 mb-5">
+            <div class="col-12">
+                <h3 class="text-center mb-4">Beneficios del Portal</h3>
+            </div>
+            
+            <div class="col-md-6">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Acceso 24/7:</strong> Disponible las 24 horas, todos los días
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Información en tiempo real:</strong> Datos actualizados al instante
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Históricos completos:</strong> Acceso a todo su historial de compras
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="col-md-6">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Seguridad garantizada:</strong> Conexión encriptada y datos protegidos
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Soporte integrado:</strong> Sistema de tickets para resolver dudas
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Multiplataforma:</strong> Funciona en cualquier dispositivo
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="row">
+            <div class="col-12 text-center">
+                <div class="card border-primary">
+                    <div class="card-body">
+                        <h4 class="card-title text-primary">¿Listo para comenzar?</h4>
+                        <p class="card-text">
+                            Si ya es cliente, inicie sesión para acceder a su información.
+                            Si es nuevo, regístrese en pocos pasos.
+                        </p>
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                Iniciar Sesión
+                            </a>
+                            <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">
+                                <i class="bi bi-person-plus"></i>
+                                Crear Cuenta
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Animación suave para botones
+document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+        this.style.transition = 'transform 0.2s ease';
+    });
+    
+    btn.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+    });
+});
+
+// Mostrar estadísticas si están disponibles
+document.addEventListener('DOMContentLoaded', function() {
+    // Aquí se podrían cargar estadísticas generales del sistema
+    console.log('Portal de Clientes cargado correctamente');
+});
+</script>
+{% endblock %}

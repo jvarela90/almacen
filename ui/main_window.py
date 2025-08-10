@@ -60,6 +60,9 @@ class MainWindow(QMainWindow):
         
         # Crear tabs según permisos del usuario
         self.create_all_tabs()
+        
+        # Aplicar permisos basados en roles
+        self.update_role_based_permissions()
     
     def create_all_tabs(self):
         """Crear todos los tabs según los permisos del usuario"""
@@ -142,22 +145,38 @@ class MainWindow(QMainWindow):
     def create_customers_tab(self):
         """Crear tab de clientes"""
         try:
-            customers_widget = self.create_customers_widget()
+            # Intentar usar el widget avanzado de clientes
+            from ui.widgets.customers_widget import CustomersWidget
+            customers_widget = CustomersWidget(self.managers, self.current_user, self)
             tab_index = self.central_widget.addTab(customers_widget, "👥 Clientes")
             self.widgets['customers'] = customers_widget
             
+        except ImportError as e:
+            logger.warning(f"Widget avanzado de clientes no disponible: {e}")
+            # Fallback al widget básico
+            customers_widget = self.create_customers_widget()
+            tab_index = self.central_widget.addTab(customers_widget, "👥 Clientes")
+            self.widgets['customers'] = customers_widget
         except Exception as e:
             logger.error(f"Error creando tab clientes: {e}")
+            # Fallback al widget básico
+            customers_widget = self.create_customers_widget()
+            tab_index = self.central_widget.addTab(customers_widget, "👥 Clientes")
+            self.widgets['customers'] = customers_widget
     
     def create_reports_tab(self):
         """Crear tab de reportes"""
         try:
-            reports_widget = self.create_reports_widget()
+            reports_widget = self.create_enhanced_reports_widget()
             tab_index = self.central_widget.addTab(reports_widget, "📊 Reportes")
             self.widgets['reports'] = reports_widget
             
         except Exception as e:
             logger.error(f"Error creando tab reportes: {e}")
+            # Fallback al widget básico
+            reports_widget = self.create_reports_widget()
+            tab_index = self.central_widget.addTab(reports_widget, "📊 Reportes")
+            self.widgets['reports'] = reports_widget
     
     def create_settings_tab(self):
         """Crear tab de configuraciones"""
@@ -323,6 +342,11 @@ class MainWindow(QMainWindow):
         self.time_timer = QTimer()
         self.time_timer.timeout.connect(lambda: current_time.setText(datetime.now().strftime("%H:%M:%S")))
         self.time_timer.start(1000)  # Actualizar cada segundo
+        
+        # Timer para actualizar datos en tiempo real
+        self.data_refresh_timer = QTimer()
+        self.data_refresh_timer.timeout.connect(self.refresh_all_data)
+        self.data_refresh_timer.start(60000)  # Actualizar cada minuto
     
     def center_window(self):
         """Centrar ventana en la pantalla"""
@@ -418,6 +442,8 @@ class MainWindow(QMainWindow):
             # Detener timers
             if hasattr(self, 'time_timer'):
                 self.time_timer.stop()
+            if hasattr(self, 'data_refresh_timer'):
+                self.data_refresh_timer.stop()
             event.accept()
         else:
             event.ignore()
@@ -438,15 +464,10 @@ class MainWindow(QMainWindow):
         # Información básica
         info_layout = QHBoxLayout()
         
-        # Tarjetas de información
-        cards = [
-            ("💰 Ventas Hoy", "$0.00", "#27ae60"),
-            ("📦 Productos", "0", "#3498db"),
-            ("⚠️ Stock Bajo", "0", "#e74c3c"),
-            ("👥 Clientes", "0", "#9b59b6")
-        ]
+        # Tarjetas de información dinámicas
+        cards_data = self.get_dashboard_data()
         
-        for title_text, value, color in cards:
+        for title_text, value, color in cards_data:
             card = self.create_info_card(title_text, value, color)
             info_layout.addWidget(card)
         
@@ -554,14 +575,87 @@ class MainWindow(QMainWindow):
         clear_btn = QPushButton("🗑️ Limpiar")
         process_btn = QPushButton("💳 Procesar Venta")
         process_btn.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; padding: 8px;")
+        
+        # Conectar botón de procesar venta al diálogo de pagos
+        process_btn.clicked.connect(lambda: self.process_sale_with_payment(1500.00))  # Ejemplo con $1500
+        
+        # Botón de prueba para ticket
+        ticket_btn = QPushButton("🎫 Ticket Demo")
+        ticket_btn.setStyleSheet("background-color: #9b59b6; color: white; font-weight: bold; padding: 8px;")
+        ticket_btn.clicked.connect(self.demo_ticket_print)
+        
         buttons_layout.addWidget(clear_btn)
         buttons_layout.addWidget(process_btn)
+        buttons_layout.addWidget(ticket_btn)
         right_panel.addLayout(buttons_layout)
         
         # Agregar paneles
         work_area.addLayout(left_panel)
         work_area.addLayout(right_panel)
         layout.addLayout(work_area)
+        
+        return widget
+    
+    def create_enhanced_reports_widget(self):
+        """Crear widget mejorado de reportes con el nuevo ReportDialog"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        
+        title = QLabel("📊 Centro de Reportes Avanzado")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #34495e; margin: 10px;")
+        layout.addWidget(title)
+        
+        # Botón principal para generar reportes
+        generate_report_btn = QPushButton("🎯 Generador de Reportes")
+        generate_report_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                padding: 15px;
+                border-radius: 8px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        generate_report_btn.clicked.connect(self.open_report_generator)
+        layout.addWidget(generate_report_btn)
+        
+        layout.addWidget(QLabel())  # Separador
+        
+        # Accesos rápidos a reportes comunes
+        quick_reports_group = QGroupBox("⚡ Reportes Rápidos")
+        quick_layout = QGridLayout(quick_reports_group)
+        
+        # Botones de reportes rápidos
+        quick_buttons = [
+            ("💰 Ventas de Hoy", self.generate_daily_sales_report),
+            ("📦 Stock Actual", self.generate_stock_report),
+            ("👥 Lista de Clientes", self.generate_customers_report),
+            ("⚠️ Stock Bajo", self.generate_low_stock_report),
+            ("🌟 Top Clientes", self.generate_top_customers_report),
+            ("💳 Ventas por Método", self.generate_payment_methods_report)
+        ]
+        
+        for i, (text, callback) in enumerate(quick_buttons):
+            btn = QPushButton(text)
+            btn.setStyleSheet("padding: 8px; text-align: left;")
+            btn.clicked.connect(callback)
+            row, col = divmod(i, 2)
+            quick_layout.addWidget(btn, row, col)
+        
+        layout.addWidget(quick_reports_group)
+        
+        # Área de información
+        info_label = QLabel("ℹ️ Use el Generador de Reportes para configuraciones avanzadas con filtros y exportación a múltiples formatos.")
+        info_label.setStyleSheet("color: #7f8c8d; font-style: italic; padding: 10px; background: #ecf0f1; border-radius: 5px;")
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+        
+        layout.addStretch()
         
         return widget
     
@@ -978,11 +1072,25 @@ class MainWindow(QMainWindow):
         try:
             # Intentar usar el diálogo existente
             from ui.dialogs.add_product_dialog import AddProductDialog
-            dialog = AddProductDialog(self.managers, edit_mode=True, product_id=product_id, parent=self)
+            
+            # Obtener datos del producto para editar
+            product_data = None
+            if 'product' in self.managers:
+                product_data = self.managers['product'].get_product_by_id(product_id)
+            
+            dialog = AddProductDialog(
+                self.managers.get('product'), 
+                self.managers.get('provider'), 
+                product_data=product_data, 
+                parent=self
+            )
             if dialog.exec_() == QDialog.Accepted:
                 self.load_products_data()  # Recargar datos
         except ImportError:
             QMessageBox.information(self, "Editar Producto", f"Funcionalidad en desarrollo.\nID del producto: {product_id}")
+        except Exception as e:
+            logger.error(f"Error editando producto: {e}")
+            QMessageBox.warning(self, "Error", f"Error al editar producto: {str(e)}")
     
     def adjust_stock(self, product_id):
         """Ajustar stock de producto"""
@@ -1034,3 +1142,463 @@ class MainWindow(QMainWindow):
                 self.current_user['rol_nombre']
             )
         )
+    
+    # NUEVOS MÉTODOS PARA FUNCIONALIDAD AVANZADA
+    
+    def refresh_all_data(self):
+        """Actualizar todos los datos en tiempo real"""
+        try:
+            # Actualizar datos del dashboard
+            if 'dashboard' in self.widgets:
+                dashboard_widget = self.widgets['dashboard']
+                if hasattr(dashboard_widget, 'refresh_data'):
+                    dashboard_widget.refresh_data()
+            
+            # Actualizar tabla de productos si está visible
+            current_tab = self.central_widget.currentWidget()
+            if current_tab == self.widgets.get('stock'):
+                self.load_products_data()
+            
+            # Actualizar clientes si el widget avanzado está activo
+            if 'customers' in self.widgets:
+                customers_widget = self.widgets['customers']
+                if hasattr(customers_widget, 'refresh_data'):
+                    customers_widget.refresh_data()
+            
+        except Exception as e:
+            logger.error(f"Error actualizando datos en tiempo real: {e}")
+    
+    def open_report_generator(self):
+        """Abrir el generador de reportes avanzado"""
+        try:
+            from ui.dialogs.report_dialog import ReportDialog
+            dialog = ReportDialog(self.managers, self)
+            dialog.report_generated.connect(self.on_report_generated)
+            dialog.exec_()
+        except ImportError as e:
+            logger.warning(f"ReportDialog no disponible: {e}")
+            QMessageBox.information(self, "Reportes", "Funcionalidad de reportes avanzados en desarrollo.")
+        except Exception as e:
+            logger.error(f"Error abriendo generador de reportes: {e}")
+            QMessageBox.warning(self, "Error", f"Error abriendo generador de reportes: {str(e)}")
+    
+    def on_report_generated(self, filename: str, format_type: str):
+        """Callback cuando se genera un reporte"""
+        self.status_message.setText(f"Reporte generado: {filename}")
+        
+        # Auto-limpiar mensaje después de 5 segundos
+        QTimer.singleShot(5000, lambda: self.status_message.setText("Sistema listo"))
+    
+    def generate_daily_sales_report(self):
+        """Generar reporte rápido de ventas del día"""
+        try:
+            from ui.dialogs.report_dialog import ReportDialog
+            dialog = ReportDialog(self.managers, self)
+            
+            # Pre-configurar para ventas del día
+            dialog.report_type_combo.setCurrentText("📊 Reporte de Ventas")
+            dialog.period_combo.setCurrentText("Hoy")
+            dialog.show_preview()
+            dialog.exec_()
+        except:
+            QMessageBox.information(self, "Reporte", "Generando reporte de ventas del día...")
+    
+    def generate_stock_report(self):
+        """Generar reporte rápido de stock actual"""
+        try:
+            from utils.exporters import export_data
+            
+            if 'product' not in self.managers:
+                QMessageBox.warning(self, "Error", "Manager de productos no disponible")
+                return
+            
+            # Obtener productos
+            products = self.managers['product'].get_all_products()
+            
+            if not products:
+                QMessageBox.information(self, "Info", "No hay productos para exportar")
+                return
+            
+            # Exportar a CSV rápidamente
+            filename = f"stock_actual_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+            success = export_data(products, filename, "csv", "Reporte de Stock Actual")
+            
+            if success:
+                QMessageBox.information(self, "Éxito", f"Reporte de stock exportado: {filename}")
+            else:
+                QMessageBox.warning(self, "Error", "Error exportando reporte de stock")
+                
+        except Exception as e:
+            logger.error(f"Error generando reporte de stock: {e}")
+            QMessageBox.warning(self, "Error", f"Error: {str(e)}")
+    
+    def generate_customers_report(self):
+        """Generar reporte rápido de clientes"""
+        try:
+            from utils.exporters import export_data
+            
+            if 'customer' not in self.managers:
+                QMessageBox.warning(self, "Error", "Manager de clientes no disponible")
+                return
+            
+            # Obtener clientes
+            customers = self.managers['customer'].get_all_customers()
+            
+            if not customers:
+                QMessageBox.information(self, "Info", "No hay clientes para exportar")
+                return
+            
+            # Exportar a CSV
+            filename = f"clientes_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+            success = export_data(customers, filename, "csv", "Lista de Clientes")
+            
+            if success:
+                QMessageBox.information(self, "Éxito", f"Lista de clientes exportada: {filename}")
+            else:
+                QMessageBox.warning(self, "Error", "Error exportando lista de clientes")
+                
+        except Exception as e:
+            logger.error(f"Error generando reporte de clientes: {e}")
+            QMessageBox.warning(self, "Error", f"Error: {str(e)}")
+    
+    def generate_low_stock_report(self):
+        """Generar reporte de productos con stock bajo"""
+        try:
+            from ui.dialogs.report_dialog import ReportDialog
+            dialog = ReportDialog(self.managers, self)
+            
+            # Pre-configurar para productos con stock bajo
+            dialog.report_type_combo.setCurrentText("⚠️ Productos con Stock Bajo")
+            dialog.show_preview()
+            dialog.exec_()
+        except:
+            QMessageBox.information(self, "Reporte", "Generando reporte de stock bajo...")
+    
+    def generate_top_customers_report(self):
+        """Generar reporte de mejores clientes"""
+        try:
+            from ui.dialogs.report_dialog import ReportDialog
+            dialog = ReportDialog(self.managers, self)
+            
+            # Pre-configurar para top clientes
+            dialog.report_type_combo.setCurrentText("🌟 Top Clientes")
+            dialog.show_preview()
+            dialog.exec_()
+        except:
+            QMessageBox.information(self, "Reporte", "Generando reporte de mejores clientes...")
+    
+    def generate_payment_methods_report(self):
+        """Generar reporte de ventas por método de pago"""
+        try:
+            # Este sería un nuevo tipo de reporte
+            QMessageBox.information(self, "Reporte", "Reporte de métodos de pago - Funcionalidad en desarrollo")
+        except Exception as e:
+            logger.error(f"Error generando reporte de métodos de pago: {e}")
+            QMessageBox.warning(self, "Error", f"Error: {str(e)}")
+    
+    def open_payment_dialog(self, amount: float, customer_data=None):
+        """Abrir diálogo de procesamiento de pagos"""
+        try:
+            from ui.dialogs.payment_dialog import PaymentDialog
+            dialog = PaymentDialog(amount, customer_data, parent=self)
+            dialog.payment_processed.connect(self.on_payment_processed)
+            return dialog.exec_()
+        except ImportError:
+            QMessageBox.warning(self, "Error", "Diálogo de pagos no disponible")
+            return QDialog.Rejected
+        except Exception as e:
+            logger.error(f"Error abriendo diálogo de pagos: {e}")
+            QMessageBox.warning(self, "Error", f"Error procesando pago: {str(e)}")
+            return QDialog.Rejected
+    
+    def on_payment_processed(self, payment_data):
+        """Callback cuando se procesa un pago"""
+        try:
+            total_paid = payment_data.get('total_paid', 0)
+            change = payment_data.get('change', 0)
+            
+            message = f"Pago procesado: ${total_paid:.2f}"
+            if change > 0:
+                message += f" - Cambio: ${change:.2f}"
+            
+            self.status_message.setText(message)
+            
+            # Limpiar después de 5 segundos
+            QTimer.singleShot(5000, lambda: self.status_message.setText("Sistema listo"))
+            
+        except Exception as e:
+            logger.error(f"Error procesando callback de pago: {e}")
+    
+    def print_ticket(self, sale_data):
+        """Imprimir ticket de venta"""
+        try:
+            from utils.ticket_printer import TicketPrinter
+            
+            # Configuración de la empresa (podría venir de configuración)
+            company_info = {
+                'company_name': 'AlmacénPro',
+                'company_address': 'Dirección de la empresa',
+                'company_phone': '(011) 1234-5678',
+                'company_cuit': '20-12345678-9'
+            }
+            
+            printer = TicketPrinter(**company_info)
+            
+            # Generar contenido del ticket
+            ticket_content = printer.generate_sale_ticket(sale_data)
+            
+            # Mostrar preview y opciones
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Vista Previa del Ticket")
+            dialog.resize(500, 600)
+            
+            layout = QVBoxLayout(dialog)
+            
+            # Área de preview
+            preview_text = QTextEdit()
+            preview_text.setFont(QFont("Courier", 10))  # Fuente monospace
+            preview_text.setText(ticket_content)
+            preview_text.setReadOnly(True)
+            layout.addWidget(preview_text)
+            
+            # Botones
+            buttons_layout = QHBoxLayout()
+            
+            save_btn = QPushButton("💾 Guardar")
+            save_btn.clicked.connect(lambda: self.save_ticket(printer, sale_data))
+            
+            print_btn = QPushButton("🖨️ Imprimir")
+            print_btn.clicked.connect(lambda: self.do_print_ticket(printer, sale_data))
+            
+            close_btn = QPushButton("Cerrar")
+            close_btn.clicked.connect(dialog.close)
+            
+            buttons_layout.addWidget(save_btn)
+            buttons_layout.addWidget(print_btn)
+            buttons_layout.addStretch()
+            buttons_layout.addWidget(close_btn)
+            
+            layout.addLayout(buttons_layout)
+            
+            dialog.exec_()
+            
+        except ImportError:
+            QMessageBox.warning(self, "Error", "Sistema de impresión de tickets no disponible")
+        except Exception as e:
+            logger.error(f"Error imprimiendo ticket: {e}")
+            QMessageBox.warning(self, "Error", f"Error imprimiendo ticket: {str(e)}")
+    
+    def save_ticket(self, printer, sale_data):
+        """Guardar ticket en archivo"""
+        try:
+            filename, _ = QFileDialog.getSaveFileName(
+                self, "Guardar Ticket", 
+                f"ticket_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                "Archivos de texto (*.txt)"
+            )
+            
+            if filename:
+                saved_file = printer.save_ticket_to_file(
+                    printer.generate_sale_ticket(sale_data), 
+                    filename
+                )
+                if saved_file:
+                    QMessageBox.information(self, "Éxito", f"Ticket guardado en: {saved_file}")
+                else:
+                    QMessageBox.warning(self, "Error", "Error guardando ticket")
+                    
+        except Exception as e:
+            logger.error(f"Error guardando ticket: {e}")
+            QMessageBox.warning(self, "Error", f"Error: {str(e)}")
+    
+    def do_print_ticket(self, printer, sale_data):
+        """Ejecutar impresión del ticket"""
+        try:
+            ticket_content = printer.generate_sale_ticket(sale_data)
+            success = printer.print_ticket(ticket_content)
+            
+            if success:
+                QMessageBox.information(self, "Éxito", "Ticket enviado a impresora")
+            else:
+                QMessageBox.warning(self, "Error", "Error enviando ticket a impresora")
+                
+        except Exception as e:
+            logger.error(f"Error imprimiendo: {e}")
+            QMessageBox.warning(self, "Error", f"Error: {str(e)}")
+    
+    def demo_ticket_print(self):
+        """Mostrar demo de impresión de ticket"""
+        try:
+            # Datos de venta de ejemplo
+            sample_sale_data = {
+                'id': 123,
+                'numero_factura': 'A-00000123',
+                'fecha_venta': datetime.now(),
+                'cliente_nombre': 'Juan Pérez',
+                'vendedor_nombre': self.current_user.get('nombre_completo', 'Vendedor'),
+                'subtotal': 1350.00,
+                'impuestos': 283.50,
+                'total': 1633.50,
+                'items': [
+                    {
+                        'producto_nombre': 'Producto de Ejemplo 1',
+                        'cantidad': 2,
+                        'precio_unitario': 500.00,
+                        'subtotal': 1000.00
+                    },
+                    {
+                        'producto_nombre': 'Producto de Ejemplo 2 con nombre muy largo que se truncará',
+                        'cantidad': 1,
+                        'precio_unitario': 350.00,
+                        'subtotal': 350.00
+                    }
+                ],
+                'payments': [
+                    {
+                        'metodo_pago': 'EFECTIVO',
+                        'importe': 1633.50,
+                        'fecha_pago': datetime.now(),
+                        'referencia': 'Pago en efectivo'
+                    }
+                ]
+            }
+            
+            self.print_ticket(sample_sale_data)
+            
+        except Exception as e:
+            logger.error(f"Error en demo de ticket: {e}")
+            QMessageBox.warning(self, "Error", f"Error: {str(e)}")
+    
+    def update_role_based_permissions(self):
+        """Actualizar permisos según el rol del usuario"""
+        try:
+            role = self.current_user.get('rol_nombre', '').upper()
+            
+            # Ocultar/mostrar tabs según rol
+            for i in range(self.central_widget.count()):
+                tab_text = self.central_widget.tabText(i)
+                
+                if role == 'DEPOSITO':
+                    # Solo mostrar Dashboard, Productos, Compras
+                    if any(keyword in tab_text.lower() for keyword in ['venta', 'cliente', 'reporte']):
+                        self.central_widget.setTabEnabled(i, False)
+                
+                elif role == 'VENDEDOR':
+                    # Solo mostrar Dashboard, Ventas, Clientes (consulta)
+                    if any(keyword in tab_text.lower() for keyword in ['producto', 'compra', 'administración', 'configuración']):
+                        self.central_widget.setTabEnabled(i, False)
+                
+                elif role == 'GERENTE':
+                    # Acceso a casi todo excepto administración completa
+                    if 'administración' in tab_text.lower():
+                        self.central_widget.setTabEnabled(i, False)
+                
+            # Actualizar mensaje de status
+            if role == 'ADMINISTRADOR':
+                self.status_message.setText("Modo Administrador - Acceso completo al sistema")
+            elif role == 'GERENTE':
+                self.status_message.setText("Modo Gerente - Gestión completa de operaciones")
+            elif role == 'DEPOSITO':
+                self.status_message.setText("Modo Depósito - Gestión de productos y stock")
+            elif role == 'VENDEDOR':
+                self.status_message.setText("Modo Vendedor - Procesamiento de ventas")
+            
+        except Exception as e:
+            logger.error(f"Error actualizando permisos por rol: {e}")
+    
+    def process_sale_with_payment(self, amount: float, customer_data=None):
+        """Procesar venta con diálogo de pago integrado"""
+        try:
+            result = self.open_payment_dialog(amount, customer_data)
+            
+            if result == QDialog.Accepted:
+                # Venta procesada exitosamente
+                self.status_message.setText("Venta procesada exitosamente")
+                
+                # Aquí se podría agregar lógica para:
+                # - Actualizar stock
+                # - Guardar venta en BD
+                # - Imprimir ticket
+                # - Actualizar dashboard
+                
+                # Simular actualización de datos
+                QTimer.singleShot(1000, self.refresh_all_data)
+            else:
+                self.status_message.setText("Venta cancelada")
+                
+        except Exception as e:
+            logger.error(f"Error procesando venta: {e}")
+            QMessageBox.warning(self, "Error", f"Error procesando venta: {str(e)}")
+    
+    def get_dashboard_data(self):
+        """Obtener datos dinámicos para el dashboard"""
+        try:
+            role = self.current_user.get('rol_nombre', '').upper()
+            cards = []
+            
+            # Datos comunes para todos los roles
+            if 'sales' in self.managers or 'sale' in self.managers:
+                # Ventas de hoy
+                sales_today = 0
+                try:
+                    sales_manager = self.managers.get('sales') or self.managers.get('sale')
+                    if hasattr(sales_manager, 'get_daily_summary'):
+                        summary = sales_manager.get_daily_summary(date.today())
+                        sales_today = summary.get('total_ventas', 0)
+                except:
+                    pass
+                cards.append(("💰 Ventas Hoy", f"${sales_today:,.2f}", "#27ae60"))
+            
+            # Datos específicos por rol
+            if role in ['ADMINISTRADOR', 'GERENTE', 'DEPOSITO']:
+                # Productos
+                products_count = 0
+                try:
+                    if 'product' in self.managers:
+                        products = self.managers['product'].get_all_products()
+                        products_count = len(products) if products else 0
+                except:
+                    pass
+                cards.append(("📦 Productos", str(products_count), "#3498db"))
+                
+                # Stock bajo
+                low_stock_count = 0
+                try:
+                    if 'product' in self.managers and hasattr(self.managers['product'], 'get_products_with_low_stock'):
+                        low_stock = self.managers['product'].get_products_with_low_stock()
+                        low_stock_count = len(low_stock) if low_stock else 0
+                except:
+                    pass
+                cards.append(("⚠️ Stock Bajo", str(low_stock_count), "#e74c3c"))
+            
+            if role in ['ADMINISTRADOR', 'GERENTE', 'VENDEDOR']:
+                # Clientes
+                customers_count = 0
+                try:
+                    if 'customer' in self.managers:
+                        customers = self.managers['customer'].get_all_customers()
+                        customers_count = len(customers) if customers else 0
+                except:
+                    pass
+                cards.append(("👥 Clientes", str(customers_count), "#9b59b6"))
+            
+            # Si no hay datos específicos, mostrar datos básicos
+            if not cards:
+                cards = [
+                    ("💰 Ventas Hoy", "$0.00", "#27ae60"),
+                    ("📦 Productos", "0", "#3498db"),
+                    ("⚠️ Stock Bajo", "0", "#e74c3c"),
+                    ("👥 Clientes", "0", "#9b59b6")
+                ]
+            
+            return cards
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo datos del dashboard: {e}")
+            # Fallback a datos estáticos
+            return [
+                ("💰 Ventas Hoy", "$0.00", "#27ae60"),
+                ("📦 Productos", "0", "#3498db"),
+                ("⚠️ Stock Bajo", "0", "#e74c3c"),
+                ("👥 Clientes", "0", "#9b59b6")
+            ]
