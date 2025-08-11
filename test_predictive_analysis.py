@@ -30,7 +30,7 @@ class TestPredictiveAnalysis(unittest.TestCase):
         
         # Inicializar managers
         self.db_manager = DatabaseManager(self.temp_db.name)
-        self.db_manager.create_tables()
+        self.db_manager._create_all_tables()
         
         self.customer_manager = CustomerManager(self.db_manager)
         self.product_manager = ProductManager(self.db_manager)
@@ -65,7 +65,7 @@ class TestPredictiveAnalysis(unittest.TestCase):
         
         self.product_ids = []
         for product in products:
-            product_id = self.product_manager.add_product(product)
+            product_id = self.product_manager.create_product(product)
             self.product_ids.append(product_id)
             print(f"  Producto creado: {product['nombre']} (ID: {product_id})")
         

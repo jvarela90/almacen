@@ -1114,12 +1114,537 @@ class PredictiveAnalysisManager:
             );
             """
             
+            # Tabla de predicciones de inventario
+            inventory_predictions_table = """
+            CREATE TABLE IF NOT EXISTS inventory_predictions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER NOT NULL,
+                prediction_type TEXT NOT NULL,
+                predicted_demand REAL NOT NULL,
+                suggested_stock REAL NOT NULL,
+                confidence REAL NOT NULL,
+                factors TEXT,
+                prediction_period TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (product_id) REFERENCES productos (id)
+            );
+            """
+            
+            # Tabla de análisis de tendencias de mercado
+            market_trends_table = """
+            CREATE TABLE IF NOT EXISTS market_trends (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
+                trend_type TEXT NOT NULL,
+                trend_strength REAL NOT NULL,
+                period_analyzed TEXT NOT NULL,
+                key_products TEXT,
+                insights TEXT,
+                created_at TEXT NOT NULL
+            );
+            """
+            
             self.db_manager.execute_query(predictions_table)
             self.db_manager.execute_query(segments_table)
             self.db_manager.execute_query(patterns_table)
+            self.db_manager.execute_query(inventory_predictions_table)
+            self.db_manager.execute_query(market_trends_table)
             
+            logger.info("Tablas de análisis predictivo creadas exitosamente")
             return True
             
         except Exception as e:
             logger.error(f"Error creando tablas de análisis predictivo: {e}")
             return False
+
+    # === NUEVAS FUNCIONALIDADES BI AVANZADAS ===
+
+    def predict_inventory_demand(self, product_id: int, days_ahead: int = 30) -> Dict[str, Any]:
+        """Predicción de demanda de inventario para un producto"""
+        try:
+            # Obtener historial de ventas del producto
+            query = """
+            SELECT v.fecha_venta, dv.cantidad, v.total as sale_total
+            FROM ventas v
+            JOIN detalle_venta dv ON v.id = dv.venta_id
+            WHERE dv.producto_id = ? 
+            AND v.fecha_venta >= date('now', '-365 days')
+            ORDER BY v.fecha_venta
+            """
+            
+            sales_history = self.db_manager.execute_query(query, (product_id,))
+            if not sales_history or len(sales_history) < 10:
+                return {'error': 'Datos insuficientes para predicción', 'min_required': 10}
+            
+            # Análisis temporal de ventas
+            daily_sales = defaultdict(int)
+            for sale in sales_history:
+                date_key = sale['fecha_venta'][:10]  # YYYY-MM-DD
+                daily_sales[date_key] += sale['cantidad']
+            
+            # Convertir a lista ordenada
+            sorted_dates = sorted(daily_sales.keys())
+            quantities = [daily_sales[date] for date in sorted_dates]
+            
+            # Calcular estadísticas básicas
+            avg_daily_demand = sum(quantities) / len(quantities)
+            max_demand = max(quantities)
+            min_demand = min(quantities)
+            std_dev = (sum((q - avg_daily_demand) ** 2 for q in quantities) / len(quantities)) ** 0.5
+            
+            # Detectar tendencia (regresión lineal simple)
+            n = len(quantities)
+            x = list(range(n))
+            sum_x = sum(x)
+            sum_y = sum(quantities)
+            sum_xy = sum(xi * yi for xi, yi in zip(x, quantities))
+            sum_x2 = sum(xi * xi for xi in x)
+            
+            slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x) if n * sum_x2 - sum_x * sum_x != 0 else 0
+            
+            # Predicción base
+            predicted_daily_demand = max(0, avg_daily_demand + slope * n)
+            predicted_total_demand = predicted_daily_demand * days_ahead
+            
+            # Factor de seguridad basado en variabilidad
+            safety_factor = 1 + (std_dev / avg_daily_demand) * 0.5 if avg_daily_demand > 0 else 1.2
+            suggested_stock = predicted_total_demand * safety_factor
+            
+            # Calcular confianza
+            coefficient_of_variation = std_dev / avg_daily_demand if avg_daily_demand > 0 else 1
+            confidence = max(0.3, 1 - coefficient_of_variation)
+            
+            return {
+                'product_id': product_id,
+                'prediction_period_days': days_ahead,
+                'historical_data_points': len(sales_history),
+                'avg_daily_demand': round(avg_daily_demand, 2),
+                'predicted_daily_demand': round(predicted_daily_demand, 2),
+                'predicted_total_demand': round(predicted_total_demand, 2),
+                'suggested_stock_level': round(suggested_stock, 2),
+                'confidence_score': round(confidence, 2),
+                'trend_slope': round(slope, 4),
+                'variability': round(coefficient_of_variation, 2),
+                'demand_stats': {
+                    'max': max_demand,
+                    'min': min_demand,
+                    'std_dev': round(std_dev, 2)
+                },
+                'recommendation': self._generate_inventory_recommendation(predicted_total_demand, suggested_stock, confidence)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error prediciendo demanda de inventario: {e}")
+            return {'error': str(e)}
+
+    def _generate_inventory_recommendation(self, predicted_demand: float, suggested_stock: float, confidence: float) -> str:
+        """Generar recomendación de inventario"""
+        if confidence > 0.8:
+            confidence_text = "alta confianza"
+        elif confidence > 0.6:
+            confidence_text = "confianza media"
+        else:
+            confidence_text = "baja confianza"
+        
+        if predicted_demand > suggested_stock * 0.8:
+            urgency = "Reabastecer inmediatamente"
+        elif predicted_demand > suggested_stock * 0.6:
+            urgency = "Planificar reabastecimiento pronto"
+        else:
+            urgency = "Stock suficiente por el período"
+        
+        return f"{urgency}. Demanda prevista: {predicted_demand:.0f} unidades ({confidence_text})."
+
+    def analyze_seasonal_trends(self, months_back: int = 12) -> Dict[str, Any]:
+        """Análisis de tendencias estacionales del negocio"""
+        try:
+            query = """
+            SELECT 
+                strftime('%m', v.fecha_venta) as month,
+                strftime('%Y', v.fecha_venta) as year,
+                COUNT(v.id) as transaction_count,
+                SUM(v.total) as total_revenue,
+                AVG(v.total) as avg_ticket,
+                COUNT(DISTINCT v.cliente_id) as unique_customers,
+                COUNT(DISTINCT dv.producto_id) as unique_products
+            FROM ventas v
+            LEFT JOIN detalle_venta dv ON v.id = dv.venta_id
+            WHERE v.fecha_venta >= date('now', '-{} months')
+            GROUP BY year, month
+            ORDER BY year, month
+            """.format(months_back)
+            
+            monthly_data = self.db_manager.execute_query(query)
+            if not monthly_data or len(monthly_data) < 6:
+                return {'error': 'Datos insuficientes para análisis estacional'}
+            
+            # Agrupar por mes (ignorando año para detectar patrones estacionales)
+            seasonal_data = defaultdict(list)
+            for row in monthly_data:
+                month = int(row['month'])
+                seasonal_data[month].append({
+                    'revenue': row['total_revenue'] or 0,
+                    'transactions': row['transaction_count'] or 0,
+                    'avg_ticket': row['avg_ticket'] or 0,
+                    'customers': row['unique_customers'] or 0
+                })
+            
+            # Calcular promedios mensuales
+            seasonal_averages = {}
+            for month, data_points in seasonal_data.items():
+                if data_points:
+                    seasonal_averages[month] = {
+                        'avg_revenue': sum(d['revenue'] for d in data_points) / len(data_points),
+                        'avg_transactions': sum(d['transactions'] for d in data_points) / len(data_points),
+                        'avg_ticket_size': sum(d['avg_ticket'] for d in data_points) / len(data_points),
+                        'avg_customers': sum(d['customers'] for d in data_points) / len(data_points),
+                        'data_points': len(data_points)
+                    }
+            
+            # Detectar picos y valles
+            if seasonal_averages:
+                revenue_by_month = {month: data['avg_revenue'] for month, data in seasonal_averages.items()}
+                peak_month = max(revenue_by_month.keys(), key=lambda k: revenue_by_month[k])
+                low_month = min(revenue_by_month.keys(), key=lambda k: revenue_by_month[k])
+                
+                # Calcular variabilidad estacional
+                revenues = list(revenue_by_month.values())
+                avg_revenue = sum(revenues) / len(revenues)
+                seasonal_variance = sum((r - avg_revenue) ** 2 for r in revenues) / len(revenues)
+                seasonal_coefficient = (seasonal_variance ** 0.5) / avg_revenue if avg_revenue > 0 else 0
+            else:
+                peak_month = low_month = None
+                seasonal_coefficient = 0
+            
+            month_names = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+            
+            return {
+                'analysis_period_months': months_back,
+                'seasonal_strength': round(seasonal_coefficient, 3),
+                'is_highly_seasonal': seasonal_coefficient > 0.3,
+                'peak_month': peak_month,
+                'peak_month_name': month_names[peak_month - 1] if peak_month else None,
+                'low_month': low_month,
+                'low_month_name': month_names[low_month - 1] if low_month else None,
+                'monthly_patterns': {
+                    month_names[month - 1]: {
+                        'avg_revenue': round(data['avg_revenue'], 2),
+                        'avg_transactions': round(data['avg_transactions'], 1),
+                        'avg_ticket': round(data['avg_ticket_size'], 2),
+                        'reliability': 'high' if data['data_points'] >= 3 else 'low'
+                    }
+                    for month, data in seasonal_averages.items()
+                },
+                'recommendations': self._generate_seasonal_recommendations(seasonal_averages, peak_month, low_month, seasonal_coefficient)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analizando tendencias estacionales: {e}")
+            return {'error': str(e)}
+
+    def _generate_seasonal_recommendations(self, seasonal_data: Dict, peak_month: int, low_month: int, seasonal_strength: float) -> List[str]:
+        """Generar recomendaciones basadas en análisis estacional"""
+        recommendations = []
+        month_names = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        
+        if seasonal_strength > 0.3:
+            recommendations.append("Negocio altamente estacional - planificar inventario y marketing según temporadas")
+            
+            if peak_month:
+                recommendations.append(f"Preparar stock extra para {month_names[peak_month - 1]} (mes pico)")
+                
+            if low_month:
+                recommendations.append(f"Planificar promociones especiales para {month_names[low_month - 1]} (mes bajo)")
+                
+        elif seasonal_strength > 0.15:
+            recommendations.append("Estacionalidad moderada - ajustar estrategias según patrones mensuales")
+        else:
+            recommendations.append("Negocio poco estacional - mantener estrategias constantes durante el año")
+        
+        return recommendations
+
+    def analyze_product_performance_trends(self, top_n: int = 20) -> Dict[str, Any]:
+        """Análisis de tendencias de rendimiento de productos"""
+        try:
+            # Obtener productos top por ventas
+            query = """
+            SELECT p.id, p.nombre, p.categoria,
+                   SUM(dv.cantidad) as total_quantity,
+                   SUM(dv.cantidad * dv.precio) as total_revenue,
+                   COUNT(DISTINCT v.id) as transaction_count,
+                   AVG(dv.precio) as avg_price,
+                   MIN(v.fecha_venta) as first_sale,
+                   MAX(v.fecha_venta) as last_sale
+            FROM productos p
+            JOIN detalle_venta dv ON p.id = dv.producto_id
+            JOIN ventas v ON dv.venta_id = v.id
+            WHERE v.fecha_venta >= date('now', '-365 days')
+            GROUP BY p.id
+            ORDER BY total_revenue DESC
+            LIMIT ?
+            """
+            
+            top_products = self.db_manager.execute_query(query, (top_n,))
+            if not top_products:
+                return {'error': 'No hay datos de productos'}
+            
+            product_analysis = []
+            
+            for product in top_products:
+                # Análisis de tendencia mensual para este producto
+                monthly_query = """
+                SELECT strftime('%Y-%m', v.fecha_venta) as month,
+                       SUM(dv.cantidad) as quantity,
+                       SUM(dv.cantidad * dv.precio) as revenue
+                FROM ventas v
+                JOIN detalle_venta dv ON v.id = dv.venta_id
+                WHERE dv.producto_id = ? 
+                AND v.fecha_venta >= date('now', '-12 months')
+                GROUP BY month
+                ORDER BY month
+                """
+                
+                monthly_data = self.db_manager.execute_query(monthly_query, (product['id'],))
+                
+                if len(monthly_data) >= 3:
+                    # Calcular tendencia
+                    quantities = [row['quantity'] for row in monthly_data]
+                    trend = self._calculate_trend(quantities)
+                    
+                    # Calcular estacionalidad
+                    avg_quantity = sum(quantities) / len(quantities)
+                    variance = sum((q - avg_quantity) ** 2 for q in quantities) / len(quantities)
+                    seasonality = (variance ** 0.5) / avg_quantity if avg_quantity > 0 else 0
+                    
+                    # Calcular velocidad de rotación
+                    days_selling = (datetime.strptime(product['last_sale'], '%Y-%m-%d %H:%M:%S') - 
+                                  datetime.strptime(product['first_sale'], '%Y-%m-%d %H:%M:%S')).days
+                    rotation_speed = product['total_quantity'] / max(days_selling, 1) if days_selling > 0 else 0
+                    
+                    product_analysis.append({
+                        'product_id': product['id'],
+                        'product_name': product['nombre'],
+                        'category': product['categoria'],
+                        'total_revenue': product['total_revenue'],
+                        'total_quantity': product['total_quantity'],
+                        'avg_price': round(product['avg_price'], 2),
+                        'trend': trend,
+                        'seasonality_score': round(seasonality, 2),
+                        'rotation_speed': round(rotation_speed, 2),
+                        'performance_score': self._calculate_product_performance_score(product, trend, seasonality, rotation_speed),
+                        'monthly_data': monthly_data,
+                        'recommendations': self._generate_product_recommendations(product, trend, seasonality, rotation_speed)
+                    })
+            
+            # Análisis por categorías
+            category_analysis = self._analyze_category_trends(top_products)
+            
+            return {
+                'analysis_date': datetime.now().isoformat(),
+                'products_analyzed': len(product_analysis),
+                'product_performance': product_analysis,
+                'category_analysis': category_analysis,
+                'top_performers': sorted(product_analysis, key=lambda x: x['performance_score'], reverse=True)[:5],
+                'declining_products': [p for p in product_analysis if p['trend']['direction'] == 'decreasing'],
+                'growth_products': [p for p in product_analysis if p['trend']['direction'] == 'increasing']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analizando tendencias de productos: {e}")
+            return {'error': str(e)}
+
+    def _calculate_product_performance_score(self, product: Dict, trend: Dict, seasonality: float, rotation: float) -> float:
+        """Calcular score de rendimiento del producto"""
+        base_score = 0.5
+        
+        # Factor de tendencia
+        if trend['direction'] == 'increasing':
+            trend_factor = 0.3 * trend['strength']
+        elif trend['direction'] == 'decreasing':
+            trend_factor = -0.3 * trend['strength']
+        else:
+            trend_factor = 0
+        
+        # Factor de rotación (normalizado)
+        rotation_factor = min(rotation / 10, 0.2)  # Max 0.2 points
+        
+        # Factor de estabilidad (menos estacionalidad = más estable)
+        stability_factor = max(0, 0.1 - seasonality * 0.1)
+        
+        return max(0, min(1, base_score + trend_factor + rotation_factor + stability_factor))
+
+    def _generate_product_recommendations(self, product: Dict, trend: Dict, seasonality: float, rotation: float) -> List[str]:
+        """Generar recomendaciones para el producto"""
+        recommendations = []
+        
+        if trend['direction'] == 'increasing' and trend['strength'] > 0.5:
+            recommendations.append("Producto en crecimiento - considerar aumentar stock y marketing")
+        elif trend['direction'] == 'decreasing' and trend['strength'] > 0.3:
+            recommendations.append("Ventas decrecientes - revisar estrategia de precios o promociones")
+        
+        if seasonality > 0.5:
+            recommendations.append("Producto altamente estacional - ajustar inventario según época")
+        
+        if rotation < 1:
+            recommendations.append("Baja rotación - considerar promociones o descontinuar")
+        elif rotation > 5:
+            recommendations.append("Alta rotación - asegurar stock suficiente")
+        
+        return recommendations
+
+    def _analyze_category_trends(self, products: List[Dict]) -> Dict[str, Any]:
+        """Análisis de tendencias por categoría"""
+        categories = defaultdict(list)
+        
+        for product in products:
+            categories[product['categoria']].append(product)
+        
+        category_stats = {}
+        for category, product_list in categories.items():
+            total_revenue = sum(p['total_revenue'] for p in product_list)
+            total_quantity = sum(p['total_quantity'] for p in product_list)
+            avg_price = sum(p['avg_price'] for p in product_list) / len(product_list)
+            
+            category_stats[category] = {
+                'product_count': len(product_list),
+                'total_revenue': total_revenue,
+                'total_quantity': total_quantity,
+                'avg_price': round(avg_price, 2),
+                'top_product': max(product_list, key=lambda x: x['total_revenue'])['nombre']
+            }
+        
+        return category_stats
+
+    def generate_business_insights_report(self) -> Dict[str, Any]:
+        """Generar reporte completo de insights del negocio"""
+        try:
+            # Obtener análisis de segmentos
+            segment_analysis = self.get_segment_analysis()
+            
+            # Análisis estacional
+            seasonal_analysis = self.analyze_seasonal_trends(12)
+            
+            # Tendencias de productos
+            product_trends = self.analyze_product_performance_trends(15)
+            
+            # Métricas generales del negocio
+            business_metrics = self._calculate_business_kpis()
+            
+            # Generar insights automáticos
+            auto_insights = self._generate_automated_insights(segment_analysis, seasonal_analysis, product_trends, business_metrics)
+            
+            return {
+                'report_date': datetime.now().isoformat(),
+                'executive_summary': auto_insights['executive_summary'],
+                'key_insights': auto_insights['key_insights'],
+                'segment_analysis': segment_analysis,
+                'seasonal_analysis': seasonal_analysis,
+                'product_performance': product_trends,
+                'business_metrics': business_metrics,
+                'recommendations': auto_insights['strategic_recommendations'],
+                'alert_items': auto_insights['alerts']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generando reporte de insights: {e}")
+            return {'error': str(e)}
+
+    def _calculate_business_kpis(self) -> Dict[str, Any]:
+        """Calcular KPIs principales del negocio"""
+        try:
+            # KPIs de los últimos 30 días vs 30 días anteriores
+            current_period = """
+            SELECT 
+                COUNT(DISTINCT v.id) as transactions,
+                COUNT(DISTINCT v.cliente_id) as customers,
+                SUM(v.total) as revenue,
+                AVG(v.total) as avg_ticket,
+                SUM(dv.cantidad) as units_sold
+            FROM ventas v
+            LEFT JOIN detalle_venta dv ON v.id = dv.venta_id
+            WHERE v.fecha_venta >= date('now', '-30 days')
+            """
+            
+            previous_period = """
+            SELECT 
+                COUNT(DISTINCT v.id) as transactions,
+                COUNT(DISTINCT v.cliente_id) as customers,
+                SUM(v.total) as revenue,
+                AVG(v.total) as avg_ticket,
+                SUM(dv.cantidad) as units_sold
+            FROM ventas v
+            LEFT JOIN detalle_venta dv ON v.id = dv.venta_id
+            WHERE v.fecha_venta >= date('now', '-60 days')
+            AND v.fecha_venta < date('now', '-30 days')
+            """
+            
+            current = self.db_manager.execute_query(current_period)[0]
+            previous = self.db_manager.execute_query(previous_period)[0]
+            
+            kpis = {}
+            for metric in ['transactions', 'customers', 'revenue', 'avg_ticket', 'units_sold']:
+                current_val = current[metric] or 0
+                previous_val = previous[metric] or 0
+                
+                if previous_val > 0:
+                    change = ((current_val - previous_val) / previous_val) * 100
+                else:
+                    change = 100 if current_val > 0 else 0
+                
+                kpis[metric] = {
+                    'current': current_val,
+                    'previous': previous_val,
+                    'change_percent': round(change, 1),
+                    'trend': 'up' if change > 5 else 'down' if change < -5 else 'stable'
+                }
+            
+            return kpis
+            
+        except Exception as e:
+            logger.error(f"Error calculando KPIs: {e}")
+            return {}
+
+    def _generate_automated_insights(self, segments: Dict, seasonal: Dict, products: Dict, kpis: Dict) -> Dict[str, Any]:
+        """Generar insights automáticos basados en los análisis"""
+        insights = {
+            'executive_summary': [],
+            'key_insights': [],
+            'strategic_recommendations': [],
+            'alerts': []
+        }
+        
+        # Executive Summary
+        if kpis.get('revenue', {}).get('change_percent', 0) > 10:
+            insights['executive_summary'].append("Crecimiento significativo en ingresos del 10%+ en el último mes")
+        elif kpis.get('revenue', {}).get('change_percent', 0) < -10:
+            insights['executive_summary'].append("Declive preocupante en ingresos del 10%+ en el último mes")
+        
+        # Segment insights
+        if segments.get('segments'):
+            high_value = segments['segments'].get('high_value', {})
+            at_risk = segments['segments'].get('at_risk', {})
+            
+            if high_value.get('revenue_percentage', 0) > 50:
+                insights['key_insights'].append(f"Los clientes de alto valor generan {high_value['revenue_percentage']}% de los ingresos")
+            
+            if at_risk.get('customer_count', 0) > 0:
+                insights['alerts'].append(f"{at_risk['customer_count']} clientes en riesgo de abandono necesitan atención inmediata")
+        
+        # Seasonal insights
+        if seasonal.get('is_highly_seasonal'):
+            peak_month = seasonal.get('peak_month_name', 'N/A')
+            insights['key_insights'].append(f"Negocio altamente estacional con pico en {peak_month}")
+            insights['strategic_recommendations'].append("Desarrollar estrategias específicas para temporadas altas y bajas")
+        
+        # Product insights
+        if products.get('declining_products'):
+            declining_count = len(products['declining_products'])
+            insights['alerts'].append(f"{declining_count} productos muestran tendencia decreciente")
+            
+        if products.get('growth_products'):
+            growth_count = len(products['growth_products'])
+            insights['key_insights'].append(f"{growth_count} productos en crecimiento representan oportunidades de expansión")
+        
+        return insights

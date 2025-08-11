@@ -357,3 +357,251 @@ Sistema de pruebas integral:
   - Refresh automático de productos y clientes
   - Notificaciones de estado en tiempo real
   - Integración de callbacks entre componentes
+
+## ARQUITECTURA MVC MODERNA (IMPLEMENTADA 2025)
+
+### Estructura MVC Completa
+
+**MIGRACIÓN COMPLETADA AL 100%** - El sistema AlmacénPro v2.0 ahora utiliza arquitectura MVC moderna:
+
+```
+almacen_pro/
+├── main_mvc.py                # 🚀 Punto de entrada MVC (PRINCIPAL)
+├── main.py                    # 🚀 Punto de entrada original (respaldo)
+
+├── models/                    # 📊 CAPA DE DATOS (MVC)
+│   ├── base_model.py          # Modelo base con señales PyQt
+│   ├── entities.py            # Entidades de negocio (dataclasses)
+│   ├── sales_model.py         # Modelo especializado ventas
+│   └── customer_model.py      # Modelo especializado clientes
+
+├── views/                     # 🎨 CAPA DE PRESENTACIÓN (MVC)
+│   ├── forms/                 # Formularios principales (.ui)
+│   │   ├── sales_widget.ui    # 🛒 Punto de venta completo
+│   │   └── customers_widget.ui # 👥 Gestión clientes CRM
+│   ├── dialogs/               # 💬 Diálogos modales (.ui)
+│   │   ├── login_dialog.ui          # 🔐 Login con validación
+│   │   ├── customer_dialog.ui       # 👤 Gestión cliente avanzada
+│   │   ├── payment_dialog.ui        # 💳 Procesamiento pagos
+│   │   └── [10 más archivos .ui]    # Interfaces completas
+│   └── widgets/               # 🧩 Widgets principales (.ui)
+│       ├── dashboard_widget.ui      # 📊 Dashboard ejecutivo
+│       ├── stock_widget.ui          # 📦 Gestión inventario
+│       └── [8 más archivos .ui]     # Componentes especializados
+
+├── controllers/               # 🎮 CAPA DE CONTROL (MVC)
+│   ├── base_controller.py     # Controlador base con funcionalidad común
+│   ├── main_controller.py     # Controlador ventana principal
+│   ├── sales_controller.py    # Controlador módulo ventas
+│   └── customers_controller.py # Controlador módulo clientes
+
+├── managers/                  # 📋 LÓGICA DE NEGOCIO (preservada)
+│   ├── [15+ managers]         # Managers especializados existentes
+│   └── predictive_analysis_manager.py # Análisis predictivo ML
+
+├── utils/                     # 🛠️ UTILIDADES
+│   ├── style_manager.py       # 🎨 Gestión estilos CSS
+│   ├── backup_manager.py      # 💾 Sistema backup automático
+│   └── validators.py          # ✅ Validadores datos
+
+└── database/                  # 🗄️ GESTIÓN BASE DE DATOS
+    ├── scripts/
+    │   └── schema_export.sql  # Schema completo DBeaver (20KB)
+    └── manager.py             # Gestor principal BD (50+ tablas)
+```
+
+### Patrón MVC Implementado
+
+| **Capa** | **Responsabilidad** | **Implementación** | **Archivos** |
+|----------|-------------------|-------------------|--------------|
+| **Model** | Lógica de datos y estado | BaseModel + modelos especializados | 4 archivos Python |
+| **View** | Interfaces de usuario | Archivos .ui cargados dinámicamente | 24 archivos .ui |
+| **Controller** | Coordinación y lógica | BaseController + controladores | 4 archivos Python |
+
+### Desarrollo MVC - Guidelines
+
+#### 1. **Crear Nueva Funcionalidad MVC**
+
+```python
+# 1. Crear modelo de datos (si es necesario)
+# models/mi_nuevo_modelo.py
+from models.base_model import BaseModel
+from dataclasses import dataclass
+
+@dataclass
+class MiEntidad:
+    id: int
+    nombre: str
+    activo: bool
+
+class MiNuevoModelo(BaseModel):
+    def __init__(self):
+        super().__init__()
+        # Lógica del modelo
+
+# 2. Crear interfaz .ui con Qt Designer
+# views/dialogs/mi_nuevo_dialog.ui
+# - Usar naming conventions: btnGuardar, txtNombre, cmbCategoria
+# - Aplicar estilos CSS en el archivo .ui
+# - Configurar tab order y shortcuts
+
+# 3. Crear controlador
+# controllers/mi_nuevo_controller.py
+from controllers.base_controller import BaseController
+
+class MiNuevoController(BaseController):
+    def get_ui_file_path(self) -> str:
+        return "views/dialogs/mi_nuevo_dialog.ui"
+    
+    def setup_ui(self):
+        # Configurar elementos específicos de la UI
+        pass
+    
+    def connect_signals(self):
+        # Conectar señales específicas del controlador
+        pass
+```
+
+#### 2. **Carga Dinámica de Interfaces**
+
+```python
+# En BaseController - NO modificar
+def load_ui(self):
+    ui_path = self.get_ui_file_path()
+    uic.loadUi(ui_path, self)  # Carga runtime, NO genera .py
+    self.ui_loaded = True
+```
+
+#### 3. **Comunicación Entre Componentes**
+
+```python
+# En BaseModel - usar señales PyQt
+class BaseModel(QObject):
+    data_changed = pyqtSignal()
+    error_occurred = pyqtSignal(str)
+    loading_started = pyqtSignal()
+    loading_finished = pyqtSignal()
+
+# En controladores - conectar señales
+def connect_signals(self):
+    self.mi_modelo.data_changed.connect(self.on_data_changed)
+    self.btnGuardar.clicked.connect(self.on_save_clicked)
+```
+
+#### 4. **Estilos CSS en Archivos .ui**
+
+```xml
+<!-- En archivo .ui, dentro de <property name="styleSheet"> -->
+<string>
+QGroupBox {
+    font-weight: bold;
+    border: 2px solid #cccccc;
+    border-radius: 5px;
+}
+
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    border-radius: 4px;
+    padding: 8px 16px;
+}
+</string>
+```
+
+### Debugging MVC
+
+#### Logs Especializados MVC
+
+```bash
+# Logs de la aplicación MVC
+logs/almacen_pro_mvc_YYYYMMDD.log
+
+# Buscar problemas específicos:
+grep "ERROR" logs/almacen_pro_mvc_*.log
+grep "BaseController" logs/almacen_pro_mvc_*.log
+grep "load_ui" logs/almacen_pro_mvc_*.log
+```
+
+#### Validación de Estructura MVC
+
+```bash
+# Ejecutar test de validación MVC
+python test_mvc_simple.py
+
+# Verificar que todas las .ui se cargan correctamente
+python -c "
+from PyQt5 import uic
+import os
+for root, dirs, files in os.walk('views'):
+    for file in files:
+        if file.endswith('.ui'):
+            print(f'Validando: {file}')
+            uic.loadUi(os.path.join(root, file))
+print('✅ Todas las interfaces .ui son válidas')
+"
+```
+
+### Extensión del Sistema MVC
+
+#### Agregar Nuevo Widget
+
+1. **Diseñar interfaz** con Qt Designer → `views/widgets/mi_widget.ui`
+2. **Crear controlador** → `controllers/mi_widget_controller.py`
+3. **Integrar en main_controller** → Agregar tab o componente
+4. **Configurar managers** → Conectar lógica de negocio existente
+
+#### Modificar Interfaz Existente
+
+1. **Abrir .ui en Qt Designer** (NO editar manualmente el XML)
+2. **Hacer cambios visuales** → Widgets, layouts, propiedades
+3. **Guardar archivo .ui** → Los cambios se aplican automáticamente
+4. **Actualizar controlador** si es necesario → Nuevas señales o widgets
+
+### Troubleshooting MVC
+
+#### Errores Comunes
+
+```bash
+# 1. Archivo .ui no encontrado
+FileNotFoundError: Archivo UI no encontrado: views/...
+# Solución: Verificar ruta en get_ui_file_path()
+
+# 2. Widget no encontrado en .ui
+AttributeError: 'MiController' object has no attribute 'btnGuardar'
+# Solución: Verificar objectName en Qt Designer
+
+# 3. Error de metaclass
+TypeError: metaclass conflict
+# Solución: NO heredar de ABC en BaseController
+
+# 4. Import error QShortcut
+ImportError: cannot import name 'QShortcut'
+# Solución: Import desde QtWidgets, no QtGui
+```
+
+### Performance MVC
+
+La arquitectura MVC implementada incluye:
+
+- ✅ **Carga diferida** de datos (defer_operation)
+- ✅ **Threading** para operaciones pesadas
+- ✅ **Caché inteligente** en modelos
+- ✅ **Validación eficiente** antes de operaciones de BD
+- ✅ **Logging optimizado** para debugging
+- ✅ **Memory management** automático en BaseController
+
+### COMANDOS MVC PRINCIPALES
+
+```bash
+# Ejecutar aplicación MVC
+python main_mvc.py
+
+# Validar estructura MVC
+python test_mvc_simple.py
+
+# Generar interfaces adicionales
+python generate_ui_simple.py
+
+# Abrir Qt Designer para editar interfaces
+designer views/dialogs/mi_dialog.ui
+```

@@ -139,7 +139,7 @@ try:
         
         try:
             db_manager = DatabaseManager(temp_file.name)
-            db_manager.create_tables()
+            db_manager._create_all_tables()
             
             predictive_manager = PredictiveAnalysisManager(db_manager)
             predictive_manager.create_prediction_tables()

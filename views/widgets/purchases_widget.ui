@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PurchasesWidget</class>
+ <widget class="QWidget" name="PurchasesWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Gestion de Compras</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>10</number>
+   </property>
+   <property name="topMargin">
+    <number>10</number>
+   </property>
+   <property name="rightMargin">
+    <number>10</number>
+   </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
+   
+   <item>
+    <widget class="QLabel" name="lblTitle">
+     <property name="text">
+      <string>Gestion de Compras</string>
+     </property>
+     <property name="styleSheet">
+      <string>font-size: 18px; font-weight: bold; color: #2c3e50;</string>
+     </property>
+    </widget>
+   </item>
+   
+   <item>
+    <widget class="QFrame" name="frameContent">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QVBoxLayout" name="contentLayout">
+      <item>
+       <widget class="QLabel" name="lblPlaceholder">
+        <property name="text">
+         <string>Contenido de Gestion de Compras
+
+Interface migrada desde Python.
+Completar implementacion.</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLabel {
+           color: #7f8c8d;
+           font-size: 14px;
+           border: 2px dashed #bdc3c7;
+           border-radius: 6px;
+           background-color: #f8f9fa;
+           padding: 20px;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ 
+ <resources/>
+ <connections/>
+</ui>

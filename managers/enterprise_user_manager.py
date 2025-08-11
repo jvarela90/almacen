@@ -13,6 +13,8 @@ import base64
 from enum import Enum
 import uuid
 
+logger = logging.getLogger(__name__)
+
 # Para 2FA
 try:
     import pyotp
@@ -22,8 +24,6 @@ try:
 except ImportError:
     TOTP_AVAILABLE = False
     logger.warning("PyOTP no disponible - 2FA deshabilitado")
-
-logger = logging.getLogger(__name__)
 
 class SessionStatus(Enum):
     """Estados de sesión"""

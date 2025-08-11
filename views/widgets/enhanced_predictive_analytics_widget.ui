@@ -1,0 +1,1169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EnhancedPredictiveAnalyticsWidget</class>
+ <widget class="QWidget" name="EnhancedPredictiveAnalyticsWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>🤖 Análisis Predictivo y Business Intelligence</string>
+  </property>
+  <property name="styleSheet">
+   <string>
+QWidget {
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+QTabWidget::pane {
+    border: 1px solid #dee2e6;
+    background-color: white;
+    border-radius: 8px;
+}
+
+QTabBar::tab {
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    padding: 12px 20px;
+    margin: 2px;
+    border-radius: 6px 6px 0 0;
+    font-weight: bold;
+    min-width: 120px;
+}
+
+QTabBar::tab:selected {
+    background: white;
+    border-bottom-color: white;
+    color: #007bff;
+}
+
+QTabBar::tab:hover {
+    background: #f8f9fa;
+}
+
+QGroupBox {
+    font-weight: bold;
+    border: 2px solid #007bff;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 15px;
+    background-color: white;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 15px;
+    padding: 0 8px 0 8px;
+    color: #007bff;
+    font-size: 14px;
+}
+
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #007bff, stop:1 #0056b3);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-weight: bold;
+    font-size: 13px;
+    min-width: 100px;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0056b3, stop:1 #004085);
+}
+
+QPushButton:pressed {
+    background: #004085;
+}
+
+QPushButton#btnCritical {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #dc3545, stop:1 #c82333);
+}
+
+QPushButton#btnCritical:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #c82333, stop:1 #bd2130);
+}
+
+QPushButton#btnSuccess {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #28a745, stop:1 #1e7e34);
+}
+
+QPushButton#btnSuccess:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1e7e34, stop:1 #1c7430);
+}
+
+QPushButton#btnWarning {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffc107, stop:1 #e0a800);
+    color: #212529;
+}
+
+QPushButton#btnWarning:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e0a800, stop:1 #d39e00);
+}
+
+QComboBox {
+    border: 2px solid #ced4da;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    background: white;
+}
+
+QComboBox:focus {
+    border-color: #007bff;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox::down-arrow {
+    image: url(:/icons/arrow-down.png);
+    width: 12px;
+    height: 12px;
+}
+
+QTableWidget {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    gridline-color: #e9ecef;
+    background-color: white;
+    alternate-background-color: #f8f9fa;
+    selection-background-color: #007bff;
+    selection-color: white;
+}
+
+QTableWidget::item {
+    padding: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+QHeaderView::section {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8f9fa, stop:1 #e9ecef);
+    padding: 8px;
+    border: 1px solid #dee2e6;
+    font-weight: bold;
+    color: #495057;
+}
+
+QProgressBar {
+    border: 2px solid #ced4da;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    background-color: #e9ecef;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #007bff, stop:1 #0056b3);
+    border-radius: 6px;
+}
+
+QLabel#lblTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #007bff;
+    padding: 10px;
+}
+
+QLabel#lblSubtitle {
+    font-size: 14px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+QLabel#lblMetric {
+    font-size: 24px;
+    font-weight: bold;
+    color: #28a745;
+    padding: 5px;
+}
+
+QLabel#lblAlert {
+    color: #dc3545;
+    font-weight: bold;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+QTextEdit {
+    border: 2px solid #ced4da;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: white;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="lblTitle">
+     <property name="text">
+      <string>🤖 Análisis Predictivo y Business Intelligence</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <item>
+      <widget class="QPushButton" name="btnGenerateInsights">
+       <property name="text">
+        <string>🔄 Generar Insights</string>
+       </property>
+       <property name="toolTip">
+        <string>Generar reporte completo de insights del negocio</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnRefreshData">
+       <property name="text">
+        <string>📊 Actualizar Datos</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnExportReport" id="btnSuccess">
+       <property name="text">
+        <string>📄 Exportar Reporte</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblLastUpdate">
+       <property name="text">
+        <string>Última actualización: --</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tabExecutiveDashboard">
+      <attribute name="title">
+       <string>📈 Dashboard Ejecutivo</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="executiveLayout">
+       <item>
+        <layout class="QHBoxLayout" name="kpiLayout">
+         <item>
+          <widget class="QGroupBox" name="grpRevenueTrend">
+           <property name="title">
+            <string>💰 Tendencia de Ingresos</string>
+           </property>
+           <layout class="QVBoxLayout" name="revenueLayout">
+            <item>
+             <widget class="QLabel" name="lblRevenueChange">
+              <property name="text">
+               <string>+15.2% vs mes anterior</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblRevenueValue">
+              <property name="text">
+               <string>$125,430</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="progressRevenue">
+              <property name="value">
+               <number>75</number>
+              </property>
+              <property name="format">
+               <string>Meta: %p%</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grpCustomerGrowth">
+           <property name="title">
+            <string>👥 Crecimiento de Clientes</string>
+           </property>
+           <layout class="QVBoxLayout" name="customerLayout">
+            <item>
+             <widget class="QLabel" name="lblCustomerChange">
+              <property name="text">
+               <string>+8.5% clientes nuevos</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblCustomerValue">
+              <property name="text">
+               <string>1,247 activos</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="progressCustomers">
+              <property name="value">
+               <number>68</number>
+              </property>
+              <property name="format">
+               <string>Retención: %p%</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grpPredictions">
+           <property name="title">
+            <string>🔮 Predicciones</string>
+           </property>
+           <layout class="QVBoxLayout" name="predictionsLayout">
+            <item>
+             <widget class="QLabel" name="lblPredictionAccuracy">
+              <property name="text">
+               <string>92% precisión</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblNextMonthForecast">
+              <property name="text">
+               <string>$138,500 proyectado</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="progressPredictions">
+              <property name="value">
+               <number>92</number>
+              </property>
+              <property name="format">
+               <string>Confianza: %p%</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="alertsLayout">
+         <item>
+          <widget class="QGroupBox" name="grpAlerts">
+           <property name="title">
+            <string>🚨 Alertas Críticas</string>
+           </property>
+           <layout class="QVBoxLayout" name="alertsContentLayout">
+            <item>
+             <widget class="QListWidget" name="listAlerts">
+              <property name="maximumHeight">
+               <number>120</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grpInsights">
+           <property name="title">
+            <string>💡 Insights Principales</string>
+           </property>
+           <layout class="QVBoxLayout" name="insightsContentLayout">
+            <item>
+             <widget class="QListWidget" name="listInsights">
+              <property name="maximumHeight">
+               <number>120</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="grpQuickActions">
+         <property name="title">
+          <string>⚡ Acciones Rápidas</string>
+         </property>
+         <layout class="QHBoxLayout" name="quickActionsLayout">
+          <item>
+           <widget class="QPushButton" name="btnAnalyzeCustomer">
+            <property name="text">
+             <string>👤 Analizar Cliente</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnPredictInventory">
+            <property name="text">
+             <string>📦 Predicción Stock</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnSeasonalAnalysis">
+            <property name="text">
+             <string>📅 Análisis Estacional</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnProductTrends" id="btnWarning">
+            <property name="text">
+             <string>📊 Tendencias Productos</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabCustomerAnalysis">
+      <attribute name="title">
+       <string>👥 Análisis de Clientes</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="customerAnalysisLayout">
+       <item>
+        <layout class="QHBoxLayout" name="customerControlsLayout">
+         <item>
+          <widget class="QLabel" name="lblSelectCustomer">
+           <property name="text">
+            <string>Seleccionar Cliente:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="cmbCustomers">
+           <property name="minimumWidth">
+            <number>250</number>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnAnalyzeSelectedCustomer">
+           <property name="text">
+            <string>🔍 Analizar</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnCustomerSegments" id="btnSuccess">
+           <property name="text">
+            <string>📊 Análisis Segmentos</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="customerResultsLayout">
+         <item>
+          <widget class="QGroupBox" name="grpCustomerProfile">
+           <property name="title">
+            <string>👤 Perfil del Cliente</string>
+           </property>
+           <layout class="QVBoxLayout" name="customerProfileLayout">
+            <item>
+             <widget class="QTextEdit" name="txtCustomerProfile">
+              <property name="maximumHeight">
+               <number>200</number>
+              </property>
+              <property name="html">
+               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Consolas','Courier New',monospace; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#6c757d;&quot;&gt;Seleccione un cliente para ver su análisis completo...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grpPredictions_2">
+           <property name="title">
+            <string>🔮 Predicciones</string>
+           </property>
+           <layout class="QVBoxLayout" name="customerPredictionsLayout">
+            <item>
+             <widget class="QTextEdit" name="txtCustomerPredictions">
+              <property name="maximumHeight">
+               <number>200</number>
+              </property>
+              <property name="html">
+               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Consolas','Courier New',monospace; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#6c757d;&quot;&gt;Las predicciones aparecerán aquí...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="grpCustomerRecommendations">
+         <property name="title">
+          <string>💼 Recomendaciones de Productos</string>
+         </property>
+         <layout class="QVBoxLayout" name="recommendationsLayout">
+          <item>
+           <widget class="QTableWidget" name="tblProductRecommendations">
+            <property name="alternatingRowColors">
+             <bool>true</bool>
+            </property>
+            <property name="selectionBehavior">
+             <enum>QAbstractItemView::SelectRows</enum>
+            </property>
+            <property name="sortingEnabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabInventoryPredictions">
+      <attribute name="title">
+       <string>📦 Predicción de Inventario</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="inventoryLayout">
+       <item>
+        <layout class="QHBoxLayout" name="inventoryControlsLayout">
+         <item>
+          <widget class="QLabel" name="lblSelectProduct">
+           <property name="text">
+            <string>Producto:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="cmbProducts">
+           <property name="minimumWidth">
+            <number>300</number>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="lblPredictionDays">
+           <property name="text">
+            <string>Días a predecir:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="cmbPredictionDays">
+           <item>
+            <property name="text">
+             <string>30 días</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>60 días</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>90 días</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnPredictSelectedProduct">
+           <property name="text">
+            <string>🔮 Predecir Demanda</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="inventoryResultsLayout">
+         <item>
+          <widget class="QGroupBox" name="grpDemandPrediction">
+           <property name="title">
+            <string>📊 Predicción de Demanda</string>
+           </property>
+           <layout class="QVBoxLayout" name="demandLayout">
+            <item>
+             <widget class="QLabel" name="lblPredictedDemand">
+              <property name="text">
+               <string>Demanda Predicha: -- unidades</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblSuggestedStock">
+              <property name="text">
+               <string>Stock Sugerido: -- unidades</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblConfidenceLevel">
+              <property name="text">
+               <string>Nivel de Confianza: --%</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="progressDemandConfidence">
+              <property name="value">
+               <number>0</number>
+              </property>
+              <property name="format">
+               <string>%p%</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grpHistoricalData">
+           <property name="title">
+            <string>📈 Datos Históricos</string>
+           </property>
+           <layout class="QVBoxLayout" name="historicalLayout">
+            <item>
+             <widget class="QLabel" name="lblAvgDailyDemand">
+              <property name="text">
+               <string>Demanda Diaria Promedio: --</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblMaxDemand">
+              <property name="text">
+               <string>Demanda Máxima: --</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblTrendDirection">
+              <property name="text">
+               <string>Tendencia: --</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblVariability">
+              <property name="text">
+               <string>Variabilidad: --</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="grpInventoryRecommendations">
+         <property name="title">
+          <string>💡 Recomendaciones de Inventario</string>
+         </property>
+         <layout class="QVBoxLayout" name="inventoryRecommendationsLayout">
+          <item>
+           <widget class="QTextEdit" name="txtInventoryRecommendations">
+            <property name="maximumHeight">
+             <number>150</number>
+            </property>
+            <property name="html">
+             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Consolas','Courier New',monospace; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#6c757d;&quot;&gt;Seleccione un producto para ver recomendaciones de inventario...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabSeasonalAnalysis">
+      <attribute name="title">
+       <string>📅 Análisis Estacional</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="seasonalLayout">
+       <item>
+        <layout class="QHBoxLayout" name="seasonalControlsLayout">
+         <item>
+          <widget class="QLabel" name="lblAnalysisPeriod">
+           <property name="text">
+            <string>Período de Análisis:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="cmbAnalysisPeriod">
+           <item>
+            <property name="text">
+             <string>Últimos 12 meses</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Últimos 18 meses</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Últimos 24 meses</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnAnalyzeSeasonal">
+           <property name="text">
+            <string>📊 Analizar Estacionalidad</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnExportSeasonalData" id="btnSuccess">
+           <property name="text">
+            <string>📤 Exportar Datos</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="seasonalStatsLayout">
+         <item>
+          <widget class="QGroupBox" name="grpSeasonalStrength">
+           <property name="title">
+            <string>🌡️ Fuerza Estacional</string>
+           </property>
+           <layout class="QVBoxLayout" name="seasonalStrengthLayout">
+            <item>
+             <widget class="QLabel" name="lblSeasonalStrength">
+              <property name="text">
+               <string>Nivel: --</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="progressSeasonalStrength">
+              <property name="value">
+               <number>0</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblSeasonalDescription">
+              <property name="text">
+               <string>Descripción: --</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grpPeakSeason">
+           <property name="title">
+            <string>📈 Temporada Alta</string>
+           </property>
+           <layout class="QVBoxLayout" name="peakSeasonLayout">
+            <item>
+             <widget class="QLabel" name="lblPeakMonth">
+              <property name="text">
+               <string>Mes Pico: --</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblPeakRevenue">
+              <property name="text">
+               <string>Ingresos Promedio: $--</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblPeakTransactions">
+              <property name="text">
+               <string>Transacciones: --</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grpLowSeason">
+           <property name="title">
+            <string>📉 Temporada Baja</string>
+           </property>
+           <layout class="QVBoxLayout" name="lowSeasonLayout">
+            <item>
+             <widget class="QLabel" name="lblLowMonth">
+              <property name="text">
+               <string>Mes Bajo: --</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblLowRevenue">
+              <property name="text">
+               <string>Ingresos Promedio: $--</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblLowTransactions">
+              <property name="text">
+               <string>Transacciones: --</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="grpMonthlyPatterns">
+         <property name="title">
+          <string>📊 Patrones Mensuales</string>
+         </property>
+         <layout class="QVBoxLayout" name="monthlyPatternsLayout">
+          <item>
+           <widget class="QTableWidget" name="tblMonthlyPatterns">
+            <property name="alternatingRowColors">
+             <bool>true</bool>
+            </property>
+            <property name="selectionBehavior">
+             <enum>QAbstractItemView::SelectRows</enum>
+            </property>
+            <property name="sortingEnabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="grpSeasonalRecommendations">
+         <property name="title">
+          <string>💡 Recomendaciones Estacionales</string>
+         </property>
+         <layout class="QVBoxLayout" name="seasonalRecommendationsLayout">
+          <item>
+           <widget class="QListWidget" name="listSeasonalRecommendations">
+            <property name="maximumHeight">
+             <number>120</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabBusinessInsights">
+      <attribute name="title">
+       <string>💡 Business Insights</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="insightsLayout">
+       <item>
+        <layout class="QHBoxLayout" name="insightsControlsLayout">
+         <item>
+          <widget class="QPushButton" name="btnGenerateFullReport">
+           <property name="text">
+            <string>🎯 Generar Reporte Completo</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnScheduleReport" id="btnWarning">
+           <property name="text">
+            <string>⏰ Programar Reportes</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_5">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnSaveInsights" id="btnSuccess">
+           <property name="text">
+            <string>💾 Guardar Insights</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="scrollInsights">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>1156</width>
+            <height>600</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="scrollLayout">
+           <item>
+            <widget class="QGroupBox" name="grpExecutiveSummary">
+             <property name="title">
+              <string>📋 Resumen Ejecutivo</string>
+             </property>
+             <layout class="QVBoxLayout" name="executiveSummaryLayout">
+              <item>
+               <widget class="QTextEdit" name="txtExecutiveSummary">
+                <property name="maximumHeight">
+                 <number>150</number>
+                </property>
+                <property name="html">
+                 <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Consolas','Courier New',monospace; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#6c757d;&quot;&gt;Genere un reporte completo para ver el resumen ejecutivo...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="insightsCategoriesLayout">
+             <item>
+              <widget class="QGroupBox" name="grpKeyInsights">
+               <property name="title">
+                <string>🔑 Insights Clave</string>
+               </property>
+               <layout class="QVBoxLayout" name="keyInsightsLayout">
+                <item>
+                 <widget class="QListWidget" name="listKeyInsights">
+                  <property name="maximumHeight">
+                   <number>200</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="grpStrategicRecommendations">
+               <property name="title">
+                <string>🎯 Recomendaciones Estratégicas</string>
+               </property>
+               <layout class="QVBoxLayout" name="strategicLayout">
+                <item>
+                 <widget class="QListWidget" name="listStrategicRecommendations">
+                  <property name="maximumHeight">
+                   <number>200</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="grpBusinessMetrics">
+             <property name="title">
+              <string>📊 Métricas de Negocio</string>
+             </property>
+             <layout class="QVBoxLayout" name="businessMetricsLayout">
+              <item>
+               <widget class="QTableWidget" name="tblBusinessMetrics">
+                <property name="maximumHeight">
+                 <number>200</number>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>true</bool>
+                </property>
+                <property name="selectionBehavior">
+                 <enum>QAbstractItemView::SelectRows</enum>
+                </property>
+                <property name="sortingEnabled">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

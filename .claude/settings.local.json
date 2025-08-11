@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python test:*)",
       "Bash(python:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(pip install:*)"
     ],
     "deny": []
   }

@@ -1,0 +1,797 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CustomerDialog</class>
+ <widget class="QDialog" name="CustomerDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Gestión de Cliente</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>15</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>15</number>
+   </property>
+   
+   <!-- Header -->
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="lblIcon">
+       <property name="text">
+        <string>👤</string>
+       </property>
+       <property name="styleSheet">
+        <string>font-size: 24px;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblTitle">
+       <property name="text">
+        <string>Gestión de Cliente</string>
+       </property>
+       <property name="styleSheet">
+        <string>font-size: 18px; font-weight: bold; color: #2c3e50;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   
+   <!-- Tabs -->
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     
+     <!-- Tab General -->
+     <widget class="QWidget" name="tabGeneral">
+      <attribute name="title">
+       <string>📋 General</string>
+      </attribute>
+      <layout class="QFormLayout" name="generalFormLayout">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
+       <property name="horizontalSpacing">
+        <number>10</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>10</number>
+       </property>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       
+       <item row="0" column="0">
+        <widget class="QLabel" name="lblCodigo">
+         <property name="text">
+          <string>Código*:</string>
+         </property>
+         <property name="styleSheet">
+          <string>font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="lineEditCodigo">
+         <property name="maxLength">
+          <number>50</number>
+         </property>
+         <property name="placeholderText">
+          <string>Código único del cliente</string>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="1" column="0">
+        <widget class="QLabel" name="lblNombre">
+         <property name="text">
+          <string>Nombre*:</string>
+         </property>
+         <property name="styleSheet">
+          <string>font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="lineEditNombre">
+         <property name="maxLength">
+          <number>200</number>
+         </property>
+         <property name="placeholderText">
+          <string>Nombre completo del cliente</string>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="2" column="0">
+        <widget class="QLabel" name="lblEmail">
+         <property name="text">
+          <string>Email:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="lineEditEmail">
+         <property name="maxLength">
+          <number>100</number>
+         </property>
+         <property name="placeholderText">
+          <string>correo@ejemplo.com</string>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="3" column="0">
+        <widget class="QLabel" name="lblTelefono">
+         <property name="text">
+          <string>Teléfono:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="lineEditTelefono">
+         <property name="maxLength">
+          <number>20</number>
+         </property>
+         <property name="placeholderText">
+          <string>+57 300 123 4567</string>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="4" column="0">
+        <widget class="QLabel" name="lblDocumento">
+         <property name="text">
+          <string>Documento:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <layout class="QHBoxLayout" name="documentoLayout">
+         <item>
+          <widget class="QComboBox" name="cmbTipoDocumento">
+           <property name="minimumSize">
+            <size>
+             <width>80</width>
+             <height>0</height>
+            </size>
+           </property>
+           <item>
+            <property name="text">
+             <string>DNI</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>RUT</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>NIT</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CC</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CE</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEditDocumento">
+           <property name="maxLength">
+            <number>50</number>
+           </property>
+           <property name="placeholderText">
+            <string>Número de documento</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       
+       <item row="5" column="0">
+        <widget class="QLabel" name="lblDireccion">
+         <property name="text">
+          <string>Dirección:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QTextEdit" name="textEditDireccion">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>60</height>
+          </size>
+         </property>
+         <property name="placeholderText">
+          <string>Dirección completa del cliente</string>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="6" column="0">
+        <widget class="QLabel" name="lblCiudad">
+         <property name="text">
+          <string>Ciudad:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QLineEdit" name="lineEditCiudad">
+         <property name="maxLength">
+          <number>100</number>
+         </property>
+         <property name="placeholderText">
+          <string>Ciudad de residencia</string>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="7" column="0">
+        <widget class="QLabel" name="lblFechaNacimiento">
+         <property name="text">
+          <string>Fecha Nacimiento:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QDateEdit" name="dateEditNacimiento">
+         <property name="calendarPopup">
+          <bool>true</bool>
+         </property>
+         <property name="date">
+          <date>
+           <year>2000</year>
+           <month>1</month>
+           <day>1</day>
+          </date>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     
+     <!-- Tab Segmentación -->
+     <widget class="QWidget" name="tabSegmentacion">
+      <attribute name="title">
+       <string>🎯 Segmentación</string>
+      </attribute>
+      <layout class="QFormLayout" name="segmentacionFormLayout">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
+       <property name="horizontalSpacing">
+        <number>10</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>10</number>
+       </property>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       
+       <item row="0" column="0">
+        <widget class="QLabel" name="lblTipoCliente">
+         <property name="text">
+          <string>Tipo Cliente:</string>
+         </property>
+         <property name="styleSheet">
+          <string>font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="cmbTipoCliente">
+         <item>
+          <property name="text">
+           <string>MINORISTA</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>MAYORISTA</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>DISTRIBUIDOR</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CORPORATIVO</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       
+       <item row="1" column="0">
+        <widget class="QLabel" name="lblSegmento">
+         <property name="text">
+          <string>Segmento:</string>
+         </property>
+         <property name="styleSheet">
+          <string>font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="cmbSegmento">
+         <item>
+          <property name="text">
+           <string>REGULAR</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>VIP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>PREMIUM</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>GOLD</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>PLATINUM</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       
+       <item row="2" column="0">
+        <widget class="QLabel" name="lblEstado">
+         <property name="text">
+          <string>Estado:</string>
+         </property>
+         <property name="styleSheet">
+          <string>font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QComboBox" name="cmbEstado">
+         <item>
+          <property name="text">
+           <string>ACTIVO</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>INACTIVO</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>POTENCIAL</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>PERDIDO</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       
+       <item row="3" column="0">
+        <widget class="QLabel" name="lblOrigen">
+         <property name="text">
+          <string>Origen:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QComboBox" name="cmbOrigen">
+         <item>
+          <property name="text">
+           <string>DIRECTO</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>REFERIDO</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>PUBLICIDAD</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>REDES_SOCIALES</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>WEB</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>OTROS</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       
+       <item row="4" column="0">
+        <widget class="QLabel" name="lblLimiteCredito">
+         <property name="text">
+          <string>Límite Crédito:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QDoubleSpinBox" name="spinBoxLimiteCredito">
+         <property name="suffix">
+          <string> $</string>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="maximum">
+          <double>999999.99</double>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="5" column="0">
+        <widget class="QLabel" name="lblDescuentoPorcentual">
+         <property name="text">
+          <string>Descuento (%):</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QDoubleSpinBox" name="spinBoxDescuento">
+         <property name="suffix">
+          <string> %</string>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="maximum">
+          <double>100.00</double>
+         </property>
+        </widget>
+       </item>
+       
+       <item row="6" column="0">
+        <widget class="QLabel" name="lblObservaciones">
+         <property name="text">
+          <string>Observaciones:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QTextEdit" name="textEditObservaciones">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>80</height>
+          </size>
+         </property>
+         <property name="placeholderText">
+          <string>Notas adicionales sobre el cliente</string>
+         </property>
+        </widget>
+       </item>
+       
+       <!-- Spacer -->
+       <item row="7" column="1">
+        <spacer name="verticalSpacerSegmentacion">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     
+     <!-- Tab Estadísticas -->
+     <widget class="QWidget" name="tabEstadisticas">
+      <attribute name="title">
+       <string>📊 Estadísticas</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="estadisticasLayout">
+       <property name="spacing">
+        <number>10</number>
+       </property>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       
+       <item>
+        <layout class="QGridLayout" name="statsGridLayout">
+         <property name="spacing">
+          <number>15</number>
+         </property>
+         
+         <item row="0" column="0">
+          <widget class="QLabel" name="lblTotalComprasLabel">
+           <property name="text">
+            <string>Total Compras:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="lblTotalComprasValor">
+           <property name="text">
+            <string>$0.00</string>
+           </property>
+           <property name="styleSheet">
+            <string>color: #27ae60; font-size: 14px; font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="1" column="0">
+          <widget class="QLabel" name="lblNumeroComprasLabel">
+           <property name="text">
+            <string>Número Compras:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="lblNumeroComprasValor">
+           <property name="text">
+            <string>0</string>
+           </property>
+           <property name="styleSheet">
+            <string>color: #3498db; font-size: 14px; font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="2" column="0">
+          <widget class="QLabel" name="lblUltimaCompraLabel">
+           <property name="text">
+            <string>Última Compra:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="lblUltimaCompraValor">
+           <property name="text">
+            <string>Nunca</string>
+           </property>
+           <property name="styleSheet">
+            <string>color: #7f8c8d; font-size: 14px;</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="3" column="0">
+          <widget class="QLabel" name="lblSaldoActualLabel">
+           <property name="text">
+            <string>Saldo Actual:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QLabel" name="lblSaldoActualValor">
+           <property name="text">
+            <string>$0.00</string>
+           </property>
+           <property name="styleSheet">
+            <string>color: #e74c3c; font-size: 14px; font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       
+       <item>
+        <spacer name="verticalSpacerEstadisticas">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   
+   <!-- Buttons -->
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <item>
+      <spacer name="buttonSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnCancel">
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>35</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnSave">
+       <property name="text">
+        <string>Guardar</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>35</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ 
+ <tabstops>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>lineEditCodigo</tabstop>
+  <tabstop>lineEditNombre</tabstop>
+  <tabstop>lineEditEmail</tabstop>
+  <tabstop>lineEditTelefono</tabstop>
+  <tabstop>cmbTipoDocumento</tabstop>
+  <tabstop>lineEditDocumento</tabstop>
+  <tabstop>textEditDireccion</tabstop>
+  <tabstop>lineEditCiudad</tabstop>
+  <tabstop>dateEditNacimiento</tabstop>
+  <tabstop>cmbTipoCliente</tabstop>
+  <tabstop>cmbSegmento</tabstop>
+  <tabstop>cmbEstado</tabstop>
+  <tabstop>cmbOrigen</tabstop>
+  <tabstop>spinBoxLimiteCredito</tabstop>
+  <tabstop>spinBoxDescuento</tabstop>
+  <tabstop>textEditObservaciones</tabstop>
+  <tabstop>btnSave</tabstop>
+  <tabstop>btnCancel</tabstop>
+ </tabstops>
+ 
+ <resources/>
+ <connections>
+  <connection>
+   <sender>btnCancel</sender>
+   <signal>clicked()</signal>
+   <receiver>CustomerDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>500</x>
+     <y>470</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>300</x>
+     <y>250</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

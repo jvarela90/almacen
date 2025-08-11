@@ -1,0 +1,1366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ExecutiveDashboardAdvancedWidget</class>
+ <widget class="QWidget" name="ExecutiveDashboardAdvancedWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1400</width>
+    <height>900</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>📊 Dashboard Ejecutivo Avanzado</string>
+  </property>
+  <property name="styleSheet">
+   <string>
+QWidget {
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+QFrame#frameKPI {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, 
+                stop:0 #ffffff, stop:1 #f8f9fa);
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 15px;
+    margin: 5px;
+}
+
+QFrame#frameChart {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 10px;
+}
+
+QLabel#lblKPITitle {
+    font-size: 14px;
+    font-weight: bold;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+QLabel#lblKPIValue {
+    font-size: 28px;
+    font-weight: bold;
+    color: #007bff;
+    margin: 5px 0px;
+}
+
+QLabel#lblKPIChange {
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 3px;
+}
+
+QLabel#lblPositive {
+    color: #28a745;
+}
+
+QLabel#lblNegative {
+    color: #dc3545;
+}
+
+QLabel#lblNeutral {
+    color: #6c757d;
+}
+
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #007bff, stop:1 #0056b3);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: bold;
+    font-size: 13px;
+    min-width: 120px;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #0056b3, stop:1 #004085);
+}
+
+QPushButton:pressed {
+    background: #004085;
+}
+
+QPushButton#btnRefresh {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #28a745, stop:1 #1e7e34);
+}
+
+QPushButton#btnRefresh:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #1e7e34, stop:1 #1c7430);
+}
+
+QPushButton#btnExport {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #ffc107, stop:1 #e0a800);
+    color: #212529;
+}
+
+QPushButton#btnExport:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #e0a800, stop:1 #d39e00);
+}
+
+QPushButton#btnAlert {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #dc3545, stop:1 #c82333);
+}
+
+QPushButton#btnAlert:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #c82333, stop:1 #bd2130);
+}
+
+QComboBox {
+    background: white;
+    border: 2px solid #ced4da;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    min-width: 150px;
+}
+
+QComboBox:focus {
+    border-color: #007bff;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 25px;
+}
+
+QComboBox::down-arrow {
+    width: 12px;
+    height: 12px;
+}
+
+QTabWidget::pane {
+    border: 1px solid #dee2e6;
+    background: white;
+    border-radius: 12px;
+    margin-top: -1px;
+}
+
+QTabBar::tab {
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    padding: 12px 20px;
+    margin: 2px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    min-width: 100px;
+}
+
+QTabBar::tab:selected {
+    background: white;
+    border-bottom-color: white;
+    color: #007bff;
+}
+
+QTabBar::tab:hover {
+    background: #f8f9fa;
+}
+
+QProgressBar {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    background: #f8f9fa;
+    min-height: 25px;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
+                stop:0 #007bff, stop:1 #0056b3);
+    border-radius: 6px;
+}
+
+QListWidget {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    padding: 10px;
+    font-size: 13px;
+}
+
+QListWidget::item {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 2px;
+}
+
+QListWidget::item:selected {
+    background: #007bff;
+    color: white;
+}
+
+QListWidget::item:hover {
+    background: #e3f2fd;
+}
+
+QTableWidget {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    gridline-color: #e9ecef;
+    background: white;
+    alternate-background-color: #f8f9fa;
+    selection-background-color: #007bff;
+    selection-color: white;
+}
+
+QTableWidget::item {
+    padding: 12px 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+QHeaderView::section {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #f8f9fa, stop:1 #e9ecef);
+    padding: 12px 8px;
+    border: 1px solid #dee2e6;
+    font-weight: bold;
+    color: #495057;
+    font-size: 13px;
+}
+
+QScrollArea {
+    border: none;
+    background: transparent;
+}
+
+QFrame#frameAlert {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 5px;
+}
+
+QFrame#frameSuccess {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 5px;
+}
+
+QFrame#frameWarning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 5px;
+}
+
+QLabel#lblChartTitle {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+    padding: 10px;
+}
+
+QTextEdit {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    background: white;
+    font-size: 13px;
+    line-height: 1.5;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <item>
+      <widget class="QLabel" name="lblTitle">
+       <property name="text">
+        <string>📊 Dashboard Ejecutivo Avanzado</string>
+       </property>
+       <property name="styleSheet">
+        <string>font-size: 24px; font-weight: bold; color: #2c3e50; padding: 10px;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblPeriodSelector">
+       <property name="text">
+        <string>Período:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="cmbPeriod">
+       <item>
+        <property name="text">
+         <string>Últimos 7 días</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Últimos 30 días</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Últimos 90 días</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Último año</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Comparar años</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnRefreshDashboard" id="btnRefresh">
+       <property name="text">
+        <string>🔄 Actualizar</string>
+       </property>
+       <property name="toolTip">
+        <string>Actualizar todos los datos del dashboard</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnExportDashboard" id="btnExport">
+       <property name="text">
+        <string>📤 Exportar</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="kpiLayout">
+     <item>
+      <widget class="QFrame" name="frameRevenue" id="frameKPI">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QVBoxLayout" name="revenueLayout">
+        <item>
+         <widget class="QLabel" name="lblRevenueTitle" id="lblKPITitle">
+          <property name="text">
+           <string>💰 Ingresos Totales</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblRevenueValue" id="lblKPIValue">
+          <property name="text">
+           <string>$0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblRevenueChange" id="lblKPIChange">
+          <property name="text">
+           <string>+0% vs período anterior</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressRevenue">
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="format">
+           <string>Meta: %p%</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="frameTransactions" id="frameKPI">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QVBoxLayout" name="transactionsLayout">
+        <item>
+         <widget class="QLabel" name="lblTransactionsTitle" id="lblKPITitle">
+          <property name="text">
+           <string>🛒 Transacciones</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblTransactionsValue" id="lblKPIValue">
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblTransactionsChange" id="lblKPIChange">
+          <property name="text">
+           <string>+0% vs período anterior</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressTransactions">
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="format">
+           <string>Crecimiento: %p%</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="frameCustomers" id="frameKPI">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QVBoxLayout" name="customersLayout">
+        <item>
+         <widget class="QLabel" name="lblCustomersTitle" id="lblKPITitle">
+          <property name="text">
+           <string>👥 Clientes Activos</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblCustomersValue" id="lblKPIValue">
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblCustomersChange" id="lblKPIChange">
+          <property name="text">
+           <string>+0% nuevos clientes</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressCustomers">
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="format">
+           <string>Retención: %p%</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="frameProducts" id="frameKPI">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QVBoxLayout" name="productsLayout">
+        <item>
+         <widget class="QLabel" name="lblProductsTitle" id="lblKPITitle">
+          <property name="text">
+           <string>📦 Productos Vendidos</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblProductsValue" id="lblKPIValue">
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblProductsChange" id="lblKPIChange">
+          <property name="text">
+           <string>+0% vs período anterior</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressProducts">
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="format">
+           <string>Rotación: %p%</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tabCharts">
+      <attribute name="title">
+       <string>📈 Gráficos Interactivos</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="chartsLayout">
+       <item>
+        <layout class="QHBoxLayout" name="chartsControlsLayout">
+         <item>
+          <widget class="QPushButton" name="btnToggleChart1">
+           <property name="text">
+            <string>📊 Ventas por Tiempo</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnToggleChart2">
+           <property name="text">
+            <string>🥧 Top Productos</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnToggleChart3">
+           <property name="text">
+            <string>📈 Tendencias</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnToggleChart4">
+           <property name="text">
+            <string>🎯 Segmentos</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnSaveCharts" id="btnExport">
+           <property name="text">
+            <string>💾 Guardar Gráficos</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="chartsRowLayout">
+         <item>
+          <widget class="QFrame" name="frameChart1" id="frameChart">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>250</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="chart1Layout">
+            <item>
+             <widget class="QLabel" name="lblChart1Title" id="lblChartTitle">
+              <property name="text">
+               <string>📊 Ventas por Período</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblChart1Placeholder">
+              <property name="text">
+               <string>Gráfico de líneas mostrando tendencia de ventas</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="styleSheet">
+               <string>color: #6c757d; font-style: italic; padding: 40px;</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="frameChart2" id="frameChart">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>250</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="chart2Layout">
+            <item>
+             <widget class="QLabel" name="lblChart2Title" id="lblChartTitle">
+              <property name="text">
+               <string>🥧 Top 10 Productos</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblChart2Placeholder">
+              <property name="text">
+               <string>Gráfico circular con productos más vendidos</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="styleSheet">
+               <string>color: #6c757d; font-style: italic; padding: 40px;</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="chartsRow2Layout">
+         <item>
+          <widget class="QFrame" name="frameChart3" id="frameChart">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>250</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="chart3Layout">
+            <item>
+             <widget class="QLabel" name="lblChart3Title" id="lblChartTitle">
+              <property name="text">
+               <string>📈 Análisis de Tendencias</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblChart3Placeholder">
+              <property name="text">
+               <string>Gráfico de tendencias con predicciones</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="styleSheet">
+               <string>color: #6c757d; font-style: italic; padding: 40px;</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="frameChart4" id="frameChart">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>250</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="chart4Layout">
+            <item>
+             <widget class="QLabel" name="lblChart4Title" id="lblChartTitle">
+              <property name="text">
+               <string>🎯 Segmentos de Clientes</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblChart4Placeholder">
+              <property name="text">
+               <string>Distribución de clientes por segmentos</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="styleSheet">
+               <string>color: #6c757d; font-style: italic; padding: 40px;</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabAnalytics">
+      <attribute name="title">
+       <string>📊 Analytics Detallado</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="analyticsLayout">
+       <item>
+        <layout class="QHBoxLayout" name="analyticsTopLayout">
+         <item>
+          <widget class="QFrame" name="frameTopProducts" id="frameChart">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <layout class="QVBoxLayout" name="topProductsLayout">
+            <item>
+             <widget class="QLabel" name="lblTopProductsTitle" id="lblChartTitle">
+              <property name="text">
+               <string>🏆 Top 10 Productos Más Vendidos</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tblTopProducts">
+              <property name="alternatingRowColors">
+               <bool>true</bool>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
+              <property name="sortingEnabled">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="frameTopCustomers" id="frameChart">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <layout class="QVBoxLayout" name="topCustomersLayout">
+            <item>
+             <widget class="QLabel" name="lblTopCustomersTitle" id="lblChartTitle">
+              <property name="text">
+               <string>💎 Top 10 Clientes VIP</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tblTopCustomers">
+              <property name="alternatingRowColors">
+               <bool>true</bool>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
+              <property name="sortingEnabled">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QFrame" name="framePerformanceMetrics" id="frameChart">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QVBoxLayout" name="performanceMetricsLayout">
+          <item>
+           <widget class="QLabel" name="lblPerformanceTitle" id="lblChartTitle">
+            <property name="text">
+             <string>⚡ Métricas de Rendimiento</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTableWidget" name="tblPerformanceMetrics">
+            <property name="maximumHeight">
+             <number>200</number>
+            </property>
+            <property name="alternatingRowColors">
+             <bool>true</bool>
+            </property>
+            <property name="selectionBehavior">
+             <enum>QAbstractItemView::SelectRows</enum>
+            </property>
+            <property name="sortingEnabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabAlerts">
+      <attribute name="title">
+       <string>🚨 Alertas y Notificaciones</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="alertsLayout">
+       <item>
+        <layout class="QHBoxLayout" name="alertsControlsLayout">
+         <item>
+          <widget class="QPushButton" name="btnCriticalAlerts" id="btnAlert">
+           <property name="text">
+            <string>🚨 Críticas (0)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnWarningAlerts" id="btnExport">
+           <property name="text">
+            <string>⚠️ Advertencias (0)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnInfoAlerts">
+           <property name="text">
+            <string>ℹ️ Información (0)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnMarkAllRead">
+           <property name="text">
+            <string>✅ Marcar Todas Leídas</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="alertsContentLayout">
+         <item>
+          <widget class="QFrame" name="frameCriticalAlerts" id="frameAlert">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <layout class="QVBoxLayout" name="criticalAlertsLayout">
+            <item>
+             <widget class="QLabel" name="lblCriticalTitle">
+              <property name="text">
+               <string>🚨 Alertas Críticas</string>
+              </property>
+              <property name="styleSheet">
+               <string>font-weight: bold; color: #dc3545; font-size: 14px;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="listCriticalAlerts">
+              <property name="maximumHeight">
+               <number>150</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="frameWarningAlerts" id="frameWarning">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <layout class="QVBoxLayout" name="warningAlertsLayout">
+            <item>
+             <widget class="QLabel" name="lblWarningTitle">
+              <property name="text">
+               <string>⚠️ Advertencias</string>
+              </property>
+              <property name="styleSheet">
+               <string>font-weight: bold; color: #e0a800; font-size: 14px;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="listWarningAlerts">
+              <property name="maximumHeight">
+               <number>150</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="frameInfoAlerts" id="frameSuccess">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <layout class="QVBoxLayout" name="infoAlertsLayout">
+            <item>
+             <widget class="QLabel" name="lblInfoTitle">
+              <property name="text">
+               <string>ℹ️ Información</string>
+              </property>
+              <property name="styleSheet">
+               <string>font-weight: bold; color: #28a745; font-size: 14px;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="listInfoAlerts">
+              <property name="maximumHeight">
+               <number>150</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QFrame" name="frameAlertHistory" id="frameChart">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QVBoxLayout" name="alertHistoryLayout">
+          <item>
+           <widget class="QLabel" name="lblAlertHistoryTitle" id="lblChartTitle">
+            <property name="text">
+             <string>📚 Historial de Alertas</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTextEdit" name="txtAlertHistory">
+            <property name="maximumHeight">
+             <number>200</number>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="html">
+             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI',Arial,sans-serif; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#6c757d;&quot;&gt;El historial de alertas aparecerá aquí...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabReports">
+      <attribute name="title">
+       <string>📋 Reportes Ejecutivos</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="reportsLayout">
+       <item>
+        <layout class="QHBoxLayout" name="reportsControlsLayout">
+         <item>
+          <widget class="QPushButton" name="btnGenerateExecutiveReport">
+           <property name="text">
+            <string>📊 Generar Reporte Ejecutivo</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnGenerateFinancialReport">
+           <property name="text">
+            <string>💰 Reporte Financiero</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnGenerateOperationalReport">
+           <property name="text">
+            <string>⚙️ Reporte Operacional</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnScheduleReports" id="btnExport">
+           <property name="text">
+            <string>⏰ Programar Reportes</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="scrollReports">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents_2">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>1356</width>
+            <height>500</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="scrollReportsLayout">
+           <item>
+            <widget class="QFrame" name="frameExecutiveSummary" id="frameChart">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QVBoxLayout" name="executiveSummaryLayout">
+              <item>
+               <widget class="QLabel" name="lblExecutiveSummaryTitle" id="lblChartTitle">
+                <property name="text">
+                 <string>📋 Resumen Ejecutivo</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QTextEdit" name="txtExecutiveSummary">
+                <property name="maximumHeight">
+                 <number>200</number>
+                </property>
+                <property name="html">
+                 <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI',Arial,sans-serif; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#6c757d;&quot;&gt;Genere un reporte ejecutivo para ver el resumen...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="reportsBottomLayout">
+             <item>
+              <widget class="QFrame" name="frameKeyInsights" id="frameChart">
+               <property name="frameShape">
+                <enum>QFrame::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
+               </property>
+               <layout class="QVBoxLayout" name="keyInsightsLayout">
+                <item>
+                 <widget class="QLabel" name="lblKeyInsightsTitle" id="lblChartTitle">
+                  <property name="text">
+                   <string>🔑 Insights Clave</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QListWidget" name="listExecutiveInsights">
+                  <property name="maximumHeight">
+                   <number>250</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QFrame" name="frameActionItems" id="frameChart">
+               <property name="frameShape">
+                <enum>QFrame::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
+               </property>
+               <layout class="QVBoxLayout" name="actionItemsLayout">
+                <item>
+                 <widget class="QLabel" name="lblActionItemsTitle" id="lblChartTitle">
+                  <property name="text">
+                   <string>🎯 Acciones Recomendadas</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QListWidget" name="listActionItems">
+                  <property name="maximumHeight">
+                   <number>250</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="footerLayout">
+     <item>
+      <widget class="QLabel" name="lblLastUpdateFooter">
+       <property name="text">
+        <string>Última actualización: --:--</string>
+       </property>
+       <property name="styleSheet">
+        <string>color: #6c757d; font-size: 12px;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_5">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblSystemStatus">
+       <property name="text">
+        <string>🟢 Sistema Operativo</string>
+       </property>
+       <property name="styleSheet">
+        <string>color: #28a745; font-weight: bold; font-size: 12px;</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

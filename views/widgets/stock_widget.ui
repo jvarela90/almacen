@@ -1,0 +1,855 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>StockWidget</class>
+ <widget class="QWidget" name="StockWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Gestión de Inventario</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>10</number>
+   </property>
+   <property name="topMargin">
+    <number>10</number>
+   </property>
+   <property name="rightMargin">
+    <number>10</number>
+   </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
+   
+   <!-- Header and Controls -->
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="lblTitle">
+       <property name="text">
+        <string>📦 Gestión de Inventario</string>
+       </property>
+       <property name="styleSheet">
+        <string>font-size: 20px; font-weight: bold; color: #2c3e50;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnNuevoProducto">
+       <property name="text">
+        <string>➕ Nuevo Producto</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>140</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string>
+         QPushButton {
+          background-color: #27ae60;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: bold;
+         }
+         QPushButton:hover {
+          background-color: #229954;
+         }
+        </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnImportar">
+       <property name="text">
+        <string>📥 Importar</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>35</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnExportar">
+       <property name="text">
+        <string>📤 Exportar</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>35</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   
+   <!-- Filters and Search -->
+   <item>
+    <widget class="QFrame" name="frameFilters">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <property name="styleSheet">
+      <string>
+       QFrame#frameFilters {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+       }
+      </string>
+     </property>
+     <layout class="QHBoxLayout" name="filtersLayout">
+      <property name="spacing">
+       <number>15</number>
+      </property>
+      <property name="leftMargin">
+       <number>15</number>
+      </property>
+      <property name="topMargin">
+       <number>10</number>
+      </property>
+      <property name="rightMargin">
+       <number>15</number>
+      </property>
+      <property name="bottomMargin">
+       <number>10</number>
+      </property>
+      
+      <item>
+       <widget class="QLabel" name="lblBuscar">
+        <property name="text">
+         <string>🔍 Buscar:</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-weight: bold;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEditBuscar">
+        <property name="placeholderText">
+         <string>Código, nombre o descripción...</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLineEdit {
+           padding: 8px;
+           border: 1px solid #bdc3c7;
+           border-radius: 4px;
+          }
+          QLineEdit:focus {
+           border-color: #3498db;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <widget class="QLabel" name="lblCategoria">
+        <property name="text">
+         <string>Categoría:</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-weight: bold;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cmbCategoria">
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>Todas las categorías</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      
+      <item>
+       <widget class="QLabel" name="lblEstado">
+        <property name="text">
+         <string>Estado:</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-weight: bold;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cmbEstado">
+        <property name="minimumSize">
+         <size>
+          <width>120</width>
+          <height>0</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>Todos</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Activos</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Inactivos</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Stock Bajo</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Sin Stock</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      
+      <item>
+       <widget class="QPushButton" name="btnLimpiarFiltros">
+        <property name="text">
+         <string>🗑️ Limpiar</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>80</width>
+          <height>32</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <spacer name="filtersSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- Main Content: Products Table -->
+   <item>
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     
+     <!-- Products Table -->
+     <widget class="QFrame" name="frameProductosTable">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <property name="styleSheet">
+       <string>
+        QFrame#frameProductosTable {
+         background-color: white;
+         border: 1px solid #dee2e6;
+         border-radius: 6px;
+        }
+       </string>
+      </property>
+      <layout class="QVBoxLayout" name="productosTableLayout">
+       <property name="spacing">
+        <number>5</number>
+       </property>
+       <property name="leftMargin">
+        <number>5</number>
+       </property>
+       <property name="topMargin">
+        <number>5</number>
+       </property>
+       <property name="rightMargin">
+        <number>5</number>
+       </property>
+       <property name="bottomMargin">
+        <number>5</number>
+       </property>
+       
+       <item>
+        <layout class="QHBoxLayout" name="tableHeaderLayout">
+         <property name="spacing">
+          <number>10</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="lblTotalProductos">
+           <property name="text">
+            <string>Total productos: 0</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="tableHeaderSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnRefresh">
+           <property name="text">
+            <string>🔄</string>
+           </property>
+           <property name="toolTip">
+            <string>Actualizar tabla</string>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>30</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>30</width>
+             <height>30</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       
+       <item>
+        <widget class="QTableWidget" name="tblProductos">
+         <property name="alternatingRowColors">
+          <bool>true</bool>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SingleSelection</enum>
+         </property>
+         <property name="sortingEnabled">
+          <bool>true</bool>
+         </property>
+         <property name="styleSheet">
+          <string>
+           QTableWidget {
+            gridline-color: #ecf0f1;
+            background-color: white;
+           }
+           QTableWidget::item {
+            padding: 8px;
+            border-bottom: 1px solid #ecf0f1;
+           }
+           QTableWidget::item:selected {
+            background-color: #3498db;
+            color: white;
+           }
+           QHeaderView::section {
+            background-color: #34495e;
+            color: white;
+            padding: 8px;
+            border: none;
+            font-weight: bold;
+           }
+          </string>
+         </property>
+         <column>
+          <property name="text">
+           <string>Código</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Nombre</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Categoría</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Precio</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Stock Actual</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Stock Mínimo</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Estado</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Última Actualización</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     
+     <!-- Product Details Panel -->
+     <widget class="QFrame" name="frameDetallesProducto">
+      <property name="minimumSize">
+       <size>
+        <width>300</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>350</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <property name="styleSheet">
+       <string>
+        QFrame#frameDetallesProducto {
+         background-color: white;
+         border: 1px solid #dee2e6;
+         border-radius: 6px;
+        }
+       </string>
+      </property>
+      <layout class="QVBoxLayout" name="detallesProductoLayout">
+       <property name="spacing">
+        <number>10</number>
+       </property>
+       <property name="leftMargin">
+        <number>15</number>
+       </property>
+       <property name="topMargin">
+        <number>15</number>
+       </property>
+       <property name="rightMargin">
+        <number>15</number>
+       </property>
+       <property name="bottomMargin">
+        <number>15</number>
+       </property>
+       
+       <item>
+        <widget class="QLabel" name="lblDetallesTitle">
+         <property name="text">
+          <string>📋 Detalles del Producto</string>
+         </property>
+         <property name="styleSheet">
+          <string>font-size: 16px; font-weight: bold; color: #2c3e50;</string>
+         </property>
+        </widget>
+       </item>
+       
+       <!-- Product Image Placeholder -->
+       <item>
+        <widget class="QLabel" name="lblProductoImagen">
+         <property name="text">
+          <string>🖼️
+Sin imagen</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>120</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string>
+           QLabel {
+            border: 2px dashed #bdc3c7;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+            color: #7f8c8d;
+            font-size: 14px;
+           }
+          </string>
+         </property>
+        </widget>
+       </item>
+       
+       <!-- Product Details -->
+       <item>
+        <layout class="QFormLayout" name="detallesFormLayout">
+         <property name="fieldGrowthPolicy">
+          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+         </property>
+         <property name="horizontalSpacing">
+          <number>10</number>
+         </property>
+         <property name="verticalSpacing">
+          <number>8</number>
+         </property>
+         
+         <item row="0" column="0">
+          <widget class="QLabel" name="lblDetalleCodigo">
+           <property name="text">
+            <string>Código:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="lblDetalleCodigoValor">
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="1" column="0">
+          <widget class="QLabel" name="lblDetalleNombre">
+           <property name="text">
+            <string>Nombre:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="lblDetalleNombreValor">
+           <property name="text">
+            <string>-</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="2" column="0">
+          <widget class="QLabel" name="lblDetalleCategoria">
+           <property name="text">
+            <string>Categoría:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="lblDetalleCategoriaValor">
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="3" column="0">
+          <widget class="QLabel" name="lblDetallePrecio">
+           <property name="text">
+            <string>Precio:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QLabel" name="lblDetallePrecioValor">
+           <property name="text">
+            <string>$0.00</string>
+           </property>
+           <property name="styleSheet">
+            <string>color: #27ae60; font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="4" column="0">
+          <widget class="QLabel" name="lblDetalleStock">
+           <property name="text">
+            <string>Stock:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QLabel" name="lblDetalleStockValor">
+           <property name="text">
+            <string>0</string>
+           </property>
+           <property name="styleSheet">
+            <string>color: #3498db; font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="5" column="0">
+          <widget class="QLabel" name="lblDetalleProveedor">
+           <property name="text">
+            <string>Proveedor:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QLabel" name="lblDetalleProveedorValor">
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item row="6" column="0">
+          <widget class="QLabel" name="lblDetalleEstado">
+           <property name="text">
+            <string>Estado:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; color: #2c3e50;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="1">
+          <widget class="QLabel" name="lblDetalleEstadoValor">
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       
+       <!-- Action Buttons -->
+       <item>
+        <layout class="QVBoxLayout" name="actionButtonsLayout">
+         <property name="spacing">
+          <number>8</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="btnEditarProducto">
+           <property name="text">
+            <string>✏️ Editar</string>
+           </property>
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string>
+             QPushButton {
+              background-color: #3498db;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-weight: bold;
+             }
+             QPushButton:hover {
+              background-color: #2980b9;
+             }
+             QPushButton:disabled {
+              background-color: #bdc3c7;
+              color: #7f8c8d;
+             }
+            </string>
+           </property>
+          </widget>
+         </item>
+         
+         <item>
+          <widget class="QPushButton" name="btnAjustarStock">
+           <property name="text">
+            <string>📦 Ajustar Stock</string>
+           </property>
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         
+         <item>
+          <widget class="QPushButton" name="btnHistorialMovimientos">
+           <property name="text">
+            <string>📊 Historial</string>
+           </property>
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         
+         <item>
+          <widget class="QPushButton" name="btnEliminarProducto">
+           <property name="text">
+            <string>🗑️ Eliminar</string>
+           </property>
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string>
+             QPushButton {
+              background-color: #e74c3c;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-weight: bold;
+             }
+             QPushButton:hover {
+              background-color: #c0392b;
+             }
+             QPushButton:disabled {
+              background-color: #bdc3c7;
+              color: #7f8c8d;
+             }
+            </string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       
+       <item>
+        <spacer name="detallesVerticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ 
+ <tabstops>
+  <tabstop>btnNuevoProducto</tabstop>
+  <tabstop>btnImportar</tabstop>
+  <tabstop>btnExportar</tabstop>
+  <tabstop>lineEditBuscar</tabstop>
+  <tabstop>cmbCategoria</tabstop>
+  <tabstop>cmbEstado</tabstop>
+  <tabstop>btnLimpiarFiltros</tabstop>
+  <tabstop>tblProductos</tabstop>
+  <tabstop>btnEditarProducto</tabstop>
+  <tabstop>btnAjustarStock</tabstop>
+  <tabstop>btnHistorialMovimientos</tabstop>
+  <tabstop>btnEliminarProducto</tabstop>
+ </tabstops>
+ 
+ <resources/>
+ <connections/>
+</ui>

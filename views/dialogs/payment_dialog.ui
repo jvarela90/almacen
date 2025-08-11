@@ -1,0 +1,534 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PaymentDialog</class>
+ <widget class="QDialog" name="PaymentDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>500</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Procesar Pago</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   
+   <!-- Header -->
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <item>
+      <widget class="QLabel" name="lblIcon">
+       <property name="text">
+        <string>💳</string>
+       </property>
+       <property name="styleSheet">
+        <string>font-size: 24px;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblTitle">
+       <property name="text">
+        <string>Procesar Pago</string>
+       </property>
+       <property name="styleSheet">
+        <string>font-size: 18px; font-weight: bold; color: #2c3e50;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   
+   <!-- Sale Summary -->
+   <item>
+    <widget class="QGroupBox" name="groupBoxResumen">
+     <property name="title">
+      <string>Resumen de Venta</string>
+     </property>
+     <property name="styleSheet">
+      <string>
+       QGroupBox {
+        font-weight: bold;
+        border: 2px solid #bdc3c7;
+        border-radius: 6px;
+        margin-top: 10px;
+        padding-top: 10px;
+       }
+       QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 5px 0 5px;
+       }
+      </string>
+     </property>
+     <layout class="QFormLayout" name="resumenFormLayout">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+      </property>
+      <property name="horizontalSpacing">
+       <number>10</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>8</number>
+      </property>
+      
+      <item row="0" column="0">
+       <widget class="QLabel" name="lblSubtotalLabel">
+        <property name="text">
+         <string>Subtotal:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="lblSubtotalValor">
+        <property name="text">
+         <string>$0.00</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-size: 14px; color: #2c3e50;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="1" column="0">
+       <widget class="QLabel" name="lblDescuentoLabel">
+        <property name="text">
+         <string>Descuento:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="lblDescuentoValor">
+        <property name="text">
+         <string>$0.00</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-size: 14px; color: #e74c3c;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="2" column="0">
+       <widget class="QLabel" name="lblImpuestosLabel">
+        <property name="text">
+         <string>Impuestos:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLabel" name="lblImpuestosValor">
+        <property name="text">
+         <string>$0.00</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-size: 14px; color: #2c3e50;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      
+      <!-- Línea separadora -->
+      <item row="3" column="0" colspan="2">
+       <widget class="QFrame" name="lineSeparator">
+        <property name="frameShape">
+         <enum>QFrame::HLine</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Sunken</enum>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="4" column="0">
+       <widget class="QLabel" name="lblTotalLabel">
+        <property name="text">
+         <string>TOTAL:</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-size: 16px; font-weight: bold; color: #2c3e50;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLabel" name="lblTotalValor">
+        <property name="text">
+         <string>$0.00</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-size: 18px; font-weight: bold; color: #27ae60;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- Payment Method -->
+   <item>
+    <widget class="QGroupBox" name="groupBoxMetodoPago">
+     <property name="title">
+      <string>Método de Pago</string>
+     </property>
+     <property name="styleSheet">
+      <string>
+       QGroupBox {
+        font-weight: bold;
+        border: 2px solid #bdc3c7;
+        border-radius: 6px;
+        margin-top: 10px;
+        padding-top: 10px;
+       }
+       QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 5px 0 5px;
+       }
+      </string>
+     </property>
+     <layout class="QVBoxLayout" name="metodoPagoLayout">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      
+      <item>
+       <layout class="QHBoxLayout" name="metodosLayout">
+        <property name="spacing">
+         <number>15</number>
+        </property>
+        <item>
+         <widget class="QRadioButton" name="radioEfectivo">
+          <property name="text">
+           <string>💵 Efectivo</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 14px;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioTarjeta">
+          <property name="text">
+           <string>💳 Tarjeta</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 14px;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioTransferencia">
+          <property name="text">
+           <string>🏦 Transferencia</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 14px;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="metodosHorizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      
+      <!-- Campos adicionales para métodos de pago -->
+      <item>
+       <layout class="QFormLayout" name="detallesPagoLayout">
+        <property name="fieldGrowthPolicy">
+         <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+        </property>
+        <property name="horizontalSpacing">
+         <number>10</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>8</number>
+        </property>
+        
+        <item row="0" column="0">
+         <widget class="QLabel" name="lblMontoRecibido">
+          <property name="text">
+           <string>Monto Recibido:</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-weight: bold;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="spinBoxMontoRecibido">
+          <property name="suffix">
+           <string> $</string>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="maximum">
+           <double>999999.99</double>
+          </property>
+          <property name="styleSheet">
+           <string>
+            QDoubleSpinBox {
+             padding: 8px;
+             font-size: 14px;
+             border: 2px solid #bdc3c7;
+             border-radius: 4px;
+            }
+            QDoubleSpinBox:focus {
+             border-color: #3498db;
+            }
+           </string>
+          </property>
+         </widget>
+        </item>
+        
+        <item row="1" column="0">
+         <widget class="QLabel" name="lblCambio">
+          <property name="text">
+           <string>Cambio:</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-weight: bold;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="lblCambioValor">
+          <property name="text">
+           <string>$0.00</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 14px; font-weight: bold; color: #27ae60;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        
+        <item row="2" column="0">
+         <widget class="QLabel" name="lblReferencia">
+          <property name="text">
+           <string>Referencia:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="lineEditReferencia">
+          <property name="placeholderText">
+           <string>Número de transacción, voucher, etc.</string>
+          </property>
+          <property name="maxLength">
+           <number>100</number>
+          </property>
+          <property name="styleSheet">
+           <string>
+            QLineEdit {
+             padding: 8px;
+             font-size: 14px;
+             border: 2px solid #bdc3c7;
+             border-radius: 4px;
+            }
+            QLineEdit:focus {
+             border-color: #3498db;
+            }
+           </string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- Buttons -->
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <property name="spacing">
+      <number>15</number>
+     </property>
+     <item>
+      <spacer name="buttonSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnCancel">
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string>
+         QPushButton {
+          background-color: #95a5a6;
+          color: white;
+          border: none;
+          padding: 10px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: bold;
+         }
+         QPushButton:hover {
+          background-color: #7f8c8d;
+         }
+         QPushButton:pressed {
+          background-color: #6c7b7d;
+         }
+        </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnProcessPayment">
+       <property name="text">
+        <string>Procesar Pago</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string>
+         QPushButton {
+          background-color: #27ae60;
+          color: white;
+          border: none;
+          padding: 10px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: bold;
+         }
+         QPushButton:hover {
+          background-color: #229954;
+         }
+         QPushButton:pressed {
+          background-color: #1e8449;
+         }
+         QPushButton:disabled {
+          background-color: #bdc3c7;
+          color: #7f8c8d;
+         }
+        </string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ 
+ <!-- Button Group for payment methods -->
+ <buttongroups>
+  <buttongroup name="paymentMethodGroup">
+   <button>radioEfectivo</button>
+   <button>radioTarjeta</button>
+   <button>radioTransferencia</button>
+  </buttongroup>
+ </buttongroups>
+ 
+ <tabstops>
+  <tabstop>radioEfectivo</tabstop>
+  <tabstop>radioTarjeta</tabstop>
+  <tabstop>radioTransferencia</tabstop>
+  <tabstop>spinBoxMontoRecibido</tabstop>
+  <tabstop>lineEditReferencia</tabstop>
+  <tabstop>btnProcessPayment</tabstop>
+  <tabstop>btnCancel</tabstop>
+ </tabstops>
+ 
+ <resources/>
+ <connections>
+  <connection>
+   <sender>btnCancel</sender>
+   <signal>clicked()</signal>
+   <receiver>PaymentDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>380</x>
+     <y>370</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>250</x>
+     <y>200</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

@@ -1,0 +1,485 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LoginDialog</class>
+ <widget class="QDialog" name="LoginDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>450</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>450</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>450</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>AlmacénPro - Iniciar Sesión</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../../views/resources/icons/login.png</normaloff>../../views/resources/icons/login.png</iconset>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>30</number>
+   </property>
+   <property name="topMargin">
+    <number>30</number>
+   </property>
+   <property name="rightMargin">
+    <number>30</number>
+   </property>
+   <property name="bottomMargin">
+    <number>30</number>
+   </property>
+   
+   <!-- Header Section -->
+   <item>
+    <widget class="QFrame" name="headerFrame">
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <layout class="QVBoxLayout" name="headerLayout">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      
+      <item>
+       <widget class="QLabel" name="lblLogo">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>80</width>
+          <height>80</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLabel {
+           background-color: #3498db;
+           border-radius: 40px;
+           color: white;
+           font-size: 32px;
+           font-weight: bold;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <widget class="QLabel" name="lblTitle">
+        <property name="text">
+         <string>AlmacénPro v2.0</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLabel {
+           font-size: 24px;
+           font-weight: bold;
+           color: #2c3e50;
+           margin: 10px 0px;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <widget class="QLabel" name="lblSubtitle">
+        <property name="text">
+         <string>Sistema ERP/POS Profesional</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLabel {
+           font-size: 14px;
+           color: #7f8c8d;
+           margin-bottom: 20px;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- Login Form -->
+   <item>
+    <widget class="QFrame" name="formFrame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <property name="styleSheet">
+      <string>
+       QFrame#formFrame {
+        background-color: white;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        padding: 20px;
+       }
+      </string>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+      </property>
+      <property name="horizontalSpacing">
+       <number>15</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>15</number>
+      </property>
+      
+      <item row="0" column="0">
+       <widget class="QLabel" name="lblUsername">
+        <property name="text">
+         <string>Usuario:</string>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLabel {
+           font-weight: bold;
+           color: #2c3e50;
+           font-size: 14px;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="lineEditUsername">
+        <property name="placeholderText">
+         <string>Ingrese su nombre de usuario</string>
+        </property>
+        <property name="maxLength">
+         <number>50</number>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLineEdit {
+           padding: 12px;
+           font-size: 14px;
+           border: 2px solid #bdc3c7;
+           border-radius: 6px;
+           background-color: #f8f9fa;
+          }
+          QLineEdit:focus {
+           border-color: #3498db;
+           background-color: white;
+          }
+          QLineEdit:hover {
+           border-color: #85C1E9;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="1" column="0">
+       <widget class="QLabel" name="lblPassword">
+        <property name="text">
+         <string>Contraseña:</string>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLabel {
+           font-weight: bold;
+           color: #2c3e50;
+           font-size: 14px;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="lineEditPassword">
+        <property name="echoMode">
+         <enum>QLineEdit::Password</enum>
+        </property>
+        <property name="placeholderText">
+         <string>Ingrese su contraseña</string>
+        </property>
+        <property name="maxLength">
+         <number>100</number>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QLineEdit {
+           padding: 12px;
+           font-size: 14px;
+           border: 2px solid #bdc3c7;
+           border-radius: 6px;
+           background-color: #f8f9fa;
+          }
+          QLineEdit:focus {
+           border-color: #3498db;
+           background-color: white;
+          }
+          QLineEdit:hover {
+           border-color: #85C1E9;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="2" column="1">
+       <widget class="QCheckBox" name="chkRememberUser">
+        <property name="text">
+         <string>Recordar usuario</string>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QCheckBox {
+           font-size: 12px;
+           color: #7f8c8d;
+           spacing: 8px;
+          }
+          QCheckBox::indicator {
+           width: 16px;
+           height: 16px;
+          }
+          QCheckBox::indicator:unchecked {
+           border: 2px solid #bdc3c7;
+           border-radius: 3px;
+           background-color: white;
+          }
+          QCheckBox::indicator:checked {
+           border: 2px solid #3498db;
+           border-radius: 3px;
+           background-color: #3498db;
+           image: url(:/icons/check.png);
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- Status and Buttons -->
+   <item>
+    <widget class="QLabel" name="lblStatus">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string>
+       QLabel {
+        font-size: 12px;
+        color: #e74c3c;
+        font-weight: bold;
+        padding: 5px;
+        border-radius: 4px;
+        background-color: transparent;
+       }
+      </string>
+     </property>
+    </widget>
+   </item>
+   
+   <item>
+    <widget class="QFrame" name="buttonFrame">
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <layout class="QHBoxLayout" name="buttonLayout">
+      <property name="spacing">
+       <number>15</number>
+      </property>
+      
+      <item>
+       <spacer name="buttonSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      
+      <item>
+       <widget class="QPushButton" name="btnCancel">
+        <property name="text">
+         <string>Cancelar</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>40</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QPushButton {
+           background-color: #95a5a6;
+           color: white;
+           border: none;
+           padding: 10px 20px;
+           border-radius: 6px;
+           font-size: 14px;
+           font-weight: bold;
+          }
+          QPushButton:hover {
+           background-color: #7f8c8d;
+          }
+          QPushButton:pressed {
+           background-color: #6c7b7d;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <widget class="QPushButton" name="btnLogin">
+        <property name="text">
+         <string>Ingresar</string>
+        </property>
+        <property name="default">
+         <bool>true</bool>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>40</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string>
+          QPushButton {
+           background-color: #3498db;
+           color: white;
+           border: none;
+           padding: 10px 20px;
+           border-radius: 6px;
+           font-size: 14px;
+           font-weight: bold;
+          }
+          QPushButton:hover {
+           background-color: #2980b9;
+          }
+          QPushButton:pressed {
+           background-color: #21618c;
+          }
+          QPushButton:disabled {
+           background-color: #bdc3c7;
+           color: #7f8c8d;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- Spacer -->
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ 
+ <!-- Tab Order -->
+ <tabstops>
+  <tabstop>lineEditUsername</tabstop>
+  <tabstop>lineEditPassword</tabstop>
+  <tabstop>chkRememberUser</tabstop>
+  <tabstop>btnLogin</tabstop>
+  <tabstop>btnCancel</tabstop>
+ </tabstops>
+ 
+ <resources/>
+ <connections>
+  <connection>
+   <sender>btnCancel</sender>
+   <signal>clicked()</signal>
+   <receiver>LoginDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>350</x>
+     <y>450</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>225</x>
+     <y>250</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SalesWidget</class>
+ <widget class="QWidget" name="SalesWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Punto de Venta</string>
+  </property>
+  <layout class="QHBoxLayout" name="layoutPrincipal">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>10</number>
+   </property>
+   <property name="topMargin">
+    <number>10</number>
+   </property>
+   <property name="rightMargin">
+    <number>10</number>
+   </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
+   
+   <!-- Panel Izquierdo: Scanner y Productos -->
+   <item>
+    <widget class="QWidget" name="framePanelIzquierdo">
+     <layout class="QVBoxLayout" name="layoutPanelIzquierdo">
+      
+      <!-- Header -->
+      <item>
+       <widget class="QFrame" name="frameHeader">
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="objectName">
+         <string>sales_header</string>
+        </property>
+        <layout class="QHBoxLayout" name="layoutHeader">
+         <item>
+          <widget class="QLabel" name="lblTitulo">
+           <property name="text">
+            <string>🛒 Punto de Venta</string>
+           </property>
+           <property name="objectName">
+            <string>sales_title</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-size: 18px; font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="spacerHeader">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="lblUsuario">
+           <property name="text">
+            <string>Cajero: Usuario</string>
+           </property>
+           <property name="objectName">
+            <string>user_info</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      
+      <!-- Grupo Scanner -->
+      <item>
+       <widget class="QGroupBox" name="groupScanner">
+        <property name="title">
+         <string>Buscar Producto</string>
+        </property>
+        <layout class="QVBoxLayout" name="layoutScanner">
+         <item>
+          <layout class="QHBoxLayout" name="layoutBusqueda">
+           <item>
+            <widget class="QLineEdit" name="lineEditBuscarProducto">
+             <property name="placeholderText">
+              <string>Escanear código o buscar producto...</string>
+             </property>
+             <property name="objectName">
+              <string>product_search</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnBuscar">
+             <property name="text">
+              <string>🔍</string>
+             </property>
+             <property name="toolTip">
+              <string>Buscar producto (F1)</string>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>16777215</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnLimpiarBusqueda">
+             <property name="text">
+              <string>✖</string>
+             </property>
+             <property name="toolTip">
+              <string>Limpiar búsqueda (Esc)</string>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>16777215</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      
+      <!-- Lista de Productos -->
+      <item>
+       <widget class="QGroupBox" name="groupProductos">
+        <property name="title">
+         <string>Productos Disponibles</string>
+        </property>
+        <layout class="QVBoxLayout" name="layoutProductos">
+         <item>
+          <widget class="QTableWidget" name="tblProductosDisponibles">
+           <property name="alternatingRowColors">
+            <bool>true</bool>
+           </property>
+           <property name="selectionBehavior">
+            <enum>QAbstractItemView::SelectRows</enum>
+           </property>
+           <property name="sortingEnabled">
+            <bool>true</bool>
+           </property>
+           <column>
+            <property name="text">
+             <string>Código</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Nombre</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Categoría</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Precio</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Stock</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Descripción</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="layoutProductosAcciones">
+           <item>
+            <widget class="QPushButton" name="btnAgregarProducto">
+             <property name="text">
+              <string>➕ Agregar al Carrito</string>
+             </property>
+             <property name="toolTip">
+              <string>Agregar producto seleccionado al carrito (F2)</string>
+             </property>
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="spacerProductos">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblCantidad">
+             <property name="text">
+              <string>Cantidad:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="spinCantidadAgregar">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>999</number>
+             </property>
+             <property name="value">
+              <number>1</number>
+             </property>
+             <property name="toolTip">
+              <string>Cantidad a agregar al carrito</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- Panel Derecho: Carrito y Checkout -->
+   <item>
+    <widget class="QWidget" name="framePanelDerecho">
+     <layout class="QVBoxLayout" name="layoutPanelDerecho">
+      
+      <!-- Cliente Seleccionado -->
+      <item>
+       <widget class="QGroupBox" name="groupCliente">
+        <property name="title">
+         <string>Cliente</string>
+        </property>
+        <layout class="QHBoxLayout" name="layoutCliente">
+         <item>
+          <widget class="QLabel" name="lblClienteNombre">
+           <property name="text">
+            <string>Cliente General</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="spacerCliente">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnSeleccionarCliente">
+           <property name="text">
+            <string>👤 Seleccionar</string>
+           </property>
+           <property name="toolTip">
+            <string>Seleccionar cliente para la venta (F3)</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      
+      <!-- Carrito -->
+      <item>
+       <widget class="QGroupBox" name="groupCarrito">
+        <property name="title">
+         <string>Carrito de Compras</string>
+        </property>
+        <layout class="QVBoxLayout" name="layoutCarrito">
+         <item>
+          <widget class="QTableWidget" name="tblCarrito">
+           <property name="alternatingRowColors">
+            <bool>true</bool>
+           </property>
+           <property name="selectionBehavior">
+            <enum>QAbstractItemView::SelectRows</enum>
+           </property>
+           <column>
+            <property name="text">
+             <string>Código</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Producto</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Cantidad</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Precio Unit.</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Subtotal</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Acciones</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="layoutCarritoAcciones">
+           <item>
+            <widget class="QPushButton" name="btnEliminarDelCarrito">
+             <property name="text">
+              <string>🗑 Eliminar</string>
+             </property>
+             <property name="toolTip">
+              <string>Eliminar item seleccionado del carrito (Del)</string>
+             </property>
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnLimpiarCarrito">
+             <property name="text">
+              <string>🧹 Limpiar Todo</string>
+             </property>
+             <property name="toolTip">
+              <string>Limpiar carrito completo</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="spacerCarritoAcciones">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      
+      <!-- Totales -->
+      <item>
+       <widget class="QGroupBox" name="groupTotales" objectName="frameTotales">
+        <property name="title">
+         <string>Totales</string>
+        </property>
+        <layout class="QGridLayout" name="layoutTotales">
+         <item row="0" column="0">
+          <widget class="QLabel" name="lblSubtotalTexto">
+           <property name="text">
+            <string>Subtotal:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="lblSubtotalValor">
+           <property name="text">
+            <string>$0.00</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="lblDescuentoTexto">
+           <property name="text">
+            <string>Descuento:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="lblDescuentoValor">
+           <property name="text">
+            <string>$0.00</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="lblImpuestosTexto">
+           <property name="text">
+            <string>Impuestos:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="lblImpuestosValor">
+           <property name="text">
+            <string>$0.00</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="lblTotalTexto">
+           <property name="text">
+            <string>TOTAL:</string>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; font-size: 16px;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QLabel" name="lblTotalValor">
+           <property name="text">
+            <string>$0.00</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string>font-weight: bold; font-size: 18px; color: #27ae60;</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      
+      <!-- Botones de Acción -->
+      <item>
+       <layout class="QVBoxLayout" name="layoutAccionesPrincipales">
+        <item>
+         <widget class="QPushButton" name="btnProcesarVenta">
+          <property name="text">
+           <string>💳 Procesar Venta</string>
+          </property>
+          <property name="toolTip">
+           <string>Procesar y completar venta (F4)</string>
+          </property>
+          <property name="styleSheet">
+           <string>QPushButton { 
+             background-color: #27ae60; 
+             color: white; 
+             font-weight: bold; 
+             font-size: 16px;
+             padding: 12px; 
+             min-height: 40px;
+           }
+           QPushButton:hover { 
+             background-color: #229954; 
+           }
+           QPushButton:disabled {
+             background-color: #95a5a6;
+           }</string>
+          </property>
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="layoutAccionesSecundarias">
+          <item>
+           <widget class="QPushButton" name="btnGuardarCarrito">
+            <property name="text">
+             <string>💾 Guardar</string>
+            </property>
+            <property name="toolTip">
+             <string>Guardar carrito actual (Ctrl+S)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnCargarCarrito">
+            <property name="text">
+             <string>📁 Cargar</string>
+            </property>
+            <property name="toolTip">
+             <string>Cargar carrito guardado</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnNuevaVenta">
+            <property name="text">
+             <string>🆕 Nueva Venta</string>
+            </property>
+            <property name="toolTip">
+             <string>Iniciar nueva venta (Ctrl+N)</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      
+      <!-- Spacer final -->
+      <item>
+       <spacer name="spacerFinal">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
