@@ -1,68 +1,179 @@
-# Byte-compiled / optimized / DLL files
+# AlmacénPro v2.0 - Archivos a Ignorar en Git
+
+# ============================================================================
+# DATOS SENSIBLES Y CONFIGURACIÓN
+# ============================================================================
+.env
+.env.*
+config.json
+*_config.json
+*.key
+*.pem
+*.p12
+credentials/
+secrets/
+
+# ============================================================================
+# BASE DE DATOS Y BACKUPS
+# ============================================================================
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+data/
+backups/
+*.backup
+*.bak
+dumps/
+almacen_pro*.db*
+test_almacen_pro.db*
+almacen_pro_complete.db*
+*copy.db
+
+# ============================================================================
+# LOGS
+# ============================================================================
+logs/
+*.log
+*.log.*
+log_*.txt
+audit_*.log
+error_*.log
+
+# ============================================================================
+# ARCHIVOS TEMPORALES Y CACHE
+# ============================================================================
+temp/
+tmp/
+cache/
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+*.pyo
+*.pyd
 
-# Virtual environments
+# ============================================================================
+# ENTORNOS VIRTUALES
+# ============================================================================
 venv/
 env/
 ENV/
 .venv/
+.env/
 .ENV/
+virtualenv/
 
-# VS Code settings
+# ============================================================================
+# IDEs Y EDITORES
+# ============================================================================
 .vscode/
-
-# macOS
+.idea/
+*.iml
+*.swp
+*.swo
+*~
 .DS_Store
-
-# Windows
 Thumbs.db
 ehthumbs.db
 desktop.ini
+*.sublime-project
+*.sublime-workspace
 
-# Logs
-*.log
+# ============================================================================
+# REPORTES Y EXPORTS
+# ============================================================================
+exports/
+reports/*.pdf
+reports/*.xlsx
+reports/*.csv
+*.tmp.pdf
+*.tmp.xlsx
 
-# Python-specific
-*.egg
-*.egg-info/
-dist/
-build/
-pip-wheel-metadata/
-*.spec
-
-# Jupyter Notebooks
-.ipynb_checkpoints
-
-# pytest
+# ============================================================================
+# TESTING Y COVERAGE
+# ============================================================================
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+.cache
+nosetests.xml
 
-# mypy
+# ============================================================================
+# TYPE CHECKING
+# ============================================================================
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# Coverage
-.coverage
-htmlcov/
-.tox/
+# ============================================================================
+# ARCHIVOS DE SISTEMA
+# ============================================================================
+*.pid
+*.seed
+*.pid.lock
+.lock-wscript
+node_modules/
 
-# Environments and IDEs
-.idea/
-*.iml
+# ============================================================================
+# DOCUMENTACIÓN GENERADA
+# ============================================================================
+docs/_build/
+site/
 
-# Database or local data
-*.sqlite3
-*.db
-*.bak
-*.swp
+# ============================================================================
+# PROFILING
+# ============================================================================
+.prof
 
-# dotenv
-.env
-.env.*
+# ============================================================================
+# JUPYTER NOTEBOOKS
+# ============================================================================
+.ipynb_checkpoints
 
-# Others
-*.pyo
-*.pyd
-*.so
+# ============================================================================
+# ARCHIVOS GRANDES Y BINARIOS
+# ============================================================================
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.iso
+*.dmg
+
+# ============================================================================
+# ARCHIVOS DE DESARROLLO LOCAL
+# ============================================================================
+local_*
+debug_*
+test_local*
+*_local.*
+.local/
+pip-wheel-metadata/
+*.spec
+
+# ============================================================================
+# ARCHIVOS DE USUARIO
+# ============================================================================
+user_data/
+user_exports/
+personal/
+
+# ============================================================================
+# MANTENER DIRECTORIOS VACÍOS PERO IGNORAR CONTENIDO
+# ============================================================================
+!data/.gitkeep
+!backups/.gitkeep
+!exports/.gitkeep
+!reports/.gitkeep

@@ -483,16 +483,23 @@ def row_to_customer(row) -> Customer:
     if not row:
         return None
     
+    # Mapear campos de la tabla a campos del modelo
     return Customer(
         id=row.get('id'),
         nombre=row.get('nombre', ''),
         apellido=row.get('apellido'),
-        nombre_completo=row.get('nombre_completo'),
-        documento_tipo=row.get('documento_tipo', 'DNI'),
-        documento_numero=row.get('documento_numero'),
+        nombre_completo=f"{row.get('nombre', '')} {row.get('apellido', '')}".strip() if row.get('nombre') else None,
+        documento_tipo='DNI',  # La tabla no tiene este campo, usar por defecto
+        documento_numero=row.get('dni_cuit'),  # Mapeo correcto
         telefono=row.get('telefono'),
         email=row.get('email'),
         direccion=row.get('direccion'),
+        ciudad=None,  # La tabla actual no tiene este campo
+        codigo_postal=None,  # La tabla actual no tiene este campo
+        tipo_cliente=row.get('categoria_cliente', 'MINORISTA'),  # Mapeo
+        descuento_porcentaje=Decimal(str(row.get('descuento_porcentaje', 0.0))),
+        limite_credito=Decimal(str(row.get('limite_credito', 0.0))),
+        saldo_actual=Decimal(str(row.get('saldo_cuenta_corriente', 0.0))),
         activo=bool(row.get('activo', True)),
-        created_at=row.get('created_at')
+        created_at=row.get('creado_en')
     )

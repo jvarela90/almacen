@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Inventario</string>
+  </property>
+  <property name="styleSheet">
+   <string>
+    QWidget {
+        background-color: #f8f9fa;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    
+    QGroupBox {
+        font-weight: bold;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        margin: 8px 0px;
+        padding-top: 16px;
+        color: #495057;
+    }
+    
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 12px;
+        padding: 0 8px 0 8px;
+        background-color: white;
+        color: #2c3e50;
+    }
+    
+    QPushButton {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 16px;
+        font-weight: bold;
+        min-width: 80px;
+        font-size: 13px;
+    }
+    
+    QPushButton:hover {
+        background-color: #0056b3;
+    }
+    
+    QPushButton:pressed {
+        background-color: #004085;
+    }
+    
+    QPushButton#btnActualizar {
+        background-color: #28a745;
+    }
+    
+    QPushButton#btnActualizar:hover {
+        background-color: #1e7e34;
+    }
+    
+    QPushButton#btnAjustarStock {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    QPushButton#btnAjustarStock:hover {
+        background-color: #e0a800;
+    }
+    
+    QPushButton#btnExportar {
+        background-color: #17a2b8;
+    }
+    
+    QPushButton#btnExportar:hover {
+        background-color: #117a8b;
+    }
+    
+    QTableWidget {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        gridline-color: #f1f3f4;
+        alternate-background-color: #f8f9fa;
+        selection-background-color: #007bff;
+        background-color: white;
+    }
+    
+    QTableWidget::item {
+        padding: 12px 8px;
+        border-bottom: 1px solid #f1f3f4;
+    }
+    
+    QTableWidget::item:selected {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    QHeaderView::section {
+        background-color: #f8f9fa;
+        padding: 12px 8px;
+        border: none;
+        border-right: 1px solid #dee2e6;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: bold;
+        color: #495057;
+    }
+    
+    QLabel#lblTitulo {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 10px 0px;
+    }
+    
+    QLabel#lblSubtitulo {
+        font-size: 14px;
+        color: #6c757d;
+        margin-bottom: 20px;
+    }
+    
+    QComboBox {
+        border: 2px solid #dee2e6;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 14px;
+        background-color: white;
+        min-height: 20px;
+    }
+    
+    QComboBox:focus {
+        border-color: #007bff;
+    }
+    
+    /* Estilos para cards de resumen */
+    QFrame#cardResumen {
+        background-color: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin: 5px;
+    }
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>15</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>15</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <item>
+      <widget class="QLabel" name="lblTitulo">
+       <property name="text">
+        <string>📦 Inventario</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnActualizar">
+       <property name="text">
+        <string>🔄 Actualizar</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnAjustarStock">
+       <property name="text">
+        <string>📊 Ajustar Stock</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnExportar">
+       <property name="text">
+        <string>📤 Exportar</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblSubtitulo">
+     <property name="text">
+      <string>Control y gestión de stock de productos</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="summaryLayout">
+     <item>
+      <widget class="QFrame" name="cardResumen">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <layout class="QVBoxLayout" name="card1Layout">
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Total Productos</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblTotalProductos">
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 24px; font-weight: bold; color: #007bff;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="cardResumen_2">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <layout class="QVBoxLayout" name="card2Layout">
+        <item>
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Sin Stock</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblSinStock">
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 24px; font-weight: bold; color: #dc3545;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="cardResumen_3">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <layout class="QVBoxLayout" name="card3Layout">
+        <item>
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Stock Bajo</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblStockBajo">
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 24px; font-weight: bold; color: #ffc107;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="cardResumen_4">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <layout class="QVBoxLayout" name="card4Layout">
+        <item>
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Valor Inventario</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblValorInventario">
+          <property name="text">
+           <string>$0.00</string>
+          </property>
+          <property name="styleSheet">
+           <string>font-size: 24px; font-weight: bold; color: #28a745;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="filtersLayout">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Categoría:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="cmbCategoria">
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Estado:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="cmbEstado">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>0</height>
+        </size>
+       </property>
+       <item>
+        <property name="text">
+         <string>Todos</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Normal</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Stock Bajo</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Sin Stock</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <spacer name="filtersSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="tblProductos">
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="sortingEnabled">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

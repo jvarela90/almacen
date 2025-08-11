@@ -1,0 +1,232 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "almacen-pro"
+version = "2.0.0"
+description = "Sistema ERP/POS completo para gestión de almacenes y retail"
+readme = "README.md"
+license = {text = "Proprietary"}
+authors = [
+    {name = "AlmacénPro Development Team"}
+]
+keywords = ["erp", "pos", "inventory", "retail", "pyqt5"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Office/Business",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "PyQt5>=5.15.4,<6.0.0",
+    "reportlab>=3.6.0,<4.0.0", 
+    "Pillow>=9.2.0,<10.0.0",
+    "python-dateutil>=2.8.2,<3.0.0",
+    "cryptography>=37.0.4,<42.0.0",
+    "alembic>=1.8.0,<2.0.0",
+    "SQLAlchemy>=1.4.0,<2.0.0",
+    "python-dotenv>=0.20.0,<1.0.0",
+    "validators>=0.20.0,<1.0.0",
+    "requests>=2.28.1,<3.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.1.2,<8.0.0",
+    "pytest-qt>=4.1.0,<5.0.0",
+    "pytest-cov>=3.0.0,<5.0.0",
+    "black>=22.6.0,<24.0.0",
+    "isort>=5.10.1,<6.0.0",
+    "flake8>=5.0.4,<7.0.0",
+    "mypy>=0.971,<2.0.0",
+    "bandit>=1.7.4,<2.0.0",
+    "pre-commit>=2.20.0,<4.0.0"
+]
+doc = [
+    "sphinx>=5.1.1,<6.0.0",
+    "sphinx-rtd-theme>=1.0.0,<2.0.0"
+]
+
+[project.scripts]
+almacen-pro = "main:main"
+almacen-migrate = "database.migrate:main"
+
+[project.urls]
+"Homepage" = "https://github.com/almacenpro/almacen-pro"
+"Bug Reports" = "https://github.com/almacenpro/almacen-pro/issues"
+"Source" = "https://github.com/almacenpro/almacen-pro"
+
+# =============================================================================
+# HERRAMIENTAS DE DESARROLLO Y CALIDAD
+# =============================================================================
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | venv
+    | .venv
+  )/
+  | migrations/versions/.*\.py$
+)
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+known_first_party = ["managers", "controllers", "models", "ui", "utils", "config", "database"]
+known_third_party = ["PyQt5", "reportlab", "PIL", "alembic", "sqlalchemy"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = [
+    "E203",  # whitespace before ':'
+    "E501",  # line too long (handled by black)
+    "W503",  # line break before binary operator
+    "F401",  # imported but unused (common in __init__.py)
+    "E402",  # module level import not at top (common with PyQt5)
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+    "migrations/versions"
+]
+per-file-ignores = [
+    "__init__.py:F401",
+    "main.py:E402",
+    "main_mvc.py:E402",
+    "ui/*.py:E402",
+    "controllers/*.py:E402"
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradual typing
+disallow_incomplete_defs = false
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+show_error_codes = true
+namespace_packages = true
+explicit_package_bases = true
+
+# Ignore missing imports for PyQt5 and other binary packages
+[[tool.mypy.overrides]]
+module = [
+    "PyQt5.*",
+    "reportlab.*",
+    "PIL.*",
+    "barcode.*",
+    "qrcode.*"
+]
+ignore_missing_imports = true
+
+# Less strict for UI modules
+[[tool.mypy.overrides]]
+module = "ui.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv", "build"]
+skips = [
+    "B101",  # assert_used
+    "B601",  # paramiko_calls
+    "B602",  # subprocess_popen_with_shell_equals_true
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--tb=short",
+    "--cov=managers",
+    "--cov=controllers", 
+    "--cov=models",
+    "--cov=utils",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests", 
+    "unit: marks tests as unit tests",
+    "ui: marks tests as UI tests",
+    "database: marks tests that require database"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning"
+]
+
+[tool.coverage.run]
+source = ["managers", "controllers", "models", "utils", "config"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/venv/*",
+    "*/.venv/*", 
+    "*/build/*",
+    "*/dist/*",
+    "main.py",
+    "main_mvc.py",
+    "*/migrations/versions/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod"
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"

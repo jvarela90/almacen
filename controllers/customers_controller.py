@@ -5,6 +5,7 @@ Controlador que gestiona la interfaz de clientes usando Qt Designer
 
 import os
 import logging
+from datetime import datetime
 from typing import Dict, List, Optional, Any
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *

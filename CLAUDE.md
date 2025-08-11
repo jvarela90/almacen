@@ -6,25 +6,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AlmacénPro v2.0 is a comprehensive ERP/POS system for warehouse and retail management, built with Python 3.8+ and PyQt5. It features a modular architecture with specialized managers for different business domains and includes collaborative management capabilities for multi-partner businesses.
 
-## ESTADO ACTUAL DEL SISTEMA (ACTUALIZADO 2024)
-- ✅ Base de datos configurada con 19 tablas funcionales
+## ESTADO ACTUAL DEL SISTEMA (ACTUALIZADO ENERO 2025)
+- ✅ Base de datos configurada con 19 tablas funcionales  
 - ✅ 10 gestores (managers) completamente integrados
 - ✅ Sistema de autenticación y roles funcionando
-- ✅ Interfaz de usuario conectada a datos reales
-- ✅ Sistema de configuración basado en archivos
-- ✅ Suite de pruebas integrales implementada
-- ✅ Eliminación de valores hardcodeados completada
-- ✅ **NUEVAS FUNCIONALIDADES IMPLEMENTADAS:**
-  - ✅ Sistema de procesamiento de pagos avanzado (PaymentDialog)
-  - ✅ Generador de reportes con exportación multi-formato (ReportDialog)
-  - ✅ Sistema de formateo profesional de datos (Formatters)
-  - ✅ Exportación a Excel/PDF/CSV con formateo automático (Exporters)
-  - ✅ Sistema de impresión de tickets profesional (TicketPrinter)
-  - ✅ CRM empresarial avanzado con análisis de clientes (CustomersWidget)
-  - ✅ Dashboard dinámico con datos en tiempo real
-  - ✅ Vistas basadas en roles (Admin/Gerente/Depósito/Vendedor)
-  - ✅ Actualización automática de datos cada 60 segundos
-  - ✅ Integración completa backend-frontend
+- ✅ **ARQUITECTURA MVC COMPLETADA:**
+  - ✅ Migración completa a patrón MVC (Model-View-Controller)
+  - ✅ Todas las UI migradas a Qt Designer (.ui files)
+  - ✅ Controladores centralizados para lógica de negocio
+  - ✅ Separación clara entre presentación y lógica
+- ✅ **SISTEMA DE MIGRACIONES ALEMBIC:**
+  - ✅ Configuración completa para SQLite con soporte batch operations
+  - ✅ Migraciones versionadas y reversibles
+  - ✅ Script de gestión simplificado (database/migrate.py)
+  - ✅ Documentación completa y ejemplos prácticos
+- ✅ **CONFIGURACIÓN BASADA EN VARIABLES DE ENTORNO:**
+  - ✅ Sistema seguro con python-dotenv
+  - ✅ Archivo .env.example con todas las configuraciones
+  - ✅ Módulo env_config.py para gestión centralizada
+  - ✅ Datos sensibles excluidos del repositorio
+- ✅ **CI/CD PIPELINE COMPLETO:**
+  - ✅ GitHub Actions con workflows multi-plataforma
+  - ✅ Tests automatizados (unit, integration, security)
+  - ✅ Análisis de código con Black, isort, flake8, mypy, bandit
+  - ✅ Pipeline de release automático con distribución multi-OS
+- ✅ **HERRAMIENTAS DE DESARROLLO:**
+  - ✅ Pre-commit hooks configurados
+  - ✅ pyproject.toml con configuración completa
+  - ✅ Suite de tests con pytest y coverage
+  - ✅ Documentación técnica actualizada
+- ✅ **FUNCIONALIDADES EMPRESARIALES:**
+  - ✅ Sistema de procesamiento de pagos avanzado
+  - ✅ Generador de reportes con exportación multi-formato
+  - ✅ CRM empresarial con análisis predictivo
+  - ✅ Dashboard ejecutivo con gráficos interactivos
+  - ✅ Sistema de impresión profesional
+  - ✅ Gestión avanzada de inventario
+  - ✅ Portal web para clientes
 
 ## Quick Start Commands
 
@@ -39,20 +57,36 @@ python main.py
 # Install dependencies
 pip install -r requirements.txt
 
-# Install required modules for current system
-pip install bcrypt
+# Install development tools
+pip install black isort flake8 mypy bandit pre-commit pytest pytest-qt pytest-cov
 
-# Run comprehensive system test
-python test_sistema_almacen.py
+# Setup pre-commit hooks
+pre-commit install
 
-# Development tools (optional)
-pip install pytest black flake8
-
-# Code formatting
+# Code formatting and quality
 black .
+isort .
+flake8 --config pyproject.toml
+mypy --config-file pyproject.toml managers/ controllers/ models/
+bandit -c pyproject.toml -r .
 
-# Code linting
-flake8 --max-line-length=100 --exclude=venv
+# Testing
+pytest tests/
+pytest tests/unit/
+pytest tests/integration/
+pytest --cov=managers --cov=controllers --cov-report=html
+
+# Database migrations
+python database/migrate.py init
+python database/migrate.py upgrade
+python database/migrate.py current
+python database/migrate.py create "Migration description"
+
+# MVC Application
+python main_mvc.py
+
+# Legacy Application (backup)  
+python main.py
 ```
 
 ### Database Operations

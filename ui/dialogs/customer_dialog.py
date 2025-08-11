@@ -253,11 +253,19 @@ class CustomerDialog(QDialog):
     def load_data(self):
         """Cargar datos de combos"""
         try:
-            # Cargar categorías de clientes
-            if 'customer' in self.managers:
-                categories = self.managers['customer'].get_customer_categories()
-                for category in categories:
-                    self.category_combo.addItem(category['name'], category['id'])
+            # Cargar categorías de clientes predefinidas
+            categories = [
+                ('VIP', 'VIP'),
+                ('MAYORISTA', 'MAYORISTA'), 
+                ('MINORISTA', 'MINORISTA'),
+                ('CORPORATIVO', 'CORPORATIVO'),
+                ('DISTRIBUIDOR', 'DISTRIBUIDOR'),
+                ('OCASIONAL', 'OCASIONAL'),
+                ('GENERAL', 'GENERAL')
+            ]
+            
+            for category_name, category_value in categories:
+                self.category_combo.addItem(category_name, category_value)
             
         except Exception as e:
             logger.error(f"Error cargando datos: {e}")
@@ -411,18 +419,9 @@ class CustomerDialog(QDialog):
                 'notes': self.notes_input.toPlainText().strip()
             }
             
-            # Validación adicional via manager
-            if 'customer' in self.managers:
-                manager_validation = self.managers['customer'].validate_customer_data(
-                    customer_data, is_update=self.customer_id is not None
-                )
-                
-                if not manager_validation['valid']:
-                    error_msg = "Errores de validación:\\n" + "\\n".join(manager_validation['errors'])
-                    if manager_validation['warnings']:
-                        error_msg += "\\n\\nAdvertencias:\\n" + "\\n".join(manager_validation['warnings'])
-                    QMessageBox.warning(self, "Errores de Validación", error_msg)
-                    return
+            # Validación básica del manager (sin método específico)
+            # El CustomerManager básico no tiene validate_customer_data
+            # Se mantiene solo validación local
             
             # Guardar
             if self.customer_id is None:

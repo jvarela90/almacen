@@ -1,77 +1,222 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ReportsWidget</class>
- <widget class="QWidget" name="ReportsWidget">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1000</width>
-    <height>700</height>
+    <width>1200</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Reportes y Analisis</string>
+   <string>Reportes</string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <property name="spacing">
-    <number>10</number>
+    <number>15</number>
    </property>
    <property name="leftMargin">
-    <number>10</number>
+    <number>15</number>
    </property>
    <property name="topMargin">
-    <number>10</number>
+    <number>15</number>
    </property>
    <property name="rightMargin">
-    <number>10</number>
+    <number>15</number>
    </property>
    <property name="bottomMargin">
-    <number>10</number>
+    <number>15</number>
    </property>
-   
    <item>
-    <widget class="QLabel" name="lblTitle">
+    <layout class="QHBoxLayout" name="headerLayout">
+     <item>
+      <widget class="QLabel" name="lblTitulo">
+       <property name="text">
+        <string>📊 Reportes</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnGenerar">
+       <property name="text">
+        <string>📈 Generar</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnExportar">
+       <property name="text">
+        <string>📤 Exportar</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnImprimir">
+       <property name="text">
+        <string>🖨️ Imprimir</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblSubtitulo">
      <property name="text">
-      <string>Reportes y Analisis</string>
-     </property>
-     <property name="styleSheet">
-      <string>font-size: 18px; font-weight: bold; color: #2c3e50;</string>
+      <string>Generación de reportes y análisis de datos</string>
      </property>
     </widget>
    </item>
-   
    <item>
-    <widget class="QFrame" name="frameContent">
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
+    <widget class="QGroupBox" name="groupConfig">
+     <property name="title">
+      <string>Configuración del Reporte</string>
      </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
-     </property>
-     <layout class="QVBoxLayout" name="contentLayout">
-      <item>
-       <widget class="QLabel" name="lblPlaceholder">
+     <layout class="QFormLayout" name="configLayout">
+      <property name="horizontalSpacing">
+       <number>20</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>15</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Contenido de Reportes y Analisis
-
-Interface migrada desde Python.
-Completar implementacion.</string>
+         <string>Tipo de Reporte:</string>
         </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="cmbTipoReporte">
+        <property name="minimumSize">
+         <size>
+          <width>300</width>
+          <height>0</height>
+         </size>
         </property>
-        <property name="styleSheet">
-         <string>
-          QLabel {
-           color: #7f8c8d;
-           font-size: 14px;
-           border: 2px dashed #bdc3c7;
-           border-radius: 6px;
-           background-color: #f8f9fa;
-           padding: 20px;
-          }
-         </string>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Fecha Desde:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDateEdit" name="dateDesde">
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Fecha Hasta:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDateEdit" name="dateHasta">
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Descripción:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLabel" name="lblDescripcion">
+        <property name="text">
+         <string>Seleccione un tipo de reporte</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupResultados">
+     <property name="title">
+      <string>Resultados</string>
+     </property>
+     <layout class="QVBoxLayout" name="resultsLayout">
+      <item>
+       <layout class="QHBoxLayout" name="statusLayout">
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Estado:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblEstado">
+          <property name="text">
+           <string>Listo</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="statusSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QTableWidget" name="tblResultados">
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
+        <property name="sortingEnabled">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
@@ -80,7 +225,6 @@ Completar implementacion.</string>
    </item>
   </layout>
  </widget>
- 
  <resources/>
  <connections/>
 </ui>

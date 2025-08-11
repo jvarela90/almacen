@@ -1,0 +1,332 @@
+name: Release Pipeline - AlmacénPro v2.0
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., v2.0.0)'
+        required: true
+        default: 'v2.0.0'
+
+env:
+  APP_NAME: AlmacenPro
+  
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Get version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from commits since last tag
+        LAST_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+        if [ -z "$LAST_TAG" ]; then
+          LAST_TAG=$(git rev-list --max-parents=0 HEAD)
+        fi
+        
+        echo "## Changes" > CHANGELOG.md
+        git log --pretty=format:"- %s (%h)" $LAST_TAG..HEAD >> CHANGELOG.md
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        release_name: ${{ env.APP_NAME }} ${{ steps.version.outputs.version }}
+        body_path: CHANGELOG.md
+        draft: true
+        prerelease: false
+
+  build-windows:
+    name: Build Windows
+    needs: prepare-release
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build Windows executable
+      run: |
+        pyinstaller --onefile --windowed --icon=assets/icon.ico --name="${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-windows" main.py
+        
+    - name: Create Windows installer (NSIS)
+      run: |
+        # Create NSIS installer script
+        echo 'OutFile "${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-windows-installer.exe"' > installer.nsi
+        echo 'InstallDir "$PROGRAMFILES\${{ env.APP_NAME }}"' >> installer.nsi
+        echo 'Section ""' >> installer.nsi
+        echo '  SetOutPath $INSTDIR' >> installer.nsi
+        echo '  File "dist\${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-windows.exe"' >> installer.nsi
+        echo '  CreateShortCut "$DESKTOP\${{ env.APP_NAME }}.lnk" "$INSTDIR\${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-windows.exe"' >> installer.nsi
+        echo 'SectionEnd' >> installer.nsi
+        
+        # Note: This requires NSIS to be installed on the runner
+        # makensis installer.nsi || echo "NSIS not available, skipping installer creation"
+        
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-build
+        path: |
+          dist/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-windows.exe
+
+  build-macos:
+    name: Build macOS
+    needs: prepare-release
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build macOS application
+      run: |
+        pyinstaller --onefile --windowed --icon=assets/icon.icns --name="${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-macos" main.py
+        
+    - name: Create macOS DMG
+      run: |
+        # Create temporary DMG directory
+        mkdir dmg-temp
+        cp "dist/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-macos" dmg-temp/
+        
+        # Create DMG
+        hdiutil create -volname "${{ env.APP_NAME }} ${{ needs.prepare-release.outputs.version }}" \
+          -srcfolder dmg-temp \
+          -ov -format UDZO \
+          "${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-macos.dmg"
+          
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos-build
+        path: |
+          ${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-macos.dmg
+
+  build-linux:
+    name: Build Linux
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Install Qt
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y qt5-default libqt5gui5 libqt5widgets5 libqt5core5a
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build Linux executable
+      run: |
+        pyinstaller --onefile --name="${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux" main.py
+        
+    - name: Create Linux AppImage
+      run: |
+        # Download AppImage tools
+        wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        
+        # Create AppDir structure
+        mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/share/applications
+        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+        
+        # Copy executable
+        cp "dist/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux" AppDir/usr/bin/
+        
+        # Create desktop file
+        cat > AppDir/usr/share/applications/${{ env.APP_NAME }}.desktop << EOF
+        [Desktop Entry]
+        Type=Application
+        Name=${{ env.APP_NAME }}
+        Comment=Sistema ERP/POS completo
+        Exec=${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux
+        Icon=${{ env.APP_NAME }}
+        Categories=Office;
+        EOF
+        
+        # Create AppRun
+        cat > AppDir/AppRun << EOF
+        #!/bin/bash
+        exec "\$APPDIR/usr/bin/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux" "\$@"
+        EOF
+        chmod +x AppDir/AppRun
+        
+        # Create AppImage
+        ./appimagetool-x86_64.AppImage AppDir "${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.AppImage" || echo "AppImage creation failed, using binary"
+        
+    - name: Create Debian package
+      run: |
+        # Create package structure
+        mkdir -p deb-package/DEBIAN
+        mkdir -p deb-package/usr/bin
+        mkdir -p deb-package/usr/share/applications
+        mkdir -p deb-package/usr/share/doc/${{ env.APP_NAME }}
+        
+        # Copy files
+        cp "dist/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux" deb-package/usr/bin/${{ env.APP_NAME }}
+        
+        # Create control file
+        cat > deb-package/DEBIAN/control << EOF
+        Package: almacen-pro
+        Version: ${{ needs.prepare-release.outputs.version }}
+        Architecture: amd64
+        Maintainer: AlmacénPro Team
+        Description: Sistema ERP/POS completo para gestión de almacenes
+        Depends: python3, python3-pyqt5
+        Section: office
+        Priority: optional
+        EOF
+        
+        # Create package
+        dpkg-deb --build deb-package "${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.deb"
+        
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-build
+        path: |
+          ${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.AppImage
+          ${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.deb
+
+  upload-assets:
+    name: Upload Release Assets
+    needs: [prepare-release, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      
+    - name: Upload Windows executable
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.prepare-release.outputs.upload_url }}
+        asset_path: ./windows-build/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-windows.exe
+        asset_name: ${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-windows.exe
+        asset_content_type: application/octet-stream
+        
+    - name: Upload macOS DMG
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.prepare-release.outputs.upload_url }}
+        asset_path: ./macos-build/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-macos.dmg
+        asset_name: ${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-macos.dmg
+        asset_content_type: application/octet-stream
+        
+    - name: Upload Linux AppImage
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.prepare-release.outputs.upload_url }}
+        asset_path: ./linux-build/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.AppImage
+        asset_name: ${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.AppImage
+        asset_content_type: application/octet-stream
+        
+    - name: Upload Linux DEB
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.prepare-release.outputs.upload_url }}
+        asset_path: ./linux-build/${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.deb
+        asset_name: ${{ env.APP_NAME }}-${{ needs.prepare-release.outputs.version }}-linux.deb
+        asset_content_type: application/vnd.debian.binary-package
+
+  publish-release:
+    name: Publish Release
+    needs: [prepare-release, upload-assets]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Publish Release
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          github.rest.repos.updateRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: '${{ needs.prepare-release.outputs.release_id }}',
+            draft: false
+          });
+
+  notify:
+    name: Notify Release
+    needs: [prepare-release, publish-release]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: needs.publish-release.result == 'success'
+      run: |
+        echo "🎉 Release ${{ needs.prepare-release.outputs.version }} published successfully!"
+        
+    - name: Notify failure
+      if: needs.publish-release.result == 'failure'
+      run: |
+        echo "❌ Release ${{ needs.prepare-release.outputs.version }} failed!"

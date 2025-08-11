@@ -14,6 +14,8 @@ from PyQt5.QtGui import *
 from .base_controller import BaseController
 from .sales_controller import SalesController
 from .customers_controller import CustomersController
+from .inventory_controller import InventoryController
+from .reports_controller import ReportsController
 
 logger = logging.getLogger(__name__)
 
@@ -297,9 +299,11 @@ class MainController(QMainWindow):
             # Módulo de Clientes
             self.initialize_customers_module()
             
-            # Otros módulos se pueden agregar aquí
-            # self.initialize_inventory_module()
-            # self.initialize_reports_module()
+            # Módulo de Inventario
+            self.initialize_inventory_module()
+            
+            # Módulo de Reportes
+            self.initialize_reports_module()
             
             self.logger.info("Módulos inicializados exitosamente")
             
@@ -346,6 +350,36 @@ class MainController(QMainWindow):
         except Exception as e:
             self.logger.error(f"Error inicializando módulo de clientes: {e}")
             raise
+    
+    def initialize_inventory_module(self):
+        """Inicializar módulo de inventario"""
+        try:
+            inventory_controller = InventoryController(self.managers, self.current_user, self)
+            inventory_controller.initialize()
+            
+            self.module_controllers['inventory'] = inventory_controller
+            self.module_stack.addWidget(inventory_controller)
+            
+            self.logger.info("Módulo de inventario inicializado")
+            
+        except Exception as e:
+            self.logger.error(f"Error inicializando módulo de inventario: {e}")
+            # No raise para permitir continuar sin este módulo
+    
+    def initialize_reports_module(self):
+        """Inicializar módulo de reportes"""
+        try:
+            reports_controller = ReportsController(self.managers, self.current_user, self)
+            reports_controller.initialize()
+            
+            self.module_controllers['reports'] = reports_controller
+            self.module_stack.addWidget(reports_controller)
+            
+            self.logger.info("Módulo de reportes inicializado")
+            
+        except Exception as e:
+            self.logger.error(f"Error inicializando módulo de reportes: {e}")
+            # No raise para permitir continuar sin este módulo
     
     def load_initial_module(self):
         """Cargar módulo inicial"""

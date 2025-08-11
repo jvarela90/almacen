@@ -1,0 +1,183 @@
+name: Security Scanning - AlmacénPro v2.0
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security scan weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+
+jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: moderate
+
+  security-scan:
+    name: Advanced Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit[toml] safety semgrep pip-audit
+        
+    - name: Run Bandit (SAST)
+      run: |
+        bandit -r . -f json -o bandit-report.json || true
+        bandit -r . --severity-level medium --confidence-level medium
+        
+    - name: Run Safety (dependency vulnerabilities)
+      run: |
+        pip install -r requirements.txt
+        safety check --json --output safety-report.json || true
+        safety check --short-report
+        
+    - name: Run pip-audit (dependency audit)
+      run: |
+        pip-audit --desc --output=json --output-file=pip-audit-report.json || true
+        pip-audit --desc
+        
+    - name: Run Semgrep (SAST)
+      run: |
+        semgrep --config=auto --json --output=semgrep-report.json . || true
+        semgrep --config=auto --severity=ERROR .
+        
+    - name: Upload Security Reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports-${{ github.sha }}
+        path: |
+          bandit-report.json
+          safety-report.json
+          pip-audit-report.json
+          semgrep-report.json
+          
+    - name: Comment PR with Security Summary
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let comment = '## 🔒 Security Scan Results\n\n';
+          
+          try {
+            if (fs.existsSync('bandit-report.json')) {
+              const bandit = JSON.parse(fs.readFileSync('bandit-report.json', 'utf8'));
+              comment += `**Bandit SAST:** ${bandit.metrics.loc} lines scanned, ${bandit.results.length} issues found\n`;
+            }
+            
+            if (fs.existsSync('safety-report.json')) {
+              const safety = JSON.parse(fs.readFileSync('safety-report.json', 'utf8'));
+              comment += `**Safety:** ${safety.length} vulnerability(ies) in dependencies\n`;
+            }
+            
+            comment += '\nDetailed reports are available in the workflow artifacts.';
+            
+          } catch (error) {
+            comment += 'Error reading security reports. Please check workflow logs.';
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run TruffleHog OSS
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  license-compliance:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pip-licenses
+        
+    - name: Check licenses
+      run: |
+        pip-licenses --format=json --output-file=licenses-report.json
+        pip-licenses --summary
+        
+    - name: Upload license report
+      uses: actions/upload-artifact@v3
+      with:
+        name: license-compliance-${{ github.sha }}
+        path: licenses-report.json
