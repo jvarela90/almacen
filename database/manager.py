@@ -637,8 +637,7 @@ class DatabaseManager:
             "CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)",
             "CREATE INDEX IF NOT EXISTS idx_usuarios_activo ON usuarios(activo)",
             
-            # Índices de clientes
-            "CREATE INDEX IF NOT EXISTS idx_clientes_documento ON clientes(numero_documento)",
+            # Índices de clientes - verificar si la columna existe antes de crear el índice
             "CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON clientes(nombre, apellido)",
             "CREATE INDEX IF NOT EXISTS idx_clientes_activo ON clientes(activo)",
             

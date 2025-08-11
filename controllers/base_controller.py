@@ -6,7 +6,7 @@ Clase base para todos los controladores con funcionalidad común
 import os
 import logging
 from PyQt5.QtWidgets import QWidget, QMessageBox, QApplication, QShortcut
-from PyQt5.QtCore import QObject, pyqtSlot, QTimer, QThread
+from PyQt5.QtCore import QObject, pyqtSlot, QTimer, QThread, Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5 import uic
 from typing import Dict, Any, Optional, List

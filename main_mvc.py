@@ -317,7 +317,7 @@ class AlmacenProMVCApp:
             
             if result == LoginDialog.Accepted:
                 # Login exitoso
-                self.current_user = login_dialog.get_logged_user()
+                self.current_user = login_dialog.get_authenticated_user()
                 self.logger.info(f"Usuario logueado: {self.current_user.get('username', 'unknown')}")
                 
                 # Inicializar interfaz principal

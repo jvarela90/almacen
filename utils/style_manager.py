@@ -37,12 +37,10 @@ class StyleManager:
     
     QPushButton:hover {
         background-color: #2980b9;
-        transform: translateY(-1px);
     }
     
     QPushButton:pressed {
         background-color: #21618c;
-        transform: translateY(1px);
     }
     
     QPushButton:disabled {
