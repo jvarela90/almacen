@@ -56,7 +56,7 @@ from utils.style_manager import StyleManager
 from controllers.main_controller import MainController
 
 # Diálogos que siguen siendo necesarios
-from ui.dialogs.login_dialog import LoginDialog
+from controllers.login_controller import LoginController, show_login_dialog
 
 # Configuración global de logging
 def setup_logging():
@@ -310,14 +310,12 @@ class AlmacenProMVCApp:
             if not user_manager:
                 raise Exception("Gestor de usuarios no disponible")
             
-            # Crear y mostrar diálogo de login
-            login_dialog = LoginDialog(user_manager, parent=None)
+            # Crear y mostrar diálogo de login usando el nuevo controller
+            success, user_data = show_login_dialog(user_manager, parent=None)
             
-            result = login_dialog.exec_()
-            
-            if result == LoginDialog.Accepted:
+            if success and user_data:
                 # Login exitoso
-                self.current_user = login_dialog.get_authenticated_user()
+                self.current_user = user_data
                 self.logger.info(f"Usuario logueado: {self.current_user.get('username', 'unknown')}")
                 
                 # Inicializar interfaz principal

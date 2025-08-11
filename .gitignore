@@ -177,3 +177,10 @@ personal/
 !backups/.gitkeep
 !exports/.gitkeep
 !reports/.gitkeep
+
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.tmp
+*.log

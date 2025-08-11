@@ -1,0 +1,18 @@
+Carpetas temporales y cache
+
+__pycache__/
+*/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+Backups y exportaciones duplicadas
+
+bash
+Copiar
+Editar
+/backups/
+/exports/
+/old/
+/test_data/
+
+
