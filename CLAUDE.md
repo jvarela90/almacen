@@ -48,10 +48,7 @@ AlmacénPro v2.0 is a comprehensive ERP/POS system for warehouse and retail mana
 
 ### Running the Application
 ```bash
-# Primary MVC application (RECOMMENDED)
-python main_mvc.py
-
-# Legacy application (backup)
+# Unified MVC application (main entry point)
 python main.py
 ```
 
@@ -487,8 +484,7 @@ Sistema de pruebas integral:
 
 ```
 almacen_pro/
-├── main_mvc.py                # 🚀 Punto de entrada MVC (PRINCIPAL)
-├── main.py                    # 🚀 Punto de entrada original (respaldo)
+├── main.py                    # 🚀 Punto de entrada MVC unificado (PRINCIPAL)
 
 ├── models/                    # 📊 CAPA DE DATOS (MVC)
 │   ├── base_model.py          # Modelo base con señales PyQt
@@ -714,8 +710,8 @@ La arquitectura MVC implementada incluye:
 ### COMANDOS MVC PRINCIPALES
 
 ```bash
-# Ejecutar aplicación MVC
-python main_mvc.py
+# Ejecutar aplicación MVC unificada
+python main.py
 
 # Validar estructura MVC
 python test_mvc_simple.py

@@ -102,7 +102,7 @@ repos:
           - --recursive
           - --format=custom
           - --skip=B101,B601,B701  # Skip assert, shell, request without timeout
-        additional_dependencies: [bandit[toml]]
+        additional_dependencies: ["bandit[toml]"]
         exclude: ^(tests/|test_.*\.py$|.*_test\.py$)
 
   # ============================================================================

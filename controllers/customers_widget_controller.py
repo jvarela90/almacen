@@ -10,6 +10,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 from controllers.base_controller import BaseController
+from models.customer_model import CustomerModel
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,12 @@ class CustomersWidgetController(BaseController):
         self.customer_manager = managers.get('customer')
         self.advanced_customer_manager = managers.get('advanced_customer')
         
+        # Modelo de datos
+        self.customer_model = CustomerModel(
+            customer_manager=self.customer_manager,
+            parent=self
+        )
+        
         # Estado actual
         self.selected_customer = None
         self.customers_list = []
@@ -36,6 +43,7 @@ class CustomersWidgetController(BaseController):
         self.load_ui()
         self.setup_ui()
         self.connect_signals()
+        self.connect_model_signals()
         
         # Cargar datos iniciales
         self.load_initial_data()
@@ -79,6 +87,14 @@ class CustomersWidgetController(BaseController):
         if hasattr(self, 'tblClientes'):
             self.tblClientes.itemSelectionChanged.connect(self.on_customer_selection_changed)
             self.tblClientes.itemDoubleClicked.connect(self.on_customer_double_click)
+    
+    def connect_model_signals(self):
+        """Conectar señales del modelo"""
+        self.customer_model.customer_created.connect(self.on_model_customer_created)
+        self.customer_model.customer_updated.connect(self.on_model_customer_updated)
+        self.customer_model.customer_deleted.connect(self.on_model_customer_deleted)
+        self.customer_model.data_changed.connect(self.refresh_customer_display)
+        self.customer_model.error_occurred.connect(self.show_model_error)
     
     def setup_customers_table(self):
         """Configurar tabla de clientes"""
@@ -129,14 +145,18 @@ class CustomersWidgetController(BaseController):
         self.update_dashboard_metrics()
     
     def load_customers(self):
-        """Cargar clientes en la tabla"""
-        if not self.customer_manager or not hasattr(self, 'tblClientes'):
+        """Cargar clientes usando el modelo"""
+        if not hasattr(self, 'tblClientes'):
             return
         
         try:
-            customers = self.customer_manager.get_all_customers()
-            self.customers_list = customers
-            self.update_customers_table()
+            # Usar el modelo para cargar clientes
+            if self.customer_model.load_customers():
+                self.customers_list = self.customer_model.customers  # Ya son diccionarios
+                self.update_customers_table()
+            else:
+                error_msg = self.customer_model.last_error or "Error desconocido"
+                QMessageBox.critical(self, "Error", f"Error cargando clientes: {error_msg}")
         
         except Exception as e:
             logger.error(f"Error cargando clientes: {e}")
@@ -383,3 +403,30 @@ class CustomersWidgetController(BaseController):
     def on_customer_double_click(self, item):
         """Manejar doble click en cliente"""
         self.edit_customer()
+    
+    # === MÉTODOS DE INTEGRACIÓN CON MODELO ===
+    
+    def refresh_customer_display(self):
+        """Actualizar display cuando el modelo cambia"""
+        self.customers_list = self.customer_model.customers  # Ya son diccionarios
+        self.update_customers_table()
+        self.update_dashboard_metrics()
+    
+    def on_model_customer_created(self, customer_data):
+        """Manejar creación de cliente desde el modelo"""
+        self.customer_added.emit(customer_data)
+        QMessageBox.information(self, "Éxito", "Cliente creado exitosamente")
+    
+    def on_model_customer_updated(self, customer_data):
+        """Manejar actualización de cliente desde el modelo"""
+        self.customer_updated.emit(customer_data)
+        QMessageBox.information(self, "Éxito", "Cliente actualizado exitosamente")
+    
+    def on_model_customer_deleted(self, customer_id):
+        """Manejar eliminación de cliente desde el modelo"""
+        self.customer_deleted.emit(customer_id)
+        QMessageBox.information(self, "Éxito", "Cliente eliminado exitosamente")
+    
+    def show_model_error(self, error_message):
+        """Mostrar errores del modelo"""
+        QMessageBox.critical(self, "Error", error_message)

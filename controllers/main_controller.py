@@ -16,6 +16,8 @@ from .sales_controller import SalesController
 from .customers_controller import CustomersController
 from .inventory_controller import InventoryController
 from .reports_controller import ReportsController
+from .sales_widget_controller import SalesWidgetController
+from .customers_widget_controller import CustomersWidgetController
 
 logger = logging.getLogger(__name__)
 
@@ -313,42 +315,44 @@ class MainController(QMainWindow):
                                    f"Error inicializando módulos: {str(e)}")
     
     def initialize_sales_module(self):
-        """Inicializar módulo de ventas"""
+        """Inicializar módulo de ventas MVC"""
         try:
-            sales_controller = SalesController(self.managers, self.current_user, self)
-            sales_controller.initialize()
+            # Usar SalesWidgetController en lugar de SalesController
+            sales_widget_controller = SalesWidgetController(self.managers, self.current_user, self)
             
             # Conectar señales
-            sales_controller.sale_completed.connect(self.on_sale_completed)
-            sales_controller.product_added.connect(self.on_product_added_to_cart)
+            sales_widget_controller.sale_completed.connect(self.on_sale_completed)
+            sales_widget_controller.product_added.connect(self.on_product_added_to_cart)
+            sales_widget_controller.cart_updated.connect(lambda: self.show_status_message("Carrito actualizado"))
             
-            self.module_controllers['sales'] = sales_controller
-            self.module_stack.addWidget(sales_controller)
+            self.module_controllers['sales'] = sales_widget_controller
+            self.module_stack.addWidget(sales_widget_controller)
             
-            self.logger.info("Módulo de ventas inicializado")
+            self.logger.info("Módulo de ventas MVC inicializado")
             
         except Exception as e:
-            self.logger.error(f"Error inicializando módulo de ventas: {e}")
+            self.logger.error(f"Error inicializando módulo de ventas MVC: {e}")
             raise
     
     def initialize_customers_module(self):
-        """Inicializar módulo de clientes"""
+        """Inicializar módulo de clientes MVC"""
         try:
-            customers_controller = CustomersController(self.managers, self.current_user, self)
-            customers_controller.initialize()
+            # Usar CustomersWidgetController en lugar de CustomersController
+            customers_widget_controller = CustomersWidgetController(self.managers, self.current_user, self)
             
             # Conectar señales
-            customers_controller.customer_created.connect(self.on_customer_created)
-            customers_controller.customer_updated.connect(self.on_customer_updated)
-            customers_controller.customer_selected_for_sale.connect(self.on_customer_selected_for_sale)
+            customers_widget_controller.customer_added.connect(self.on_customer_created)
+            customers_widget_controller.customer_updated.connect(self.on_customer_updated)
+            customers_widget_controller.customer_selected.connect(self.on_customer_selected_for_sale)
+            customers_widget_controller.customer_deleted.connect(lambda customer_id: self.show_status_message(f"Cliente eliminado: ID {customer_id}"))
             
-            self.module_controllers['customers'] = customers_controller
-            self.module_stack.addWidget(customers_controller)
+            self.module_controllers['customers'] = customers_widget_controller
+            self.module_stack.addWidget(customers_widget_controller)
             
-            self.logger.info("Módulo de clientes inicializado")
+            self.logger.info("Módulo de clientes MVC inicializado")
             
         except Exception as e:
-            self.logger.error(f"Error inicializando módulo de clientes: {e}")
+            self.logger.error(f"Error inicializando módulo de clientes MVC: {e}")
             raise
     
     def initialize_inventory_module(self):
@@ -459,7 +463,7 @@ class MainController(QMainWindow):
         """Crear nuevo cliente desde menú"""
         self.switch_to_module('customers')
         if 'customers' in self.module_controllers:
-            self.module_controllers['customers'].on_new_customer()
+            self.module_controllers['customers'].new_customer()
     
     @pyqtSlot()
     def open_settings(self):

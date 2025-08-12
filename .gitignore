@@ -153,6 +153,30 @@ site/
 *.dmg
 
 # ============================================================================
+# ARCHIVOS Y DIRECTORIOS DE ASISTENTE AI
+# ============================================================================
+ai_agent/
+ai_suggested/
+ai_sync/
+ai_cycle_report_*.md
+ai_scheduler.py
+ai_team_test.py
+ai_team_cli.py
+
+# ============================================================================
+# ARCHIVOS DE TEST Y VALIDACIÓN
+# ============================================================================
+test_*.py
+*_test.py
+validate_*.py
+diagnostic_*.py
+check_*.py
+simple_*.py
+stage*_*.py
+system_*.py
+verify_*.py
+
+# ============================================================================
 # ARCHIVOS DE DESARROLLO LOCAL
 # ============================================================================
 local_*

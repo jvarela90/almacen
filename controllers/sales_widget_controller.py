@@ -11,6 +11,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 from controllers.base_controller import BaseController
+from models.sales_model import SalesModel
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,14 @@ class SalesWidgetController(BaseController):
         self.product_manager = managers.get('product')
         self.financial_manager = managers.get('financial')
         self.customer_manager = managers.get('customer')
+        
+        # Modelo de datos
+        self.sales_model = SalesModel(
+            sales_manager=self.sales_manager,
+            product_manager=self.product_manager,
+            customer_manager=self.customer_manager,
+            parent=self
+        )
         
         # Estado del carrito de compras
         self.cart_items = []
