@@ -1,0 +1,178 @@
+{
+  "consensus_history": [
+    {
+      "task_id": "task_20250812_025051",
+      "consensus_result": {
+        "consensus_type": "STRONG_CONSENSUS",
+        "recommendation": "PROCEED",
+        "claude_approval": true,
+        "chatgpt_approval": true,
+        "avg_confidence": 0.75,
+        "risk_factors": [],
+        "suggested_modifications": [
+          "Verificar compatibilidad",
+          "Revisar performance",
+          "Agregar tests",
+          "Documentar cambios"
+        ],
+        "evaluation_timestamp": "2025-08-12T02:50:51.351135"
+      },
+      "claude_opinion": {
+        "agent": "claude_code",
+        "task_id": "task_20250812_025051",
+        "approval": true,
+        "confidence": 0.8,
+        "reasoning": "Implementación factible desde perspectiva técnica",
+        "suggested_changes": [
+          "Agregar tests",
+          "Documentar cambios"
+        ],
+        "estimated_effort": "medium",
+        "risk_assessment": "Riesgo bajo",
+        "timestamp": "2025-08-12T02:50:51.351135"
+      },
+      "chatgpt_opinion": {
+        "agent": "chatgpt",
+        "task_id": "task_20250812_025051",
+        "approval": true,
+        "confidence": 0.7,
+        "reasoning": "Alineado con arquitectura MVC existente",
+        "suggested_changes": [
+          "Verificar compatibilidad",
+          "Revisar performance"
+        ],
+        "estimated_effort": "medium",
+        "risk_assessment": "Riesgo medio-bajo",
+        "timestamp": "2025-08-12T02:50:51.351135"
+      },
+      "timestamp": "2025-08-12T02:50:51.352134"
+    },
+    {
+      "task_id": "task_20250812_025929",
+      "consensus_result": {
+        "consensus_type": "STRONG_REJECTION",
+        "recommendation": "REJECT",
+        "claude_approval": false,
+        "chatgpt_approval": false,
+        "avg_confidence": 0.0,
+        "risk_factors": [
+          "LOW_CONFIDENCE_DETECTED"
+        ],
+        "suggested_modifications": [],
+        "evaluation_timestamp": "2025-08-12T03:16:57.794792"
+      },
+      "claude_opinion": {
+        "agent": "claude_code",
+        "task_id": "task_20250812_025929",
+        "approval": false,
+        "confidence": 0.0,
+        "reasoning": "Error de comunicación: 'charmap' codec can't encode character '\\U0001f4dc' in position 2: character maps to <undefined>",
+        "suggested_changes": [],
+        "estimated_effort": "unknown",
+        "risk_assessment": "No se pudo evaluar debido a error de comunicación",
+        "timestamp": "2025-08-12T03:16:52.496528"
+      },
+      "chatgpt_opinion": {
+        "agent": "chatgpt",
+        "task_id": "task_20250812_025929",
+        "approval": false,
+        "confidence": 0.0,
+        "reasoning": "Error de comunicación: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+        "suggested_changes": [],
+        "estimated_effort": "unknown",
+        "risk_assessment": "No se pudo evaluar debido a error de comunicación",
+        "timestamp": "2025-08-12T03:16:57.794792"
+      },
+      "timestamp": "2025-08-12T03:16:57.794792"
+    },
+    {
+      "task_id": "task_20250812_032014",
+      "consensus_result": {
+        "consensus_type": "STRONG_REJECTION",
+        "recommendation": "REJECT",
+        "claude_approval": false,
+        "chatgpt_approval": false,
+        "avg_confidence": 0.0,
+        "risk_factors": [
+          "LOW_CONFIDENCE_DETECTED"
+        ],
+        "suggested_modifications": [],
+        "evaluation_timestamp": "2025-08-12T03:23:33.216294"
+      },
+      "claude_opinion": {
+        "agent": "claude_code",
+        "task_id": "task_20250812_032014",
+        "approval": false,
+        "confidence": 0.0,
+        "reasoning": "Error de comunicación: 'charmap' codec can't encode character '\\U0001f4dc' in position 2: character maps to <undefined>",
+        "suggested_changes": [],
+        "estimated_effort": "unknown",
+        "risk_assessment": "No se pudo evaluar debido a error de comunicación",
+        "timestamp": "2025-08-12T03:23:30.675157"
+      },
+      "chatgpt_opinion": {
+        "agent": "chatgpt",
+        "task_id": "task_20250812_032014",
+        "approval": false,
+        "confidence": 0.0,
+        "reasoning": "Error de comunicación: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+        "suggested_changes": [],
+        "estimated_effort": "unknown",
+        "risk_assessment": "No se pudo evaluar debido a error de comunicación",
+        "timestamp": "2025-08-12T03:23:33.216294"
+      },
+      "timestamp": "2025-08-12T03:23:33.217290"
+    },
+    {
+      "task_id": "task_20250812_033736",
+      "consensus_result": {
+        "consensus_type": "STRONG_CONSENSUS",
+        "recommendation": "PROCEED",
+        "claude_approval": true,
+        "chatgpt_approval": true,
+        "avg_confidence": 0.75,
+        "risk_factors": [],
+        "suggested_modifications": [
+          "Documentar cambios",
+          "Agregar tests",
+          "Verificar compatibilidad",
+          "Revisar performance"
+        ],
+        "evaluation_timestamp": "2025-08-12T03:37:36.233559"
+      },
+      "claude_opinion": {
+        "agent": "claude_code",
+        "task_id": "task_20250812_033736",
+        "approval": true,
+        "confidence": 0.8,
+        "reasoning": "Implementacin factible desde perspectiva tcnica",
+        "suggested_changes": [
+          "Agregar tests",
+          "Documentar cambios"
+        ],
+        "estimated_effort": "medium",
+        "risk_assessment": "Riesgo bajo",
+        "timestamp": "2025-08-12T03:37:36.232558"
+      },
+      "chatgpt_opinion": {
+        "agent": "chatgpt",
+        "task_id": "task_20250812_033736",
+        "approval": true,
+        "confidence": 0.7,
+        "reasoning": "Alineado con arquitectura MVC existente",
+        "suggested_changes": [
+          "Verificar compatibilidad",
+          "Revisar performance"
+        ],
+        "estimated_effort": "medium",
+        "risk_assessment": "Riesgo medio-bajo",
+        "timestamp": "2025-08-12T03:37:36.232558"
+      },
+      "timestamp": "2025-08-12T03:37:36.233559"
+    }
+  ],
+  "stats": {
+    "STRONG_CONSENSUS": 2,
+    "STRONG_REJECTION": 2
+  }
+}

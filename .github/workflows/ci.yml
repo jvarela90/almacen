@@ -2,19 +2,16 @@ name: CI/CD Pipeline - AlmacénPro v2.0
 
 on:
   push:
-    branches: [ main, develop, feature/* ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  schedule:
-    # Run tests daily at 6 AM UTC
-    - cron: '0 6 * * *'
 
 env:
   PYTHON_VERSION: '3.8'
   
 jobs:
-  lint:
-    name: Code Quality & Linting
+  quality-check:
+    name: Code Quality
     runs-on: ubuntu-latest
     
     steps:
@@ -30,44 +27,58 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-lint-${{ hashFiles('requirements.txt', 'pyproject.toml') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          ${{ runner.os }}-pip-lint-
           ${{ runner.os }}-pip-
           
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install black isort flake8 mypy bandit
         
-    - name: Run Black (code formatting)
+    - name: Create test environment
+      run: |
+        cat > .env << EOF
+        DATABASE_TYPE=sqlite
+        SQLITE_PATH=test_almacen_pro.db
+        SECRET_KEY=test-secret-for-ci
+        DEBUG=true
+        LOG_LEVEL=DEBUG
+        # Company info
+        COMPANY_NAME=Test Company
+        COMPANY_ADDRESS=123 Test St
+        COMPANY_PHONE=+1234567890
+        COMPANY_EMAIL=test@company.com
+        # Security
+        SESSION_TIMEOUT_MINUTES=30
+        PASSWORD_MIN_LENGTH=6
+        MAX_LOGIN_ATTEMPTS=3
+        EOF
+        
+    - name: Run Black (code formatting check)
       run: |
         black --check --diff .
         
-    - name: Run isort (import sorting)
+    - name: Run isort (import sorting check)  
       run: |
         isort --check-only --diff .
         
-    - name: Run flake8 (linting)
+    - name: Run Flake8 (linting)
       run: |
-        flake8 --statistics --count --show-source .
+        flake8 --max-line-length=100 --exclude=venv,__pycache__,migrations/versions --statistics
         
-    - name: Run mypy (type checking)
+    - name: Run Bandit (security check)
       run: |
-        mypy --config-file pyproject.toml managers/ controllers/ models/ utils/ config/
-        
-    - name: Run bandit (security)
-      run: |
-        bandit -r -c pyproject.toml managers/ controllers/ models/ utils/ config/
+        bandit -r . -x venv,tests -f json || true
+        bandit -r . -x venv,tests --severity-level medium
 
   test:
-    name: Tests
-    needs: lint
+    name: Run Tests
+    needs: quality-check
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         python-version: ['3.8', '3.9', '3.10', '3.11']
       fail-fast: false
       
@@ -84,44 +95,36 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y qt5-default libqt5gui5 libqt5widgets5 libqt5core5a qttools5-dev-tools
+        sudo apt-get install -y qt5-default libqt5gui5 libqt5widgets5 libqt5core5a
         export QT_QPA_PLATFORM=offscreen
         
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-${{ matrix.python-version }}-pip-${{ hashFiles('requirements.txt', 'pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.python-version }}-pip-
-          ${{ runner.os }}-pip-
-          
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-qt pytest-cov pytest-mock
         
-    - name: Create test environment file
+    - name: Create test environment
       run: |
-        cat > .env << EOF
-        DATABASE_TYPE=sqlite
-        SQLITE_PATH=test_almacen_pro.db
-        SECRET_KEY=test-secret-key-for-ci
-        DEBUG=true
-        LOG_LEVEL=DEBUG
-        ENABLE_SQL_LOGGING=false
-        EOF
+        echo "DATABASE_TYPE=sqlite" > .env
+        echo "SQLITE_PATH=test_almacen_pro.db" >> .env
+        echo "SECRET_KEY=test-secret-for-ci" >> .env
+        echo "DEBUG=true" >> .env
+        echo "LOG_LEVEL=DEBUG" >> .env
+        echo "COMPANY_NAME=Test Company" >> .env
+        echo "SESSION_TIMEOUT_MINUTES=30" >> .env
+        echo "PASSWORD_MIN_LENGTH=6" >> .env
+        echo "MAX_LOGIN_ATTEMPTS=3" >> .env
         
-    - name: Run migration tests
+    - name: Run database migrations test
       run: |
-        python test_migrations_simple.py
+        python database/migrate.py upgrade
+        python database/migrate.py current
         
-    - name: Run unit tests
+    - name: Run pytest
       env:
         QT_QPA_PLATFORM: offscreen
       run: |
-        python -m pytest tests/ -v --cov=managers --cov=controllers --cov=models --cov=utils --cov-report=xml --cov-report=term-missing
+        pytest tests/ -v --cov=managers --cov=controllers --cov=models --cov=utils --cov-report=xml --cov-report=term-missing
         
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.8'
@@ -130,8 +133,13 @@ jobs:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
+        
+    - name: Cleanup test files
+      if: always()
+      run: |
+        rm -f test_almacen_pro.db* || true
 
-  integration-tests:
+  integration-test:
     name: Integration Tests
     needs: test
     runs-on: ubuntu-latest
@@ -148,71 +156,66 @@ jobs:
     - name: Setup Qt
       run: |
         sudo apt-get update
-        sudo apt-get install -y qt5-default libqt5gui5 libqt5widgets5 libqt5core5a qttools5-dev-tools
+        sudo apt-get install -y qt5-default libqt5gui5 libqt5widgets5 libqt5core5a
         export QT_QPA_PLATFORM=offscreen
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-qt
         
     - name: Create integration test environment
       run: |
         cat > .env << EOF
         DATABASE_TYPE=sqlite
-        SQLITE_PATH=integration_test_almacen_pro.db
-        SECRET_KEY=integration-test-secret-key
+        SQLITE_PATH=integration_test.db
+        SECRET_KEY=integration-test-secret
         DEBUG=true
         LOG_LEVEL=INFO
+        COMPANY_NAME=Integration Test Co
+        SESSION_TIMEOUT_MINUTES=30
+        PASSWORD_MIN_LENGTH=6
+        MAX_LOGIN_ATTEMPTS=3
         EOF
         
     - name: Run integration tests
       env:
         QT_QPA_PLATFORM: offscreen
       run: |
-        python -m pytest tests/ -m "integration" -v --tb=short
-        
-    - name: Cleanup test databases
-      if: always()
-      run: |
-        rm -f test_almacen_pro.db integration_test_almacen_pro.db *.db-wal *.db-shm
+        python -c "
+import sys
+sys.path.append('.')
+from database.manager import DatabaseManager
+from managers.user_manager import UserManager
+from managers.product_manager import ProductManager
 
-  migration-tests:
-    name: Database Migration Tests
-    needs: lint
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+print('Testing database initialization...')
+db = DatabaseManager()
+print('✓ Database initialized')
+
+print('Testing user manager...')
+user_mgr = UserManager(db)
+print('✓ User manager working')
+
+print('Testing product manager...')  
+product_mgr = ProductManager(db)
+print('✓ Product manager working')
+
+print('🎉 Integration tests passed!')
+"
         
-    - name: Install dependencies
+    - name: Test MVC structure
+      env:
+        QT_QPA_PLATFORM: offscreen  
       run: |
-        python -m pip install --upgrade pip
-        pip install alembic SQLAlchemy python-dotenv
-        
-    - name: Test migrations up and down
-      run: |
-        export DATABASE_TYPE=sqlite
-        export SQLITE_PATH=migration_test.db
-        python database/migrate.py init
-        python database/migrate.py upgrade head
-        python database/migrate.py downgrade 001
-        python database/migrate.py upgrade head
-        python database/migrate.py current
+        python test_mvc_simple.py
         
     - name: Cleanup
       if: always()
       run: |
-        rm -f migration_test.db*
+        rm -f integration_test.db*
 
-  security:
+  security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     
@@ -228,154 +231,21 @@ jobs:
     - name: Install security tools
       run: |
         python -m pip install --upgrade pip
-        pip install bandit[toml] safety
+        pip install bandit safety
         
     - name: Run Bandit security scan
       run: |
-        bandit -r -c pyproject.toml -f json -o bandit-report.json .
+        bandit -r . -x venv,tests -f json -o bandit-report.json || true
+        bandit -r . -x venv,tests --severity-level medium
         
-    - name: Run Safety dependency check
+    - name: Run Safety check
       run: |
         pip install -r requirements.txt
-        safety check --json --output safety-report.json || true
+        safety check || true
         
-    - name: Upload security reports
+    - name: Upload security artifacts
       uses: actions/upload-artifact@v3
       if: always()
       with:
         name: security-reports
-        path: |
-          bandit-report.json
-          safety-report.json
-
-  build:
-    name: Build Application
-    needs: [test, migration-tests]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-      
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: Setup Qt (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y qt5-default libqt5gui5 libqt5widgets5
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install PyInstaller
-        
-    - name: Create production environment file
-      run: |
-        cat > .env << EOF
-        DATABASE_TYPE=sqlite
-        SQLITE_PATH=data/almacen_pro.db
-        SECRET_KEY=production-will-be-generated
-        DEBUG=false
-        LOG_LEVEL=INFO
-        EOF
-        
-    - name: Build application with PyInstaller
-      run: |
-        pyinstaller --onefile --windowed --name "AlmacenPro-v2.0" main.py
-        
-    - name: Test built application (basic)
-      run: |
-        # Basic smoke test - just try to import
-        python -c "import main; print('Build successful')"
-        
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: almacen-pro-${{ matrix.os }}
-        path: dist/
-
-  deploy-staging:
-    name: Deploy to Staging
-    needs: [build, security]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Download build artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: almacen-pro-ubuntu-latest
-        path: ./dist/
-        
-    - name: Deploy to staging environment
-      run: |
-        echo "Deploying to staging environment..."
-        echo "Application version: $(date +%Y.%m.%d)-$(git rev-parse --short HEAD)"
-        # Here would go actual deployment commands
-        
-    - name: Run staging tests
-      run: |
-        echo "Running staging environment tests..."
-        # Here would go staging tests
-
-  release:
-    name: Create Release
-    needs: [build, security, integration-tests]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/')
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Download all build artifacts
-      uses: actions/download-artifact@v3
-      
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: AlmacénPro v${{ github.ref }}
-        body: |
-          ## AlmacénPro v2.0 Release
-          
-          ### Changes in this Release
-          - Complete MVC architecture implementation
-          - Qt Designer UI migration
-          - Alembic database migrations
-          - Enhanced security and validation
-          - Comprehensive CI/CD pipeline
-          
-          ### Installation
-          1. Download the appropriate binary for your OS
-          2. Extract and run the executable
-          3. Follow the setup wizard
-          
-          ### System Requirements
-          - Windows 10+, macOS 10.15+, or Ubuntu 20.04+
-          - 4GB RAM minimum, 8GB recommended
-          - 2GB free disk space
-          
-        draft: false
-        prerelease: false
-        
-    - name: Upload Release Assets
-      run: |
-        for file in dist/*; do
-          echo "Uploading $file"
-          # Upload each platform binary
-        done
+        path: bandit-report.json

@@ -17,14 +17,17 @@ class CustomerModel(BaseModel):
     """Modelo de datos para el sistema de clientes"""
     
     # Señales específicas para clientes
+    customer_created = pyqtSignal(dict)
     customer_selected = pyqtSignal(dict)
     customer_updated = pyqtSignal(dict)
     customer_deleted = pyqtSignal(int)
     customers_loaded = pyqtSignal(list)
     filters_changed = pyqtSignal()
+    credit_limit_exceeded = pyqtSignal(dict)
     
-    def __init__(self, parent=None):
+    def __init__(self, customer_manager=None, parent=None):
         super().__init__(parent)
+        self.customer_manager = customer_manager
         
         # Estado del modelo
         self._customers = []
@@ -76,10 +79,16 @@ class CustomerModel(BaseModel):
     
     # === MÉTODOS PÚBLICOS ===
     
-    def load_customers(self, customers_data: List[Dict]):
+    def load_customers(self, customers_data: List[Dict] = None):
         """Cargar lista de clientes"""
         try:
             self.start_loading()
+            
+            # Si no se proporcionan datos y hay manager, cargar desde el manager
+            if customers_data is None and self.customer_manager:
+                customers_data = self.customer_manager.get_all_customers()
+            elif customers_data is None:
+                customers_data = []
             
             self._customers = customers_data.copy()
             self._update_statistics()
@@ -90,10 +99,12 @@ class CustomerModel(BaseModel):
             self.data_changed.emit()
             
             self.logger.info(f"Clientes cargados: {len(self._customers)}")
+            return True
             
         except Exception as e:
             self.logger.error(f"Error cargando clientes: {e}")
             self._set_error(f"Error cargando clientes: {str(e)}")
+            return False
         finally:
             self.finish_loading()
     
@@ -111,6 +122,7 @@ class CustomerModel(BaseModel):
             self._apply_filters()
             
             # Emitir señales
+            self.customer_created.emit(customer_data)
             self.data_changed.emit()
             
             self.logger.info(f"Cliente agregado: {customer_data.get('nombre', 'Sin nombre')}")

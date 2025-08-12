@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
-AlmacénPro v2.0 - Sistema ERP/POS Completo
-Archivo principal de entrada al sistema
+AlmacénPro v2.0 MVC - Sistema ERP/POS Completo
+Archivo principal unificado con arquitectura MVC y Qt Designer
+
+Características principales:
+- Arquitectura MVC (Model-View-Controller)
+- Interfaces con Qt Designer (.ui files)
+- Controladores especializados
+- Modelos de datos separados
+- Managers de lógica de negocio
 
 Desarrollado en Python 3.8+ con PyQt5
 Sistema profesional de gestión para almacenes, kioscos, distribuidoras
@@ -21,9 +28,11 @@ from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QFont
 
-# Imports de módulos del proyecto
+# Imports de configuración y base de datos
 from config.settings import Settings
 from database.manager import DatabaseManager
+
+# Imports de managers (lógica de negocio)
 from managers.user_manager import UserManager
 from managers.product_manager import ProductManager
 from managers.sales_manager import SalesManager
@@ -33,14 +42,27 @@ from managers.customer_manager import CustomerManager
 from managers.financial_manager import FinancialManager
 from managers.inventory_manager import InventoryManager
 from managers.report_manager import ReportManager
+
+# Managers adicionales
+from managers.predictive_analysis_manager import PredictiveAnalysisManager
+from managers.communication_manager import CommunicationManager
+from managers.advanced_customer_manager import AdvancedCustomerManager
+from managers.enterprise_user_manager import EnterpriseUserManager
+
+# Imports de utilidades
 from utils.backup_manager import BackupManager
 from utils.notifications import NotificationManager
-from ui.main_window import MainWindow
-from ui.dialogs.login_dialog import LoginDialog
+from utils.style_manager import StyleManager
+
+# Imports de controladores MVC
+from controllers.main_controller import MainController
+
+# Diálogos que siguen siendo necesarios  
+from controllers.login_controller import LoginController, show_login_dialog
 
 # Configuración global de logging
 def setup_logging():
-    """Configurar sistema de logging"""
+    """Configurar sistema de logging MVC"""
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
     
@@ -55,74 +77,138 @@ def setup_logging():
         ]
     )
     
-    # Configurar logger para errores críticos
-    critical_logger = logging.getLogger('CRITICAL')
-    critical_handler = logging.FileHandler(log_dir / "critical_errors.log", encoding='utf-8')
-    critical_handler.setLevel(logging.CRITICAL)
-    critical_logger.addHandler(critical_handler)
+    # Configurar logger principal
+    logger = logging.getLogger(__name__)
+    logger.info("=== INICIANDO ALMACÉNPRO V2.0 MVC UNIFICADO ===")
+    logger.info(f"Archivo de log: {log_file}")
     
-    return logging.getLogger(__name__)
+    return logger
 
 class InitializationThread(QThread):
-    """Hilo para inicialización asíncrona de componentes"""
+    """Hilo para inicialización de componentes MVC avanzada"""
     
-    progress_updated = pyqtSignal(int, str)
-    initialization_complete = pyqtSignal(dict)
-    error_occurred = pyqtSignal(str)
+    progress_updated = pyqtSignal(str, int)
+    initialization_completed = pyqtSignal(dict)
+    initialization_failed = pyqtSignal(str)
     
-    def __init__(self):
+    def __init__(self, db_path=None):
         super().__init__()
-        self.logger = logging.getLogger(__name__)
-        
+        self.db_path = db_path
+        self.logger = logging.getLogger(f"{__name__}.InitializationThread")
+    
     def run(self):
-        """Ejecutar inicialización de componentes"""
+        """Ejecutar inicialización MVC en hilo separado"""
         try:
             managers = {}
             
-            # Paso 1: Base de datos
-            self.progress_updated.emit(10, "Iniciando base de datos...")
-            db_manager = DatabaseManager()
-            managers['db'] = db_manager
+            # 1. Inicializar base de datos
+            self.progress_updated.emit("Inicializando base de datos...", 10)
+            db_manager = DatabaseManager(self.db_path)
+            managers['database'] = db_manager
             
-            # Paso 2: Gestores de negocio
-            self.progress_updated.emit(25, "Cargando gestores de usuario...")
+            # 2. Inicializar managers principales
+            self.progress_updated.emit("Inicializando gestores principales...", 20)
+            
+            # User Manager
             managers['user'] = UserManager(db_manager)
+            self.progress_updated.emit("Gestor de usuarios listo", 25)
             
-            self.progress_updated.emit(40, "Cargando gestores de productos...")
+            # Product Manager
             managers['product'] = ProductManager(db_manager)
+            self.progress_updated.emit("Gestor de productos listo", 30)
             
-            self.progress_updated.emit(45, "Cargando gestión financiera...")
-            managers['financial'] = FinancialManager(db_manager)
-            
-            self.progress_updated.emit(50, "Cargando gestores de ventas...")
-            managers['sales'] = SalesManager(db_manager, managers['product'], managers['financial'])
-            
-            self.progress_updated.emit(60, "Cargando gestores de compras...")
-            managers['purchase'] = PurchaseManager(db_manager, managers['product'])
-            
-            self.progress_updated.emit(70, "Cargando proveedores y clientes...")
-            managers['provider'] = ProviderManager(db_manager)
+            # Customer Manager
             managers['customer'] = CustomerManager(db_manager)
+            self.progress_updated.emit("Gestor de clientes listo", 35)
             
-            self.progress_updated.emit(80, "Cargando gestión de inventario...")
+            # Financial Manager
+            managers['financial'] = FinancialManager(db_manager)
+            self.progress_updated.emit("Gestor financiero listo", 38)
+            
+            # Sales Manager
+            managers['sales'] = SalesManager(db_manager, managers['product'], managers['financial'])
+            self.progress_updated.emit("Gestor de ventas listo", 40)
+            
+            # Purchase Manager  
+            managers['purchase'] = PurchaseManager(db_manager, managers['product'])
+            self.progress_updated.emit("Gestor de compras listo", 45)
+            
+            # Provider Manager
+            managers['provider'] = ProviderManager(db_manager)
+            self.progress_updated.emit("Gestor de proveedores listo", 47)
+            
+            # Inventory Manager
             managers['inventory'] = InventoryManager(db_manager)
+            self.progress_updated.emit("Gestor de inventario listo", 48)
             
-            self.progress_updated.emit(90, "Cargando reportes...")
+            # Report Manager
             managers['report'] = ReportManager(db_manager)
+            self.progress_updated.emit("Gestor de reportes listo", 49)
             
-            # Paso 3: Utilidades
-            self.progress_updated.emit(95, "Iniciando servicios auxiliares...")
+            # 3. Inicializar managers avanzados
+            self.progress_updated.emit("Inicializando gestores avanzados...", 50)
+            
+            # Advanced Customer Manager
+            try:
+                managers['advanced_customer'] = AdvancedCustomerManager(db_manager)
+                self.progress_updated.emit("CRM avanzado listo", 55)
+            except Exception as e:
+                self.logger.warning(f"CRM avanzado no disponible: {e}")
+            
+            # Enterprise User Manager
+            try:
+                managers['enterprise_user'] = EnterpriseUserManager(db_manager)
+                self.progress_updated.emit("Gestión empresarial lista", 60)
+            except Exception as e:
+                self.logger.warning(f"Gestión empresarial no disponible: {e}")
+            
+            # Predictive Analysis Manager
+            try:
+                managers['predictive_analysis'] = PredictiveAnalysisManager(db_manager)
+                self.progress_updated.emit("Análisis predictivo listo", 65)
+            except Exception as e:
+                self.logger.warning(f"Análisis predictivo no disponible: {e}")
+            
+            # Communication Manager
+            try:
+                managers['communication'] = CommunicationManager(db_manager)
+                self.progress_updated.emit("Gestor de comunicaciones listo", 70)
+            except Exception as e:
+                self.logger.warning(f"Comunicaciones no disponibles: {e}")
+            
+            # 4. Inicializar utilidades
+            self.progress_updated.emit("Inicializando utilidades del sistema...", 75)
+            
+            # Backup Manager
             managers['backup'] = BackupManager(db_manager.db_path)
+            self.progress_updated.emit("Sistema de backup listo", 80)
+            
+            # Notification Manager
             managers['notification'] = NotificationManager()
+            self.progress_updated.emit("Sistema de notificaciones listo", 85)
             
-            self.progress_updated.emit(100, "Inicialización completa")
+            # Style Manager
+            managers['style'] = StyleManager()
+            self.progress_updated.emit("Gestor de estilos listo", 90)
             
-            self.initialization_complete.emit(managers)
+            # 5. Verificación final
+            self.progress_updated.emit("Verificando integridad del sistema...", 95)
+            
+            # Verificar managers críticos
+            critical_managers = ['database', 'user', 'product', 'sales', 'customer']
+            for manager_name in critical_managers:
+                if manager_name not in managers:
+                    raise Exception(f"Manager crítico no inicializado: {manager_name}")
+            
+            self.progress_updated.emit("Inicialización MVC completada", 100)
+            self.logger.info("Todos los componentes MVC inicializados exitosamente")
+            
+            self.initialization_completed.emit(managers)
             
         except Exception as e:
-            self.logger.error(f"Error durante inicialización: {e}")
+            self.logger.error(f"Error durante inicialización MVC: {e}")
             self.logger.error(traceback.format_exc())
-            self.error_occurred.emit(str(e))
+            self.initialization_failed.emit(str(e))
 
 class AlmacenProApp:
     """Clase principal de la aplicación"""
@@ -163,109 +249,113 @@ class AlmacenProApp:
         return splash
     
     def initialize_components(self, splash):
-        """Inicializar componentes del sistema"""
+        """Inicializar componentes MVC del sistema"""
         self.init_thread = InitializationThread()
         
-        # Conectar señales
+        # Conectar señales MVC  
         self.init_thread.progress_updated.connect(
-            lambda progress, message: splash.showMessage(
-                f"AlmacénPro v2.0\n\n{message}\n{progress}%",
+            lambda message, progress: splash.showMessage(
+                f"AlmacénPro v2.0 MVC\n\n{message}\n{progress}%",
                 Qt.AlignCenter | Qt.AlignBottom,
                 Qt.white
             )
         )
         
-        self.init_thread.initialization_complete.connect(self.on_initialization_complete)
-        self.init_thread.error_occurred.connect(self.on_initialization_error)
+        self.init_thread.initialization_completed.connect(self.on_initialization_completed)
+        self.init_thread.initialization_failed.connect(self.on_initialization_failed)
         
         # Iniciar hilo
         self.init_thread.start()
         
         return self.init_thread
     
-    def on_initialization_complete(self, managers):
-        """Callback cuando la inicialización está completa"""
+    def on_initialization_completed(self, managers):
+        """Callback cuando la inicialización MVC está completa"""
         self.managers = managers
-        self.logger.info("Inicialización de componentes completada exitosamente")
+        self.logger.info("Inicialización MVC completada exitosamente")
         
         # Proceder con login
         QTimer.singleShot(1000, self.show_login)
     
-    def on_initialization_error(self, error_message):
-        """Callback cuando ocurre error en inicialización"""
-        self.logger.critical(f"Error crítico durante inicialización: {error_message}")
+    def on_initialization_failed(self, error_message):
+        """Callback cuando ocurre error en inicialización MVC"""
+        self.logger.critical(f"Error crítico durante inicialización MVC: {error_message}")
         
         QMessageBox.critical(
             None,
-            "Error Crítico",
-            f"No se pudo inicializar el sistema:\n\n{error_message}\n\n"
+            "Error Crítico MVC",
+            f"No se pudo inicializar el sistema MVC:\n\n{error_message}\n\n"
             "Revise los logs para más detalles."
         )
         sys.exit(1)
     
     def show_login(self):
-        """Mostrar diálogo de login"""
+        """Mostrar diálogo de login MVC"""
         try:
-            login_dialog = LoginDialog(self.managers['user'])
+            # Usar el nuevo LoginController MVC
+            success, user_data = show_login_dialog(self.managers['user'])
             
-            if login_dialog.exec_() == login_dialog.Accepted:
-                self.current_user = login_dialog.get_authenticated_user()
-                self.logger.info(f"Usuario autenticado: {self.current_user['username']}")
+            if success and user_data:
+                self.current_user = user_data
+                self.logger.info(f"Usuario autenticado MVC: {self.current_user['username']}")
                 self.show_main_window()
             else:
                 self.logger.info("Login cancelado por el usuario")
                 sys.exit(0)
                 
         except Exception as e:
-            self.logger.error(f"Error en proceso de login: {e}")
+            self.logger.error(f"Error en proceso de login MVC: {e}")
             QMessageBox.critical(
                 None,
-                "Error de Autenticación",
+                "Error de Autenticación MVC",
                 f"Error durante el proceso de login:\n{e}"
             )
             sys.exit(1)
     
     def show_main_window(self):
-        """Mostrar ventana principal"""
+        """Mostrar ventana principal MVC"""
         try:
-            self.main_window = MainWindow(
+            # Usar MainController MVC en lugar de MainWindow directo
+            self.main_controller = MainController(
                 managers=self.managers,
                 current_user=self.current_user
             )
             
-            # Configurar eventos de aplicación
-            self.main_window.logout_requested.connect(self.handle_logout)
-            self.main_window.app_exit_requested.connect(self.handle_exit)
+            # Configurar eventos de aplicación MVC
+            if hasattr(self.main_controller, 'logout_requested'):
+                self.main_controller.logout_requested.connect(self.handle_logout)
+            if hasattr(self.main_controller, 'app_exit_requested'):
+                self.main_controller.app_exit_requested.connect(self.handle_exit)
             
-            self.main_window.show()
-            self.logger.info("Ventana principal mostrada exitosamente")
+            self.main_controller.show()
+            self.logger.info("Ventana principal MVC mostrada exitosamente")
             
         except Exception as e:
-            self.logger.error(f"Error mostrando ventana principal: {e}")
+            self.logger.error(f"Error mostrando ventana principal MVC: {e}")
             QMessageBox.critical(
                 None,
-                "Error de Interfaz",
-                f"Error cargando la interfaz principal:\n{e}"
+                "Error de Interfaz MVC",
+                f"Error cargando la interfaz principal MVC:\n{e}"
             )
             sys.exit(1)
     
     def handle_logout(self):
-        """Manejar cierre de sesión"""
+        """Manejar cierre de sesión MVC"""
         self.logger.info(f"Cerrando sesión de usuario: {self.current_user['username']}")
         
-        if self.main_window:
-            self.main_window.close()
+        if hasattr(self, 'main_controller') and self.main_controller:
+            self.main_controller.close()
         
         self.current_user = None
         self.show_login()
     
     def handle_exit(self):
-        """Manejar salida de la aplicación"""
-        self.logger.info("Cerrando aplicación")
+        """Manejar salida de la aplicación MVC"""
+        self.logger.info("Cerrando aplicación MVC")
         
         # Cerrar conexiones de base de datos
-        if self.managers.get('db'):
-            self.managers['db'].close_connection()
+        if self.managers.get('database'):
+            self.managers['database'].close_connection()
         
         # Detener servicios
         if self.managers.get('backup'):

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AlmacénPro v2.0 is a comprehensive ERP/POS system for warehouse and retail management, built with Python 3.8+ and PyQt5. It features a modular architecture with specialized managers for different business domains and includes collaborative management capabilities for multi-partner businesses.
+AlmacénPro v2.0 is a comprehensive ERP/POS system for warehouse and retail management, built with Python 3.8+ and PyQt5. It features a **complete MVC architecture** with Qt Designer interfaces, specialized business managers, and includes collaborative management capabilities for multi-partner businesses.
 
 ## ESTADO ACTUAL DEL SISTEMA (ACTUALIZADO ENERO 2025)
 - ✅ Base de datos configurada con 19 tablas funcionales  
@@ -48,45 +48,36 @@ AlmacénPro v2.0 is a comprehensive ERP/POS system for warehouse and retail mana
 
 ### Running the Application
 ```bash
-# Main application entry point
+# Unified MVC application (main entry point)
 python main.py
 ```
 
 ### Development Commands
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Install development tools
-pip install black isort flake8 mypy bandit pre-commit pytest pytest-qt pytest-cov
-
-# Setup pre-commit hooks
-pre-commit install
+# Install all dependencies
+pip install -e .[dev]
 
 # Code formatting and quality
 black .
 isort .
-flake8 --config pyproject.toml
-mypy --config-file pyproject.toml managers/ controllers/ models/
-bandit -c pyproject.toml -r .
+flake8 .
+mypy managers/ controllers/ models/
+
+# Pre-commit setup
+pre-commit install
+pre-commit run --all-files
 
 # Testing
-pytest tests/
-pytest tests/unit/
-pytest tests/integration/
-pytest --cov=managers --cov=controllers --cov-report=html
+pytest                                    # All tests
+pytest tests/unit/                       # Unit tests only
+pytest tests/integration/               # Integration tests
+pytest -k "test_sales"                  # Specific test pattern
+pytest --cov=managers --cov-report=html # Coverage report
 
-# Database migrations
-python database/migrate.py init
-python database/migrate.py upgrade
-python database/migrate.py current
-python database/migrate.py create "Migration description"
-
-# MVC Application
-python main_mvc.py
-
-# Legacy Application (backup)  
-python main.py
+# Database operations
+python database/migrate.py upgrade      # Apply migrations
+python database/migrate.py current      # Check current state
+python database/migrate.py create "Description"  # New migration
 ```
 
 ### Database Operations
@@ -99,22 +90,33 @@ The system automatically handles database setup and migrations.
 
 ## Architecture Overview
 
-### Core Modules Structure
+### MVC Structure (IMPLEMENTED)
 
-**Database Layer** (`database/`)
-- `manager.py` - Central database manager with SQLite operations
-- `models.py` - Database table definitions and schemas
+The system follows a complete MVC pattern with the following layers:
+
+**Models** (`models/`)
+- `base_model.py` - Base model with PyQt signals for data changes
+- `entities.py` - Business entities as dataclasses
+- `sales_model.py`, `customer_model.py` - Specialized models
+
+**Views** (`views/`)
+- `dialogs/*.ui` - Modal dialogs designed with Qt Designer (11 files)
+- `widgets/*.ui` - Main widgets designed with Qt Designer (13 files)
+- `forms/*.ui` - Form components (2 files)
+
+**Controllers** (`controllers/`)
+- `base_controller.py` - Base controller with common UI loading logic
+- `main_controller.py` - Main window coordination
+- `sales_controller.py`, `customers_controller.py` - Module controllers
 
 **Business Logic** (`managers/`)
-- `user_manager.py` - User authentication and role management
+- `user_manager.py` - Authentication and role management
 - `product_manager.py` - Product catalog and inventory
 - `sales_manager.py` - Sales processing and transactions
-- `purchase_manager.py` - Purchase orders and supplier management
-- `provider_manager.py` - Supplier relationship management
-- `customer_manager.py` - Customer relationship management (CRM)
-- `financial_manager.py` - Financial operations and cash register management
-- `inventory_manager.py` - Advanced inventory control with multi-warehouse support
-- `report_manager.py` - Analytics and reporting
+- `customer_manager.py` - CRM with advanced analytics
+- `financial_manager.py` - Cash register and financial operations
+- `inventory_manager.py` - Multi-warehouse inventory control
+- `report_manager.py` - Report generation and analytics
 
 **User Interface** (`ui/`)
 - `main_window.py` - Ventana principal con navegación por tabs y vistas basadas en roles
@@ -152,10 +154,38 @@ The system automatically handles database setup and migrations.
 
 ### Key Design Patterns
 
+- **MVC Pattern**: Complete separation of Model-View-Controller
 - **Manager Pattern**: Business logic separated into specialized managers
 - **Observer Pattern**: PyQt signals/slots for component communication
-- **Factory Pattern**: Dynamic creation of UI widgets based on user roles
+- **Dynamic UI Loading**: `.ui` files loaded at runtime with `uic.loadUi()`
 - **Command Pattern**: Database operations wrapped in transaction methods
+
+### Critical Development Patterns
+
+#### UI File Conventions
+- **Never edit .ui files manually** - Always use Qt Designer
+- **Naming convention**: `btnSave`, `txtName`, `cmbCategory`, `tblResults`
+- **Loading pattern**: Controllers inherit from `BaseController` which handles `uic.loadUi()`
+- **Signal connections**: Always in controller's `connect_signals()` method
+
+#### MVC Communication
+```python
+# Model to View communication (via signals)
+class MyModel(BaseModel):
+    data_changed = pyqtSignal()  # Use PyQt signals
+
+# Controller manages Model-View coordination
+class MyController(BaseController):
+    def connect_signals(self):
+        self.model.data_changed.connect(self.refresh_view)
+        self.btnSave.clicked.connect(self.on_save)
+```
+
+#### Database Operations
+- Always use `DatabaseManager` singleton
+- Wrap operations in transactions for consistency
+- Use parameterized queries to prevent SQL injection
+- Add audit logging for critical operations
 
 ## Database Architecture
 
@@ -177,10 +207,24 @@ Key database features:
 
 ## Configuration Management
 
-Configuration is handled through:
-- `config.json` - Runtime settings (created automatically on first run)
-- `config/settings.py` - Default configuration values and validation
-- Environment variables for deployment settings
+**IMPORTANT**: System now uses environment-based configuration:
+
+- **Primary**: `.env` file with `python-dotenv` (see `.env.example`)
+- **Module**: `config/env_settings.py` - Centralized configuration management
+- **Legacy**: `config.json` (deprecated, use migration script)
+- **Migration**: Run `python migrate_config_to_env.py` to migrate from config.json
+
+### Environment Setup
+```bash
+# Copy template
+cp .env.example .env
+
+# Edit with your settings
+# Critical variables:
+# - SECRET_KEY (change in production)
+# - DATABASE_TYPE=sqlite
+# - SQLITE_PATH=data/almacen_pro.db
+```
 
 ## Backup System
 
@@ -194,10 +238,50 @@ The application includes a sophisticated backup system:
 ## Development Guidelines
 
 ### Code Organization
-- Follow modular architecture - keep managers focused on single responsibility
-- UI components should be in appropriate widget/dialog directories
-- Database operations should go through `DatabaseManager`
-- Use logging extensively for debugging and monitoring
+- **MVC First**: New features must follow MVC pattern
+- **UI Design**: Use Qt Designer for all interfaces, never hand-edit .ui files
+- **Controllers**: Inherit from `BaseController` for consistent UI loading
+- **Managers**: Keep focused on single business domain
+- **Database**: All operations through `DatabaseManager` with transactions
+- **Logging**: Use module-specific loggers for debugging
+
+### Common Development Tasks
+
+#### Adding New Feature with UI
+```bash
+# 1. Design interface in Qt Designer
+designer views/dialogs/my_feature.ui
+
+# 2. Create controller
+# controllers/my_feature_controller.py
+from controllers.base_controller import BaseController
+
+class MyFeatureController(BaseController):
+    def get_ui_file_path(self) -> str:
+        return "views/dialogs/my_feature.ui"
+
+# 3. Test UI loading
+python -c "
+from controllers.my_feature_controller import MyFeatureController
+controller = MyFeatureController()
+controller.show()
+"
+```
+
+#### Debugging MVC Issues
+```bash
+# Check UI file validity
+python -c "from PyQt5 import uic; uic.loadUi('views/dialogs/my_dialog.ui')"
+
+# Check controller inheritance
+python -c "
+from controllers.my_controller import MyController
+print(MyController.__mro__)  # Should include BaseController
+"
+
+# View MVC logs
+tail -f logs/almacen_pro_mvc_*.log
+```
 
 ### Adding New Features
 1. Create or extend appropriate manager in `managers/`
@@ -400,8 +484,7 @@ Sistema de pruebas integral:
 
 ```
 almacen_pro/
-├── main_mvc.py                # 🚀 Punto de entrada MVC (PRINCIPAL)
-├── main.py                    # 🚀 Punto de entrada original (respaldo)
+├── main.py                    # 🚀 Punto de entrada MVC unificado (PRINCIPAL)
 
 ├── models/                    # 📊 CAPA DE DATOS (MVC)
 │   ├── base_model.py          # Modelo base con señales PyQt
@@ -627,8 +710,8 @@ La arquitectura MVC implementada incluye:
 ### COMANDOS MVC PRINCIPALES
 
 ```bash
-# Ejecutar aplicación MVC
-python main_mvc.py
+# Ejecutar aplicación MVC unificada
+python main.py
 
 # Validar estructura MVC
 python test_mvc_simple.py

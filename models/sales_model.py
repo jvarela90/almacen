@@ -25,8 +25,11 @@ class SalesModel(BaseModel):
     item_added = pyqtSignal(dict)
     item_removed = pyqtSignal(int)
     
-    def __init__(self, parent=None):
+    def __init__(self, sales_manager=None, product_manager=None, customer_manager=None, parent=None):
         super().__init__(parent)
+        self.sales_manager = sales_manager
+        self.product_manager = product_manager
+        self.customer_manager = customer_manager
         
         # Estado del carrito
         self._cart_items = []
