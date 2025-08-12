@@ -4,14 +4,15 @@ Controller para diálogo de autenticación usando .ui file
 """
 
 import logging
-from PyQt5.QtWidgets import QDialog, QTimer, QMessageBox
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QDialog, QMessageBox
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5 import uic
-from controllers.base_controller import BaseController
+import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-class LoginController(BaseController):
+class LoginController(QDialog):
     """Controller para el diálogo de login usando archivo .ui"""
     
     # Señal emitida cuando el login es exitoso
@@ -24,18 +25,31 @@ class LoginController(BaseController):
         self.failed_attempts = 0
         self.max_attempts = 3
         
-        # Setup UI
+        # Cargar UI
+        self.load_ui()
+        
+        # Setup específico
         self.setup_ui()
+        self.connect_signals()
         self.setup_validators()
         self.setup_lockout_timer()
-        
-    def get_ui_file_path(self) -> str:
-        """Retorna la ruta del archivo .ui"""
-        return "views/dialogs/login_dialog.ui"
+    
+    def load_ui(self):
+        """Cargar archivo .ui"""
+        try:
+            ui_path = Path("views/dialogs/login_dialog.ui")
+            if ui_path.exists():
+                uic.loadUi(str(ui_path), self)
+                logger.info(f"UI cargada desde: {ui_path}")
+            else:
+                logger.error(f"Archivo UI no encontrado: {ui_path}")
+                raise FileNotFoundError(f"Archivo UI no encontrado: {ui_path}")
+        except Exception as e:
+            logger.error(f"Error cargando UI: {e}")
+            raise
     
     def setup_ui(self):
         """Configuración específica de la UI después de cargar el archivo .ui"""
-        super().setup_ui()
         
         # Configurar window properties
         self.setWindowTitle("AlmacénPro - Iniciar Sesión")
@@ -43,20 +57,19 @@ class LoginController(BaseController):
         self.setModal(True)
         
         # Configurar valores por defecto para desarrollo
-        if hasattr(self, 'txtUsername') and hasattr(self, 'txtPassword'):
+        if hasattr(self, 'lineEditUsername') and hasattr(self, 'lineEditPassword'):
             # Valores por defecto para facilitar desarrollo
-            self.txtUsername.setText("admin")
-            self.txtPassword.setText("")
+            self.lineEditUsername.setText("admin")
+            self.lineEditPassword.setText("")
             
             # Focus en password si username ya está lleno
-            if self.txtUsername.text():
-                self.txtPassword.setFocus()
+            if self.lineEditUsername.text():
+                self.lineEditPassword.setFocus()
             else:
-                self.txtUsername.setFocus()
+                self.lineEditUsername.setFocus()
     
     def connect_signals(self):
         """Conectar señales específicas del login"""
-        super().connect_signals()
         
         # Conectar botones
         if hasattr(self, 'btnLogin'):
@@ -65,16 +78,16 @@ class LoginController(BaseController):
             self.btnCancel.clicked.connect(self.reject)
             
         # Conectar Enter en campos de texto
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.returnPressed.connect(self.move_to_password)
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.returnPressed.connect(self.attempt_login)
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.returnPressed.connect(self.move_to_password)
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.returnPressed.connect(self.attempt_login)
             
         # Conectar cambios en campos para resetear errores
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.textChanged.connect(self.clear_error_styling)
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.textChanged.connect(self.clear_error_styling)
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.textChanged.connect(self.clear_error_styling)
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.textChanged.connect(self.clear_error_styling)
     
     def setup_validators(self):
         """Configurar validadores para los campos"""
@@ -89,24 +102,26 @@ class LoginController(BaseController):
     
     def move_to_password(self):
         """Mover foco al campo de contraseña"""
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.setFocus()
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.setFocus()
     
     def attempt_login(self):
         """Intentar autenticación"""
         try:
-            username = self.txtUsername.text().strip() if hasattr(self, 'txtUsername') else ""
-            password = self.txtPassword.text() if hasattr(self, 'txtPassword') else ""
+            username = self.lineEditUsername.text().strip() if hasattr(self, 'lineEditUsername') else ""
+            password = self.lineEditPassword.text() if hasattr(self, 'lineEditPassword') else ""
             
             # Validar campos obligatorios
             if not username:
                 self.show_error("Por favor, ingrese su usuario")
-                self.txtUsername.setFocus()
+                if hasattr(self, 'lineEditUsername'):
+                    self.lineEditUsername.setFocus()
                 return
                 
             if not password:
                 self.show_error("Por favor, ingrese su contraseña")
-                self.txtPassword.setFocus()
+                if hasattr(self, 'lineEditPassword'):
+                    self.lineEditPassword.setFocus()
                 return
             
             # Deshabilitar botón durante la autenticación
@@ -115,11 +130,11 @@ class LoginController(BaseController):
                 self.btnLogin.setText("Validando...")
             
             # Intentar autenticación
-            result = self.user_manager.authenticate_user(username, password)
+            success, message, user_data = self.user_manager.authenticate_user(username, password)
             
-            if result and result.get('success', False):
+            if success and user_data:
                 # Login exitoso
-                self.authenticated_user = result.get('user')
+                self.authenticated_user = user_data
                 logger.info(f"Login exitoso para usuario: {username}")
                 
                 # Emitir señal de login exitoso
@@ -131,7 +146,7 @@ class LoginController(BaseController):
             else:
                 # Login fallido
                 self.failed_attempts += 1
-                error_message = result.get('message', 'Usuario o contraseña incorrectos')
+                error_message = message or 'Usuario o contraseña incorrectos'
                 
                 logger.warning(f"Login fallido para usuario: {username}. Intento {self.failed_attempts}/{self.max_attempts}")
                 
@@ -141,9 +156,9 @@ class LoginController(BaseController):
                     self.show_error(f"{error_message}\nIntentos restantes: {self.max_attempts - self.failed_attempts}")
                 
                 # Limpiar contraseña
-                if hasattr(self, 'txtPassword'):
-                    self.txtPassword.clear()
-                    self.txtPassword.setFocus()
+                if hasattr(self, 'lineEditPassword'):
+                    self.lineEditPassword.clear()
+                    self.lineEditPassword.setFocus()
                 
                 # Estilo de error en campos
                 self.apply_error_styling()
@@ -164,10 +179,10 @@ class LoginController(BaseController):
         self.show_error(f"Demasiados intentos fallidos. Bloqueado por {lockout_time} segundos.")
         
         # Deshabilitar campos y botón
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.setEnabled(False)
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.setEnabled(False)
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.setEnabled(False)
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.setEnabled(False)
         if hasattr(self, 'btnLogin'):
             self.btnLogin.setEnabled(False)
             self.btnLogin.setText("Bloqueado")
@@ -181,10 +196,10 @@ class LoginController(BaseController):
         self.failed_attempts = 0
         
         # Rehabilitar campos y botón
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.setEnabled(True)
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.setEnabled(True)
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.setEnabled(True)
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.setEnabled(True)
         if hasattr(self, 'btnLogin'):
             self.btnLogin.setEnabled(True)
             self.btnLogin.setText("Iniciar Sesión")
@@ -193,8 +208,8 @@ class LoginController(BaseController):
         self.clear_error_styling()
         
         # Focus en username
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.setFocus()
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.setFocus()
     
     def show_error(self, message: str):
         """Mostrar mensaje de error"""
@@ -212,10 +227,10 @@ class LoginController(BaseController):
             self.lblError.setVisible(False)
         
         # Restaurar estilos normales de los campos
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.setStyleSheet("")
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.setStyleSheet("")
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.setStyleSheet("")
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.setStyleSheet("")
     
     def apply_error_styling(self):
         """Aplicar estilos de error a los campos"""
@@ -228,10 +243,10 @@ class LoginController(BaseController):
             }
         """
         
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.setStyleSheet(error_style)
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.setStyleSheet(error_style)
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.setStyleSheet(error_style)
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.setStyleSheet(error_style)
     
     def get_authenticated_user(self):
         """Obtener usuario autenticado después del login exitoso"""
@@ -239,17 +254,17 @@ class LoginController(BaseController):
     
     def reset_form(self):
         """Resetear formulario para nuevo intento"""
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.clear()
-        if hasattr(self, 'txtPassword'):
-            self.txtPassword.clear()
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.clear()
+        if hasattr(self, 'lineEditPassword'):
+            self.lineEditPassword.clear()
         
         self.clear_error_styling()
         self.failed_attempts = 0
         self.authenticated_user = None
         
-        if hasattr(self, 'txtUsername'):
-            self.txtUsername.setFocus()
+        if hasattr(self, 'lineEditUsername'):
+            self.lineEditUsername.setFocus()
 
 
 # Función helper para facilitar el uso

@@ -58,6 +58,11 @@ cryptography>=37.0.4,<42.0.0 # Encriptación moderna
 bcrypt>=3.2.2,<5.0.0         # Hash de contraseñas
 
 # ============================================================================
+# DEPENDENCIAS 2FA (OPCIONAL)
+# ============================================================================
+pyotp>=2.6.0,<3.0.0          # 2FA/TOTP (opcional)
+
+# ============================================================================
 # NOTIFICACIONES
 # ============================================================================
 plyer>=2.1.0,<3.0.0          # Notificaciones multiplataforma
@@ -72,6 +77,15 @@ black>=22.6.0,<24.0.0        # Formateador de código
 isort>=5.10.1,<6.0.0         # Ordenador de imports
 flake8>=5.0.4,<7.0.0         # Linter de código
 pre-commit>=2.20.0,<4.0.0    # Pre-commit hooks
+
+# ============================================================================
+# SISTEMA COLABORATIVO AI
+# ============================================================================
+openai>=1.3.0,<2.0.0         # API de OpenAI para ChatGPT
+PyGithub>=2.1.1,<3.0.0       # Integración con GitHub
+gitpython>=3.1.40,<4.0.0     # Operaciones Git programáticas
+anthropic>=0.8.1,<1.0.0      # API de Claude (Anthropic)
+aiohttp>=3.8.0,<4.0.0        # Cliente HTTP asíncrono
 
 # ============================================================================
 # ANÁLISIS DE CÓDIGO Y CALIDAD
@@ -90,6 +104,7 @@ sphinx-rtd-theme>=1.0.0,<2.0.0 # Tema para Sphinx
 # ============================================================================
 rich>=12.5.1,<14.0.0         # Terminal con formato rico
 loguru>=0.6.0,<1.0.0         # Logging avanzado (opcional)
+psutil>=5.9.1,<6.0.0         # Información del sistema y procesos
 
 # ============================================================================
 # IMPRESIÓN (OPCIONAL)
